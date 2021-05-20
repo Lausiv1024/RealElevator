@@ -1,0 +1,29 @@
+{
+    "call":{
+        "category":"master",
+        "sounds":[
+            {
+                "name": "realelevator:call",
+                "stream": false
+            }
+        ]
+    },
+    "up":{
+        "category":"master",
+        "sounds":[
+            {
+                "name": "realelevator:up",
+                "stream": false
+            }
+        ]
+    },
+    "down":{
+        "category":"master",
+        "sounds":[
+            {
+                "name": "realelevator:down",
+                "stream": false
+            }
+        ]
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "variants":{
+        "facing=north":{
+            "model" :"realelevator:block/button1"
+        },
+        "facing=east":{
+            "model":"realelevator:block/button1","y":90
+        },
+        "facing=south":{
+            "model":"realelevator:block/button1","y":180
+        },
+        "facing=west":{
+            "model":"realelevator:block/button1","y":270
+        }
+    }
+    
+}

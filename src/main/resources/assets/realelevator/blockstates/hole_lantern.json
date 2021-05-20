@@ -1,0 +1,16 @@
+{
+    "variants":{
+        "facing=north":{
+            "model" :"realelevator:block/hole_lantern1_lit_both"
+        },
+        "facing=south":{
+            "model":"realelevator:block/hole_lantern1","y":180
+        },
+        "facing=east":{
+            "model":"realelevator:block/hole_lantern1", "y":90
+        },
+        "facing=west":{
+            "model":"realelevator:block/hole_lantern1", "y":270
+        }
+    }
+}
