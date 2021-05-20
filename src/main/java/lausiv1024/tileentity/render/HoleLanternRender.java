@@ -40,7 +40,9 @@ public class HoleLanternRender extends ElevatorPartRender<HoleLanternTile> {
     }
 
     private void renderLight(){
-        matrixStack.pushPose();
-        matrixStack.popPose();
+        if (tile.getLightMode() != 0){
+            matrixStack.pushPose();
+            matrixStack.popPose();
+        }
     }
 }
