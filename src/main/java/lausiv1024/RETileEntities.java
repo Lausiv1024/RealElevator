@@ -18,7 +18,7 @@ public class RETileEntities {
     public static final List<TileEntityType<? extends TileEntity>> TILE_ENTITY_TYPES = new ArrayList<>();
 
     public static final TileEntityType<?> HOLE_LANTERN = register("hole_lantern",
-            TileEntityType.Builder.of(HoleLanternTile::new, REBlocks.HOLE_LANTERN).build(Util.fetchChoiceType(TypeReferences.BLOCK_ENTITY, "hole_lantern")));
+            TileEntityType.Builder.of(HoleLanternTile::new, REBlocks.HOLE_LANTERN).build(null));
 
     private static TileEntityType<? extends TileEntity> register(String registryName, TileEntityType<?> tileEntityType){
         TileEntityType named = tileEntityType.setRegistryName(registryName);

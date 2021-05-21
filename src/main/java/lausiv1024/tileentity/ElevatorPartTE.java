@@ -29,9 +29,8 @@ public abstract class ElevatorPartTE extends TileEntity {
     @Override
     public CompoundNBT save(CompoundNBT nbt) {
         super.save(nbt);
-        CompoundNBT nbt1 = new CompoundNBT();
-        nbt1.putUUID("elevatorID", elevatorID);
-        return nbt1;
+        nbt.putUUID("elevatorID", elevatorID);
+        return nbt;
     }
 
     public boolean isRegistered() {

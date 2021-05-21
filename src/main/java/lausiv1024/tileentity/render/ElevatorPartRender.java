@@ -16,8 +16,8 @@ public abstract class ElevatorPartRender<T extends ElevatorPartTE> extends TileE
     protected int combinedLight;
     protected int combinedOverlay;
 
-    public ElevatorPartRender(TileEntityRendererDispatcher p_i226006_1_) {
-        super(p_i226006_1_);
+    public ElevatorPartRender(TileEntityRendererDispatcher tileEntityRendererDispatcher) {
+        super(tileEntityRendererDispatcher);
     }
 
     @Override

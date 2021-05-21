@@ -1,26 +1,30 @@
 package lausiv1024.blocks;
 
+import lausiv1024.tileentity.HoleLanternTile;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalBlock;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.state.DirectionProperty;
 import net.minecraft.state.StateContainer;
-import net.minecraft.util.Direction;
-import net.minecraft.util.Mirror;
-import net.minecraft.util.Rotation;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.BlockRayTraceResult;
 import net.minecraft.util.math.shapes.ISelectionContext;
 import net.minecraft.util.math.shapes.VoxelShape;
 import net.minecraft.util.math.shapes.VoxelShapes;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.IWorld;
+import net.minecraft.world.World;
 
 import javax.annotation.Nullable;
+import java.util.UUID;
 import java.util.function.ToIntFunction;
 
 public class HoleLantern extends ElevatorPart{
-    private static final DirectionProperty FACING = HorizontalBlock.FACING;
+    public static final DirectionProperty FACING = HorizontalBlock.FACING;
     private static final VoxelShape NORTH_BASE = box(6, 0, 0, 10, 16, 0.2);
     private static final VoxelShape NORTH_LIGHT = box(7, 1, 0.2, 9, 15, 1.2);
     private static final VoxelShape EAST_BASE = box(15.8, 0, 6, 16, 16, 10);
@@ -41,6 +45,17 @@ public class HoleLantern extends ElevatorPart{
     }
 
     @Override
+    public boolean hasTileEntity(BlockState state) {
+        return true;
+    }
+
+    @Nullable
+    @Override
+    public TileEntity createTileEntity(BlockState state, IBlockReader world) {
+        return new HoleLanternTile();
+    }
+
+    @Override
     public VoxelShape getShape(BlockState state, IBlockReader reader, BlockPos pos, ISelectionContext context) {
         switch (state.getValue(FACING)){
             case NORTH: return NORTH;
@@ -49,6 +64,28 @@ public class HoleLantern extends ElevatorPart{
             case WEST: return WEST;
         }
         return NORTH;
+    }
+
+    @Override
+    public ActionResultType use(BlockState state, World world, BlockPos pos, PlayerEntity playerEntity, Hand hand, BlockRayTraceResult result) {
+        super.use(state, world, pos, playerEntity, hand, result);
+        TileEntity tileEntity = world.getBlockEntity(pos);
+        if (tileEntity instanceof HoleLanternTile){
+            HoleLanternTile holeLanternTile = (HoleLanternTile) tileEntity;
+            holeLanternTile.setLightMode(1);
+            holeLanternTile.setElevatorID(UUID.randomUUID());
+        }
+
+        return ActionResultType.SUCCESS;
+    }
+
+    @Override
+    public void onPlace(BlockState state, World world, BlockPos pos, BlockState state1, boolean p_220082_5_) {
+        TileEntity tileEntity = world.getBlockEntity(pos);
+        if (tileEntity instanceof HoleLanternTile){
+            HoleLanternTile holeLanternTile = (HoleLanternTile) tileEntity;
+            holeLanternTile.setElevatorID(UUID.randomUUID());
+        }
     }
 
     @Nullable
