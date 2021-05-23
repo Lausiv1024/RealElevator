@@ -52,7 +52,7 @@ public class HoleLantern extends ElevatorPart{
     @Nullable
     @Override
     public TileEntity createTileEntity(BlockState state, IBlockReader world) {
-        return new HoleLanternTile();
+        return new HoleLanternTile(UUID.randomUUID());
     }
 
     @Override
@@ -73,7 +73,6 @@ public class HoleLantern extends ElevatorPart{
         if (tileEntity instanceof HoleLanternTile){
             HoleLanternTile holeLanternTile = (HoleLanternTile) tileEntity;
             holeLanternTile.setLightMode(1);
-            holeLanternTile.setElevatorID(UUID.randomUUID());
         }
 
         return ActionResultType.SUCCESS;

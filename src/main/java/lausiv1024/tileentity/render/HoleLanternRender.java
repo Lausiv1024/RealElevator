@@ -23,10 +23,10 @@ public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRe
 
     private static final RenderType LIGHT_ON_White = getTexture("hole_lantern_light_white");
     private static final RenderType LIGHT_ON_YELLOW = getTexture("hole_lantern_light_yellow");
-    private static final float[] vertex1_surface = {-0.3f, 1.05f,0};
-    private static final float[] vertex2_surface = {-0.45f, 1.05f, 0};
-    private static final float[] vertex3_surface = {-0.45f, -0.05f, 0};
-    private static final float[] vertex4_surface = {-0.3f, -0.05f, 0};
+    private static final float[] vertex1_surface = {0.07f, 0.44f,-0.415f};
+    private static final float[] vertex2_surface = {-0.07f, 0.44f, -0.415f};
+    private static final float[] vertex3_surface = {-0.07f, -0.45f, -0.415f};
+    private static final float[] vertex4_surface = {0.07f, -0.45f, -0.415f};
 
     public HoleLanternRender(TileEntityRendererDispatcher tileEntityRendererDispatcher) {
         super(tileEntityRendererDispatcher);
@@ -35,7 +35,8 @@ public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRe
 
     @Override
     protected void render() {
-        renderLight();
+        if (tile.getLightTick() >= 10 && tile.getLightMode() != 0)
+            renderLight();
     }
 
     private static RenderType getTexture(final String name){
@@ -50,24 +51,22 @@ public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRe
         return RenderType.create("movingelevators_texture_" + name, DefaultVertexFormats.POSITION_TEX, GL11.GL_QUADS, 256, false, true, state);
     }
 
+    //もう二度とTERやるかぁぁぁぁ！
     private void renderLight(){
-        if (tile.getLightMode() != 0){
             matrixStack.pushPose();
-            matrixStack.translate(0.8, 0.1, 0.08);
-            matrixStack.scale(0.8f, 0.8f, 0.1f);
+            matrixStack.translate(0.5, 0.5, 0.5);
             matrixStack.mulPose(new Quaternion(0,180 - tile.getBlockState().getValue(HoleLantern.FACING).toYRot(), 0, true));
-            //matrixStack.mulPose(tile.getBlockState().getValue(HoleLantern.FACING).getRotation());
             //表面部分の描画
             drawQuad(LIGHT_ON_YELLOW, vertex1_surface, vertex2_surface, vertex3_surface, vertex4_surface);
+            //側面の描画あああああwwww
+            drawQuad(LIGHT_ON_YELLOW,new float[]{0.07f, 0.44f, -0.5f} , new float[]{0.07f, 0.44f, -0.415f}, new float[]{0.07f, -0.45f, -0.415f}, new float[]{0.07f,-0.45f,-0.5f});
+            drawQuad(LIGHT_ON_YELLOW, new float[]{-0.07f,-0.45f,-0.5f}, new float[]{-0.07f, -0.45f, -0.415f}, new float[]{-0.07f, 0.44f, -0.415f}, new float[]{-0.07f, 0.44f, -0.5f});
+
+            //うえええええええええええええい
+            drawQuad(LIGHT_ON_YELLOW, new float[]{0.07f, 0.44f, -0.5f}, new float[]{-0.07f, 0.44f, -0.5f}, new float[]{-0.07f, 0.44f, -0.415f}, new float[]{0.07f, 0.44f, -0.415f});
+            //底面？
+            drawQuad(LIGHT_ON_YELLOW, new float[]{-0.07f, -0.45f, -0.5f}, new float[]{0.07f, -0.45f, -0.5f}, new float[]{0.07f, -0.45f, -0.415f}, new float[]{-0.07f, -0.45f, -0.415f});
             matrixStack.popPose();
-            matrixStack.pushPose();
-            matrixStack.translate(0.608, 0.1, 0.01);
-            matrixStack.scale(0.1f, 0.8f, 0.8f);
-            matrixStack.mulPose(new Quaternion(0,180 - tile.getBlockState().getValue(HoleLantern.FACING).toYRot(), 0, true));
-            //matrixStack.mulPose(tile.getBlockState().getValue(HoleLantern.FACING).getRotation());
-            drawQuad(LIGHT_ON_YELLOW,new float[]{-0.45f, 1.05f, 0f} , new float[]{-0.45f, 1.05f, 0.075f}, new float[]{-0.45f, -0.05f, 0.075f}, new float[]{-0.45f,-0.05f,0f});
-            matrixStack.popPose();
-        }
     }
 
     private void drawQuad(RenderType type, float[] vertex1, float[] vertex2, float[] vertex3, float[] vertex4){
