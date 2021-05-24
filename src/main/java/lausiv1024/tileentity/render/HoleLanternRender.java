@@ -35,8 +35,8 @@ public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRe
 
     @Override
     protected void render() {
-        if (tile.getLightTick() >= 10 && tile.getLightMode() != 0)
-            renderLight();
+        if (tile.getLightMode() != 0)
+            renderLight(tile.getBlinking(), tile.getLightMode(), tile.getLightColor());
     }
 
     private static RenderType getTexture(final String name){
@@ -52,20 +52,40 @@ public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRe
     }
 
     //もう二度とTERやるかぁぁぁぁ！
-    private void renderLight(){
+    private void renderLight(boolean isblinking, int mode, int color){
             matrixStack.pushPose();
             matrixStack.translate(0.5, 0.5, 0.5);
             matrixStack.mulPose(new Quaternion(0,180 - tile.getBlockState().getValue(HoleLantern.FACING).toYRot(), 0, true));
-            //表面部分の描画
-            drawQuad(LIGHT_ON_YELLOW, vertex1_surface, vertex2_surface, vertex3_surface, vertex4_surface);
-            //側面の描画あああああwwww
-            drawQuad(LIGHT_ON_YELLOW,new float[]{0.07f, 0.44f, -0.5f} , new float[]{0.07f, 0.44f, -0.415f}, new float[]{0.07f, -0.45f, -0.415f}, new float[]{0.07f,-0.45f,-0.5f});
-            drawQuad(LIGHT_ON_YELLOW, new float[]{-0.07f,-0.45f,-0.5f}, new float[]{-0.07f, -0.45f, -0.415f}, new float[]{-0.07f, 0.44f, -0.415f}, new float[]{-0.07f, 0.44f, -0.5f});
 
-            //うえええええええええええええい
-            drawQuad(LIGHT_ON_YELLOW, new float[]{0.07f, 0.44f, -0.5f}, new float[]{-0.07f, 0.44f, -0.5f}, new float[]{-0.07f, 0.44f, -0.415f}, new float[]{0.07f, 0.44f, -0.415f});
-            //底面？
-            drawQuad(LIGHT_ON_YELLOW, new float[]{-0.07f, -0.45f, -0.5f}, new float[]{0.07f, -0.45f, -0.5f}, new float[]{0.07f, -0.45f, -0.415f}, new float[]{-0.07f, -0.45f, -0.415f});
+            RenderType renderType;
+            if (color == 0) renderType = LIGHT_ON_YELLOW;
+            else renderType = LIGHT_ON_White;
+            if (isblinking){
+                if (tile.getLightTick() <= 10){
+                    switch (mode){
+                        case 1:
+                            drawUP(renderType);
+                            break;
+                        case 2:
+                            drawDown(renderType);
+                            break;
+                        case 3:
+                            drawBoth(renderType);
+                    }
+                }
+            }else{
+                switch (mode){
+                    case 1:
+                        drawUP(renderType);
+                        break;
+                    case 2:
+                        drawDown(renderType);
+                        break;
+                    case 3:
+                        drawBoth(renderType);
+                }
+            }
+
             matrixStack.popPose();
     }
 
@@ -77,4 +97,60 @@ public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRe
         builder.vertex(matrix, vertex3[0], vertex3[1], vertex3[2]).uv(0, 1).endVertex();
         builder.vertex(matrix, vertex4[0], vertex4[1], vertex4[2]).uv(0, 1).endVertex();
     }
+
+    private void drawBoth(RenderType type){
+        //表面部分の描画
+        drawQuad(type, vertex1_surface, vertex2_surface, vertex3_surface, vertex4_surface);
+        //側面の描画あああああwwww
+        drawQuad(type,new float[]{0.07f, 0.44f, -0.5f} , new float[]{0.07f, 0.44f, -0.415f},
+                new float[]{0.07f, -0.45f, -0.415f}, new float[]{0.07f,-0.45f,-0.5f});
+        drawQuad(type, new float[]{-0.07f,-0.45f,-0.5f}, new float[]{-0.07f, -0.45f, -0.415f},
+                new float[]{-0.07f, 0.44f, -0.415f}, new float[]{-0.07f, 0.44f, -0.5f});
+
+        //うえええええええええええええい
+        drawQuad(type, new float[]{0.07f, 0.44f, -0.5f}, new float[]{-0.07f, 0.44f, -0.5f},
+                new float[]{-0.07f, 0.44f, -0.415f}, new float[]{0.07f, 0.44f, -0.415f});
+        //底面？
+        drawQuad(type, new float[]{-0.07f, -0.45f, -0.5f}, new float[]{0.07f, -0.45f, -0.5f},
+                new float[]{0.07f, -0.45f, -0.415f}, new float[]{-0.07f, -0.45f, -0.415f});
+    }
+
+    private void drawUP(RenderType type){
+        float ypaaaa = 0f;
+        //表面部分の描画
+        drawQuad(type, new float[]{0.07f, 0.44f,-0.415f}, new float[]{-0.07f, 0.44f, -0.415f},
+                new float[]{-0.07f, ypaaaa, -0.415f}, new float[]{0.07f, ypaaaa, -0.415f});
+        //側面の描画あああああwwww
+        drawQuad(type,new float[]{0.07f, 0.44f, -0.5f} , new float[]{0.07f, 0.44f, -0.415f},
+                new float[]{0.07f, ypaaaa, -0.415f}, new float[]{0.07f,ypaaaa,-0.5f});
+        drawQuad(type, new float[]{-0.07f, ypaaaa,-0.5f}, new float[]{-0.07f, ypaaaa, -0.415f},
+                new float[]{-0.07f, 0.44f, -0.415f}, new float[]{-0.07f, 0.44f, -0.5f});
+
+        //うえええええええええええええい
+        drawQuad(type, new float[]{0.07f, 0.44f, -0.5f}, new float[]{-0.07f, 0.44f, -0.5f},
+                new float[]{-0.07f, 0.44f, -0.415f}, new float[]{0.07f, 0.44f, -0.415f});
+        //底面？
+        drawQuad(type, new float[]{-0.07f, ypaaaa, -0.5f}, new float[]{0.07f, ypaaaa, -0.5f},
+                new float[]{0.07f, ypaaaa, -0.415f}, new float[]{-0.07f, ypaaaa, -0.415f});
+    }
+
+    private void drawDown(RenderType type){
+        float ypaaaa = 0f;
+        //表面部分の描画
+        drawQuad(type, new float[]{0.07f, ypaaaa,-0.415f}, new float[]{-0.07f, ypaaaa, -0.415f},
+                new float[]{-0.07f, -0.45f, -0.415f}, new float[]{0.07f, -0.45f, -0.415f});
+        //側面の描画あああああwwww
+        drawQuad(type,new float[]{0.07f, ypaaaa, -0.5f} , new float[]{0.07f, ypaaaa, -0.415f},
+                new float[]{0.07f, -0.45f, -0.415f}, new float[]{0.07f,-0.45f,-0.5f});
+        drawQuad(type, new float[]{-0.07f,-0.45f,-0.5f}, new float[]{-0.07f, -0.45f, -0.415f},
+                new float[]{-0.07f, ypaaaa, -0.415f}, new float[]{-0.07f, ypaaaa, -0.5f});
+
+        //うえええええええええええええい
+        drawQuad(type, new float[]{0.07f, ypaaaa, -0.5f}, new float[]{-0.07f, ypaaaa, -0.5f},
+                new float[]{-0.07f, ypaaaa, -0.415f}, new float[]{0.07f, ypaaaa, -0.415f});
+        //底面？
+        drawQuad(type, new float[]{-0.07f, -0.45f, -0.5f}, new float[]{0.07f, -0.45f, -0.5f},
+                new float[]{0.07f, -0.45f, -0.415f}, new float[]{-0.07f, -0.45f, -0.415f});
+    }
+
 }

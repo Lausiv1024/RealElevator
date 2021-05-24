@@ -1,11 +1,14 @@
 package lausiv1024.blocks;
 
+import lausiv1024.RESoundEvents;
 import lausiv1024.tileentity.HoleLanternTile;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalBlock;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItemUseContext;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.state.DirectionProperty;
 import net.minecraft.state.StateContainer;
 import net.minecraft.tileentity.TileEntity;
@@ -21,7 +24,6 @@ import net.minecraft.world.World;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
-import java.util.function.ToIntFunction;
 
 public class HoleLantern extends ElevatorPart{
     public static final DirectionProperty FACING = HorizontalBlock.FACING;
@@ -72,10 +74,26 @@ public class HoleLantern extends ElevatorPart{
         TileEntity tileEntity = world.getBlockEntity(pos);
         if (tileEntity instanceof HoleLanternTile){
             HoleLanternTile holeLanternTile = (HoleLanternTile) tileEntity;
-            holeLanternTile.setLightMode(1);
+            test(playerEntity.getItemInHand(hand), holeLanternTile, world, pos);
         }
 
         return ActionResultType.SUCCESS;
+    }
+
+    private void test(ItemStack stack, HoleLanternTile holeLanternTile, World world, BlockPos pos){
+        if (stack.getItem() == Items.REDSTONE_TORCH){
+            holeLanternTile.setLightMode(1);
+            world.playSound((PlayerEntity) null, holeLanternTile.getBlockPos(),  RESoundEvents.UPSOUND, SoundCategory.BLOCKS, 0.5f, 1);
+        }else if (stack.getItem() == Items.REDSTONE_BLOCK){
+            holeLanternTile.setLightMode(2);
+            world.playSound((PlayerEntity) null, holeLanternTile.getBlockPos(),  RESoundEvents.DOWNSOUND, SoundCategory.BLOCKS, 0.5f, 1);
+        }else if (stack.getItem() == Items.STICK){
+            holeLanternTile.setLightMode(3);
+        }else if (stack.getItem() == Items.REDSTONE){
+            holeLanternTile.setBlinking(!holeLanternTile.getBlinking());
+        }else if (stack.getItem() == Items.BLACK_WOOL){
+            holeLanternTile.setLightColor(holeLanternTile.getLightColor() == 1 ? 0 : 1);
+        }else holeLanternTile.setLightMode(0);
     }
 
     @Override

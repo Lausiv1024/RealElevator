@@ -15,6 +15,7 @@ public class HoleLanternTile extends ElevatorPartTE implements ITickableTileEnti
     //Yellow : 0  White : 1
     int lightColor = 0;
     int lightTick = 0;
+    boolean isBlinking = true;
 
     public HoleLanternTile(UUID elevatorID){
         super(RETileEntities.HOLE_LANTERN, elevatorID);
@@ -26,11 +27,17 @@ public class HoleLanternTile extends ElevatorPartTE implements ITickableTileEnti
 
     public void setLightMode(int a){
         lightMode = a;
+        lightTick = 0;
     }
     public int getLightMode(){return lightMode;}
     public int getLightTick(){return lightTick;}
     public void setLightColor(int a){lightColor = a;}
     public int getLightColor(){return lightColor;}
+    public boolean getBlinking(){return isBlinking;}
+    public void setBlinking(boolean blinking) {
+        lightTick = 0;
+        isBlinking = blinking;
+    }
 
     @Override
     public void load(BlockState state, CompoundNBT nbt) {
@@ -38,6 +45,7 @@ public class HoleLanternTile extends ElevatorPartTE implements ITickableTileEnti
         lightMode = nbt.getInt("LightMode");
         lightColor = nbt.getInt("LightColor");
         lightTick = nbt.getInt("LightTick");
+        isBlinking = nbt.getBoolean("IsBlinking");
         RealElevatorCore.LOGGER.info(String.valueOf(lightMode));
     }
 
@@ -47,12 +55,13 @@ public class HoleLanternTile extends ElevatorPartTE implements ITickableTileEnti
         nbt.putInt("LightMode", lightMode);
         nbt.putInt("LightColor", lightColor);
         nbt.putInt("LightTick", lightTick);
+        nbt.putBoolean("IsBlinking", isBlinking);
         return nbt;
     }
 
     @Override
     public void tick() {
-        if (lightMode > 0){
+        if (lightMode > 0 && isBlinking){
             lightTick++;
             if (lightTick >= 20) lightTick = 0;
         }else{
