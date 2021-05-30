@@ -1,10 +1,10 @@
 package lausiv1024;
 
-import lausiv1024.blocks.DoorRail;
-import lausiv1024.blocks.ElevatorButton;
-import lausiv1024.blocks.ElevatorButtonSingle;
-import lausiv1024.blocks.HoleLantern;
+import lausiv1024.blocks.*;
+import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
+import net.minecraft.block.material.Material;
+import net.minecraftforge.common.ToolType;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -26,6 +26,8 @@ public class REBlocks {
     public static final Block ELEVATOR_BUTTON = register("elevator_button", new ElevatorButton());
     public static final Block DOOR_RAIL = register("door_rail", new DoorRail());
     public static final Block HOLE_LANTERN = register("hole_lantern", new HoleLantern());
+    public static final Block GUIDE_RAIL = register("guide_rail", new GuideRailBlock());
+    public static final Block ELEVATOR_MARKER = register("elevator_marker", new ElevatorMarker(AbstractBlock.Properties.of(Material.METAL).strength(2, 10).harvestTool(ToolType.PICKAXE).harvestLevel(2)));
 
 
     @SubscribeEvent

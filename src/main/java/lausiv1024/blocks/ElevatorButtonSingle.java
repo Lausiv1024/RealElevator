@@ -48,7 +48,7 @@ public class ElevatorButtonSingle extends ElevatorPart {
         super.use(state, world, pos, playerEntity, hand, result);
         boolean a = calculatePressedButton(state, result.getLocation(), pos);
         if (a){
-            playerEntity.playSound(RESoundEvents.CALLSOUND, 1, 1);
+            playerEntity.playSound(RESoundEvents.CALLSOUND, 0.5f, 1);
             return ActionResultType.SUCCESS;
         }
         return ActionResultType.PASS;

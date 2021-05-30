@@ -10,14 +10,10 @@ import net.minecraft.client.renderer.RenderState;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
-import net.minecraft.entity.item.EnderPearlEntity;
-import net.minecraft.item.EnderPearlItem;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
 import org.lwjgl.opengl.GL11;
-
-import java.util.List;
 
 public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRender<T> {
 
