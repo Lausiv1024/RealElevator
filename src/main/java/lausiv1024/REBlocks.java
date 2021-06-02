@@ -27,7 +27,16 @@ public class REBlocks {
     public static final Block DOOR_RAIL = register("door_rail", new DoorRail());
     public static final Block HOLE_LANTERN = register("hole_lantern", new HoleLantern());
     public static final Block GUIDE_RAIL = register("guide_rail", new GuideRailBlock());
-    public static final Block ELEVATOR_MARKER = register("elevator_marker", new ElevatorMarker(AbstractBlock.Properties.of(Material.METAL).strength(2, 10).harvestTool(ToolType.PICKAXE).harvestLevel(2)));
+    public static final Block ELEVATOR_MARKER = register("elevator_marker",
+            new ElevatorMarker(AbstractBlock.Properties.of(Material.METAL).
+                    strength(2, 10).harvestTool(ToolType.PICKAXE).harvestLevel(2)));
+    public static final Block RANGE_DISPLAY = register("range_display",
+            new RangeDisplay(AbstractBlock.Properties.of(Material.METAL)));
+    public static final Block ELEVATOR_CONSTRUCTOR = register("elevator_constructor",
+            new ElevatorConstructor(AbstractBlock.Properties.of(Material.METAL)
+            .strength(0.6f, 10).harvestTool(ToolType.PICKAXE).harvestLevel(2)));
+    public static final Block FLOOR_DISPLAY = register("floor_display",
+            new FloorDisplay());
 
 
     @SubscribeEvent

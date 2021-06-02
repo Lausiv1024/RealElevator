@@ -1,11 +1,9 @@
 package lausiv1024.blocks;
 
 import lausiv1024.REItems;
-import net.minecraft.block.AbstractBlock;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.SoundType;
+import net.minecraft.block.*;
 import net.minecraft.block.material.Material;
+import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.pathfinding.PathType;
 import net.minecraft.util.ActionResultType;
@@ -19,8 +17,8 @@ public abstract class ElevatorPart extends Block /*implements IWaterLoggable */{
     //public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
     public ElevatorPart() {
         super(AbstractBlock.Properties.of(Material.METAL).sound(SoundType.METAL).harvestLevel(2)
-                .strength(200, 200).isSuffocating((p_test_1_, p_test_2_, p_test_3_) -> false)
-                .isViewBlocking((p_test_1_, p_test_2_, p_test_3_) -> false).noOcclusion());
+                .isSuffocating((p_test_1_, p_test_2_, p_test_3_) -> false)
+                .isViewBlocking((p_test_1_, p_test_2_, p_test_3_) -> false).noOcclusion().strength(-1.0f, 114514.0f).isValidSpawn(ElevatorPart::never));
         //this.registerDefaultState(this.getStateDefinition().any().setValue(WATERLOGGED, Boolean.FALSE));
     }
 
@@ -36,5 +34,9 @@ public abstract class ElevatorPart extends Block /*implements IWaterLoggable */{
     @Override
     public boolean isPathfindable(BlockState p_196266_1_, IBlockReader p_196266_2_, BlockPos p_196266_3_, PathType p_196266_4_) {
         return false;
+    }
+
+    private static Boolean never(BlockState p_235427_0_, IBlockReader p_235427_1_, BlockPos p_235427_2_, EntityType<?> p_235427_3_) {
+        return (boolean)false;
     }
 }

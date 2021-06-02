@@ -19,6 +19,10 @@ public class REItems {
         return itemNamed;
     }
 
+    public static final Item ITEM_ELEVATOR_MARKER = register("elevator_marker",
+            new BlockItem(REBlocks.ELEVATOR_MARKER, new Item.Properties().tab(ItemGroup.TAB_REDSTONE)));
+    public static final Item FLOOR_MARKER = register("floor_marker",
+            new Item(new Item.Properties().tab(ItemGroup.TAB_REDSTONE)));
     public static final Item ITEM_ELEVATOR_BUTTON_SINGLE = register("elevator_button_single",
             new BlockItem(REBlocks.ELEVATOR_BUTTON_SINGLE, new Item.Properties().tab(ItemGroup.TAB_REDSTONE)));
     public static final Item ITEM_ELEVATOR_BUTTON = register("elevator_button",
@@ -31,8 +35,12 @@ public class REItems {
             new Item(new Item.Properties().stacksTo(1).tab(ItemGroup.TAB_REDSTONE)));
     public static final Item ITEM_GUIDE_RAIL = register("guide_rail",
             new BlockItem(REBlocks.GUIDE_RAIL, new Item.Properties().tab(ItemGroup.TAB_REDSTONE)));
-    public static final Item ITEM_ELEVATOR_MARKER = register("elevator_marker",
-            new BlockItem(REBlocks.ELEVATOR_MARKER, new Item.Properties().tab(ItemGroup.TAB_REDSTONE)));
+    public static final Item ITEM_RANGE_DISPLAY = register("range_display",
+            new BlockItem(REBlocks.RANGE_DISPLAY, new Item.Properties()));
+    public static final Item ITEM_ELEVATOR_CONSTRUCTOR = register("elevator_constructor",
+            new BlockItem(REBlocks.ELEVATOR_CONSTRUCTOR, new Item.Properties().tab(ItemGroup.TAB_REDSTONE)));
+    public static final Item ITEM_FLOOR_DISPLAY = register("floor_display",
+            new BlockItem(REBlocks.FLOOR_DISPLAY, new Item.Properties().tab(ItemGroup.TAB_REDSTONE)));
 
     @SubscribeEvent
     public static void registerItems(RegistryEvent.Register<Item> event){
