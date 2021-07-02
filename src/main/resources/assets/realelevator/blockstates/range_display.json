@@ -1,0 +1,9 @@
+{
+    "variants":{
+        "state=0":{"model":"realelevator:block/range_display"},
+      "state=1":{"model":"realelevator:block/range_display_floor_marked"},
+      "state=2":{"model":"realelevator:block/range_display_floor_marked", "y":90},
+      "state=3":{"model":"realelevator:block/range_display_floor_marked", "y":180},
+      "state=4":{"model":"realelevator:block/range_display_floor_marked", "y": 270}
+    }
+}

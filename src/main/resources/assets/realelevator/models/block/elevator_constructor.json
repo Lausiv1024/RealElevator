@@ -1,0 +1,9 @@
+{
+    "parent":"block/orientable_with_bottom",
+    "textures":{
+        "top":"realelevator:blocks/elevator_constructor_up",
+        "front":"realelevator:blocks/elevator_constructor_face",
+        "side":"realelevator:blocks/elevator_constructor_side",
+        "bottom":"realelevator:blocks/elevator_constructor_down"
+    }
+}

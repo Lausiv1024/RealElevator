@@ -1,0 +1,8 @@
+{
+    "variants":{
+        "facing=north":{"model":"realelevator:block/door_rail_double"},
+        "facing=south":{"model":"realelevator:block/door_rail_double", "y":180},
+        "facing=east":{"model":"realelevator:block/door_rail_double", "y":90},
+        "facing=west":{"model":"realelevator:block/door_rail_double", "y":270}
+    }
+}

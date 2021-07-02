@@ -1,0 +1,16 @@
+{
+    "variants":{
+        "facing=north":{
+            "model":"realelevator:block/floor_display"
+        },
+        "facing=east":{
+            "model":"realelevator:block/floor_display", "y":90
+        },
+        "facing=south":{
+            "model":"realelevator:block/floor_display", "y":180
+        },
+        "facing=west":{
+            "model":"realelevator:block/floor_display", "y" :270
+        }
+    }
+}
