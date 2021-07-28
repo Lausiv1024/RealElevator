@@ -1,5 +1,6 @@
 package lausiv1024;
 
+import lausiv1024.tileentity.FloorDisplayTile;
 import lausiv1024.tileentity.HoleLanternTile;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityType;
@@ -16,6 +17,8 @@ public class RETileEntities {
 
     public static final TileEntityType<?> HOLE_LANTERN = register("hole_lantern",
             TileEntityType.Builder.of(HoleLanternTile::new, REBlocks.HOLE_LANTERN).build(null));
+    public static final TileEntityType<?> FLOOR_DISPLAY = register("floor_display",
+            TileEntityType.Builder.of(FloorDisplayTile::new, REBlocks.FLOOR_DISPLAY).build(null));
 
     private static TileEntityType<? extends TileEntity> register(String registryName, TileEntityType<?> tileEntityType){
         TileEntityType named = tileEntityType.setRegistryName(registryName);

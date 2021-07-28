@@ -1,0 +1,5 @@
+{
+    "variants":{
+        "":{"model":"realelevator:ele_part/elebutton"}
+    }
+}

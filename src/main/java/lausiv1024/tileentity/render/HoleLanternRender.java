@@ -13,8 +13,11 @@ import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import org.lwjgl.opengl.GL11;
 
+@OnlyIn(Dist.CLIENT)
 public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRender<T> {
 
     private static final RenderType LIGHT_ON_White = getTexture("hole_lantern_light_white");
@@ -44,7 +47,7 @@ public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRe
             RenderSystem.disableBlend();
             RenderSystem.disableAlphaTest();
         })).setTextureState(new RenderState.TextureState(new ResourceLocation(RealElevatorCore.ID, "textures/blocks/hole_lantern/" + name + ".png"), false, false)).createCompositeState(false);
-        return RenderType.create("movingelevators_texture_" + name, DefaultVertexFormats.POSITION_TEX, GL11.GL_QUADS, 256, false, true, state);
+        return RenderType.create("realelevator_texture_" + name, DefaultVertexFormats.POSITION_TEX, GL11.GL_QUADS, 256, false, true, state);
     }
 
     //もう二度とTERやるかぁぁぁぁ！

@@ -1,6 +1,7 @@
 package lausiv1024.blocks;
 
 import lausiv1024.RESoundEvents;
+import lausiv1024.RealElevatorCore;
 import lausiv1024.tileentity.HoleLanternTile;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -25,7 +26,7 @@ import net.minecraft.world.World;
 import javax.annotation.Nullable;
 import java.util.UUID;
 
-public class HoleLantern extends ElevatorPart{
+public class HoleLantern extends ElevatorPartBlock {
     public static final DirectionProperty FACING = HorizontalBlock.FACING;
     private static final VoxelShape NORTH_BASE = box(6, 0, 0, 10, 16, 0.2);
     private static final VoxelShape NORTH_LIGHT = box(7, 1, 0.2, 9, 15, 1.2);
@@ -74,6 +75,7 @@ public class HoleLantern extends ElevatorPart{
         TileEntity tileEntity = world.getBlockEntity(pos);
         if (tileEntity instanceof HoleLanternTile){
             HoleLanternTile holeLanternTile = (HoleLanternTile) tileEntity;
+            RealElevatorCore.LOGGER.info(state.getValue(FACING).getStepZ());
             test(playerEntity.getItemInHand(hand), holeLanternTile, world, pos);
         }
 

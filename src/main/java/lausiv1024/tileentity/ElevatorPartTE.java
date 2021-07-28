@@ -1,6 +1,5 @@
 package lausiv1024.tileentity;
 
-import lausiv1024.RealElevatorCore;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.network.NetworkManager;

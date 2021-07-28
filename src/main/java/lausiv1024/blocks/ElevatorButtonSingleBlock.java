@@ -21,7 +21,7 @@ import net.minecraft.world.World;
 
 import javax.annotation.Nullable;
 
-public class ElevatorButtonSingle extends ElevatorPart {
+public class ElevatorButtonSingleBlock extends ElevatorPartBlock {
     public static final DirectionProperty FACING = HorizontalBlock.FACING;
 
     private static final VoxelShape NORTH_BASE = Block.box(5,2,0,11,14,0.2);
@@ -38,7 +38,7 @@ public class ElevatorButtonSingle extends ElevatorPart {
     private static final VoxelShape WEST_ALL = VoxelShapes.or(WEST_BASE, WEST_BUTTON);
     private static final VoxelShape EAST_ALL = VoxelShapes.or(EAST_BASE, EAST_BUTTON);
 
-    public ElevatorButtonSingle(){
+    public ElevatorButtonSingleBlock(){
         super();
         this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH));
     }
@@ -48,7 +48,7 @@ public class ElevatorButtonSingle extends ElevatorPart {
         super.use(state, world, pos, playerEntity, hand, result);
         boolean a = calculatePressedButton(state, result.getLocation(), pos);
         if (a){
-            playerEntity.playSound(RESoundEvents.CALLSOUND, 0.5f, 1);
+            world.playSound(null, pos, RESoundEvents.CALLSOUND,SoundCategory.BLOCKS, 0.5f, 1f);
             return ActionResultType.SUCCESS;
         }
         return ActionResultType.PASS;

@@ -1,40 +1,60 @@
 package lausiv1024.renderer;
-// Made with Blockbench 3.9.1
-// Exported for Minecraft version 1.15 - 1.16 with Mojang mappings
-// Paste this class into your mod and generate all required imports
-
 
 import com.mojang.blaze3d.matrix.MatrixStack;
-import com.mojang.blaze3d.vertex.IVertexBuilder;
-import net.minecraft.client.renderer.entity.model.EntityModel;
-import net.minecraft.client.renderer.model.ModelRenderer;
-import net.minecraft.entity.Entity;
+import lausiv1024.REItems;
+import lausiv1024.RealElevatorCore;
+import lausiv1024.entity.EleButtonEntity;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.Atlases;
+import net.minecraft.client.renderer.BlockRendererDispatcher;
+import net.minecraft.client.renderer.IRenderTypeBuffer;
+import net.minecraft.client.renderer.ItemRenderer;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererManager;
+import net.minecraft.client.renderer.model.ItemCameraTransforms;
+import net.minecraft.client.renderer.model.ModelManager;
+import net.minecraft.client.renderer.model.ModelResourceLocation;
+import net.minecraft.client.renderer.texture.AtlasTexture;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.vector.Vector3d;
+import net.minecraft.util.math.vector.Vector3f;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
-public class EleButtonRenderer extends EntityModel<Entity> {
-	private final ModelRenderer bb_main;
+@OnlyIn(Dist.CLIENT)
+public class EleButtonRenderer extends EntityRenderer<EleButtonEntity> {
+    Minecraft minecraft = Minecraft.getInstance();
+    private final ItemRenderer itemRenderer;
+    public EleButtonRenderer(EntityRendererManager entityRendererManager) {
+        super(entityRendererManager);
+        itemRenderer = minecraft.getItemRenderer();
+    }
 
-	public EleButtonRenderer() {
-		texWidth = 16;
-		texHeight = 16;
+    @Override
+    public void render(EleButtonEntity eleButtonEntity, float v, float v1, MatrixStack matrixStack, IRenderTypeBuffer renderTypeBuffer, int lightLevel) {
+        Vector3d offset = this.getRenderOffset(eleButtonEntity, v1);
+        matrixStack.pushPose();
+        matrixStack.translate(offset.x(), offset.y() + 0.5, offset.z() - 0.65);
+        matrixStack.scale(1, 1, 1);
+        matrixStack.mulPose(Vector3f.XP.rotationDegrees(eleButtonEntity.xRot));
+        matrixStack.mulPose(Vector3f.YP.rotationDegrees(180 - eleButtonEntity.yRot));
 
-		bb_main = new ModelRenderer(this);
-		bb_main.setPos(0.0F, 24.0F, 0.0F);
-		bb_main.texOffs(0, 0).addBox(-2.0F, -4.0F, 0.0F, 4.0F, 4.0F, 1.0F, 0.0F, false);
-	}
+        itemRenderer.renderStatic(new ItemStack(REItems.ELEVATOR_BUTTON), ItemCameraTransforms.TransformType.GROUND, lightLevel, OverlayTexture.NO_OVERLAY,
+                matrixStack, renderTypeBuffer);
 
-	@Override
-	public void setupAnim(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch){
-		//previously the render function, render code was moved to a method below
-	}
+        matrixStack.popPose();
+        super.render(eleButtonEntity, v, v1, matrixStack, renderTypeBuffer, lightLevel);
+    }
+    @Override
+    public ResourceLocation getTextureLocation(EleButtonEntity p_110775_1_) {
+        return AtlasTexture.LOCATION_BLOCKS;
+    }
 
-	@Override
-	public void renderToBuffer(MatrixStack matrixStack, IVertexBuilder buffer, int packedLight, int packedOverlay, float red, float green, float blue, float alpha){
-		bb_main.render(matrixStack, buffer, packedLight, packedOverlay);
-	}
+    @Override
+    public Vector3d getRenderOffset(EleButtonEntity p_225627_1_, float p_225627_2_) {
+        return new Vector3d((double)((float)p_225627_1_.getDirection().getStepX() * 0.3F), -0.25D, (double)((float)p_225627_1_.getDirection().getStepZ() * 0.3F));
+    }
 
-	public void setRotationAngle(ModelRenderer modelRenderer, float x, float y, float z) {
-		modelRenderer.xRot = x;
-		modelRenderer.yRot = y;
-		modelRenderer.zRot = z;
-	}
 }

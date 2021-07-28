@@ -15,11 +15,10 @@ import net.minecraft.util.math.shapes.VoxelShape;
 import net.minecraft.util.math.shapes.VoxelShapes;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.IWorld;
-import org.lwjgl.system.CallbackI;
 
 import javax.annotation.Nullable;
 
-public class GuideRailBlock extends ElevatorPart{
+public class GuideRailBlock extends ElevatorPartBlock {
     public static final DirectionProperty FACING = HorizontalBlock.FACING;
     public static final VoxelShape A_NORTH = box(5, 0, 0, 11, 16, 1.1);
     public static final VoxelShape B_NORTH = box(7, 0, 1, 9, 16, 3);

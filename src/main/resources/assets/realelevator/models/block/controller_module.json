@@ -1,0 +1,23 @@
+{
+	"credit": "Made with Blockbench",
+	"texture_size": [64, 64],
+	"textures": {
+		"0": "realelevator:blocks/controller_module",
+		"particle": "realelevator:blocks/controller_module"
+	},
+	"elements": [
+		{
+			"from": [4, 0, 0],
+			"to": [12, 27, 3],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, 0, 8]},
+			"faces": {
+				"north": {"uv": [4.25, 0, 8.5, 16], "texture": "#0"},
+				"east": {"uv": [8.5, 0, 10.5, 16], "texture": "#0"},
+				"south": {"uv": [0, 0, 4.25, 16], "texture": "#0"},
+				"west": {"uv": [8.5, 0, 10.5, 16], "texture": "#0"},
+				"up": {"uv": [2.375, 5.125, 10.375, 8.125], "texture": "#0"},
+				"down": {"uv": [2.5, 4.875, 10.5, 7.875], "texture": "#0"}
+			}
+		}
+	]
+}

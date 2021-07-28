@@ -1,0 +1,8 @@
+{
+    "variants":{
+        "facing=north":{"model":"realelevator:block/controller_module"},
+        "facing=east":{"model":"realelevator:block/controller_module", "y" : 90},
+        "facing=south":{"model":"realelevator:block/controller_module", "y" : 180},
+        "facing=west":{"model":"realelevator:block/controller_module", "y" : 270}
+    }
+}

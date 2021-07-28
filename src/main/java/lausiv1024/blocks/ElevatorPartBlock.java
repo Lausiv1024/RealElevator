@@ -13,12 +13,12 @@ import net.minecraft.util.math.BlockRayTraceResult;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.World;
 
-public abstract class ElevatorPart extends Block /*implements IWaterLoggable */{
+public abstract class ElevatorPartBlock extends Block /*implements IWaterLoggable */{
     //public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
-    public ElevatorPart() {
+    public ElevatorPartBlock() {
         super(AbstractBlock.Properties.of(Material.METAL).sound(SoundType.METAL).harvestLevel(2)
                 .isSuffocating((p_test_1_, p_test_2_, p_test_3_) -> false)
-                .isViewBlocking((p_test_1_, p_test_2_, p_test_3_) -> false).noOcclusion().strength(-1.0f, 114514.0f).isValidSpawn(ElevatorPart::never));
+                .isViewBlocking((p_test_1_, p_test_2_, p_test_3_) -> false).noOcclusion().strength(-1.0f, 114514.0f).isValidSpawn(ElevatorPartBlock::never));
         //this.registerDefaultState(this.getStateDefinition().any().setValue(WATERLOGGED, Boolean.FALSE));
     }
 
@@ -37,6 +37,6 @@ public abstract class ElevatorPart extends Block /*implements IWaterLoggable */{
     }
 
     private static Boolean never(BlockState p_235427_0_, IBlockReader p_235427_1_, BlockPos p_235427_2_, EntityType<?> p_235427_3_) {
-        return (boolean)false;
+        return false;
     }
 }

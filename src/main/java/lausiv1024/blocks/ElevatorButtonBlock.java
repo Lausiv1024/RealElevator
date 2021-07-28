@@ -3,15 +3,10 @@ package lausiv1024.blocks;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalBlock;
-import net.minecraft.block.IWaterLoggable;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.fluid.FluidState;
-import net.minecraft.fluid.Fluids;
 import net.minecraft.item.BlockItemUseContext;
-import net.minecraft.state.BooleanProperty;
 import net.minecraft.state.DirectionProperty;
 import net.minecraft.state.StateContainer;
-import net.minecraft.state.properties.BlockStateProperties;
 import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockRayTraceResult;
@@ -19,15 +14,13 @@ import net.minecraft.util.math.shapes.ISelectionContext;
 import net.minecraft.util.math.shapes.VoxelShape;
 import net.minecraft.util.math.shapes.VoxelShapes;
 import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
-import org.lwjgl.system.CallbackI;
 
 import javax.annotation.Nullable;
 
-public class ElevatorButton extends ElevatorPart {
+public class ElevatorButtonBlock extends ElevatorPartBlock {
     public static final DirectionProperty FACING = HorizontalBlock.FACING;
     /*-------------------------------------------------NORTH---------------------------------------------------------------*/
     private static final VoxelShape NORTH_BASE = Block.box(5,2,0,11,14,0.2);
@@ -54,7 +47,7 @@ public class ElevatorButton extends ElevatorPart {
     private static final VoxelShape WEST_ALL = VoxelShapes.or(WEST_BASE, WEST_BUTTON_DOWN, WEST_BUTTON_UP);
     /*---------------------------------------------------------------------------------------------------------------------*/
 
-    public ElevatorButton(){
+    public ElevatorButtonBlock(){
         super();
         this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH));
     }

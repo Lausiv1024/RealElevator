@@ -1,6 +1,5 @@
 package lausiv1024.blocks;
 
-import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalBlock;
@@ -19,7 +18,7 @@ import net.minecraft.world.IWorld;
 
 import javax.annotation.Nullable;
 
-public class DoorRail extends ElevatorPart {
+public class DoorRail extends ElevatorPartBlock {
     private static final DirectionProperty FACING = HorizontalBlock.FACING;
     private static final VoxelShape NORTH = Block.box(0, 13.8, 0, 16, 15.8, 2);
     private static final VoxelShape NORTH_MIZO0 = Block.box(0, 15.8, 0, 16, 16, 0.4);

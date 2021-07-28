@@ -1,28 +1,25 @@
 {
     "call":{
-        "category":"master",
         "sounds":[
             {
-                "name": "realelevator:call",
-                "stream": false
+                "attenuation_distance":8,
+                "name": "realelevator:call"
             }
         ]
     },
     "up":{
-        "category":"master",
         "sounds":[
             {
-                "name": "realelevator:up",
-                "stream": false
+                "attenuation_distance":8,
+                "name": "realelevator:up"
             }
         ]
     },
     "down":{
-        "category":"master",
         "sounds":[
             {
-                "name": "realelevator:down",
-                "stream": false
+                "attenuation_distance":8,
+                "name": "realelevator:down"
             }
         ]
     }

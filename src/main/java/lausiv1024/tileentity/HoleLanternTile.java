@@ -46,7 +46,7 @@ public class HoleLanternTile extends ElevatorPartTE implements ITickableTileEnti
         lightColor = nbt.getInt("LightColor");
         lightTick = nbt.getInt("LightTick");
         isBlinking = nbt.getBoolean("IsBlinking");
-        RealElevatorCore.LOGGER.info(String.valueOf(lightMode));
+        //RealElevatorCore.LOGGER.info(String.valueOf(lightMode));
     }
 
     @Override
