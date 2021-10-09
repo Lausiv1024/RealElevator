@@ -32,10 +32,10 @@ public class RangeDisplay extends Block {
     public ActionResultType use(BlockState state, World world, BlockPos pos, PlayerEntity playerEntity, Hand hand, BlockRayTraceResult result) {
         int curY = pos.getY();
         int currentState = getStateNumWithFacing(result.getDirection());
-        if (playerEntity.getItemInHand(hand).getItem() == REItems.FLOOR_MARKER && world.getBlockState(pos).getValue(STATE) == 0){
+        if (playerEntity.getItemInHand(hand).getItem() == REItems.FLOOR_MARKER.get() && world.getBlockState(pos).getValue(STATE) == 0){
 
             for (int i = curY - 4; i < curY + 5; i++) {
-                if (world.getBlockState(new BlockPos(pos.getX(), i, pos.getZ())).getBlock() != REBlocks.RANGE_DISPLAY) {
+                if (world.getBlockState(new BlockPos(pos.getX(), i, pos.getZ())).getBlock() != REBlocks.RANGE_DISPLAY.get()) {
                     if (!world.isClientSide)
                         playerEntity.sendMessage(new TranslationTextComponent("chat.mineelevator.not_enough_space"), playerEntity.getUUID());
                     //System.out.println("not_enough_space");
@@ -87,8 +87,8 @@ public class RangeDisplay extends Block {
     public BlockState updateShape(BlockState state, Direction direction, BlockState state1, IWorld world, BlockPos pos, BlockPos pos2) {
         BlockPos up = pos.above();
         BlockPos down = pos.below();
-        boolean updownCorrect = (world.getBlockState(up).getBlock() == REBlocks.ELEVATOR_MARKER || world.getBlockState(up).getBlock() == REBlocks.RANGE_DISPLAY) &&
-                (world.getBlockState(down).getBlock() == REBlocks.ELEVATOR_MARKER || world.getBlockState(down).getBlock() == REBlocks.RANGE_DISPLAY);
+        boolean updownCorrect = (world.getBlockState(up).getBlock() == REBlocks.ELEVATOR_MARKER.get() || world.getBlockState(up).getBlock() == REBlocks.RANGE_DISPLAY.get()) &&
+                (world.getBlockState(down).getBlock() == REBlocks.ELEVATOR_MARKER.get() || world.getBlockState(down).getBlock() == REBlocks.RANGE_DISPLAY.get());
         if (!updownCorrect && !world.isClientSide()){
             return Blocks.AIR.defaultBlockState();
         }

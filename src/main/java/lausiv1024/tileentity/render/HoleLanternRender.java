@@ -42,11 +42,11 @@ public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRe
         RenderType.State state = RenderType.State.builder().setTransparencyState(new RenderState.TransparencyState("translucent_transparency", () -> {
             RenderSystem.enableBlend();
             RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-            RenderSystem.enableAlphaTest();
-        }, () -> {
-            RenderSystem.disableBlend();
-            RenderSystem.disableAlphaTest();
-        })).setTextureState(new RenderState.TextureState(new ResourceLocation(RealElevatorCore.ID, "textures/blocks/hole_lantern/" + name + ".png"), false, false)).createCompositeState(false);
+                RenderSystem.enableAlphaTest();
+    }, () -> {
+        RenderSystem.disableBlend();
+        RenderSystem.disableAlphaTest();
+    })).setTextureState(new RenderState.TextureState(new ResourceLocation(RealElevatorCore.ID, "textures/blocks/hole_lantern/" + name + ".png"), false, false)).createCompositeState(false);
         return RenderType.create("realelevator_texture_" + name, DefaultVertexFormats.POSITION_TEX, GL11.GL_QUADS, 256, false, true, state);
     }
 
@@ -55,7 +55,6 @@ public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRe
             matrixStack.pushPose();
             matrixStack.translate(0.5, 0.5, 0.5);
             matrixStack.mulPose(new Quaternion(0,180 - tile.getBlockState().getValue(HoleLantern.FACING).toYRot(), 0, true));
-
             RenderType renderType;
             if (color == 0) renderType = LIGHT_ON_YELLOW;
             else renderType = LIGHT_ON_White;

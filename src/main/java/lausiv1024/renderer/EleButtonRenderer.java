@@ -2,18 +2,13 @@ package lausiv1024.renderer;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
 import lausiv1024.REItems;
-import lausiv1024.RealElevatorCore;
 import lausiv1024.entity.EleButtonEntity;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Atlases;
-import net.minecraft.client.renderer.BlockRendererDispatcher;
 import net.minecraft.client.renderer.IRenderTypeBuffer;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.client.renderer.model.ItemCameraTransforms;
-import net.minecraft.client.renderer.model.ModelManager;
-import net.minecraft.client.renderer.model.ModelResourceLocation;
 import net.minecraft.client.renderer.texture.AtlasTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.item.ItemStack;
@@ -38,15 +33,16 @@ public class EleButtonRenderer extends EntityRenderer<EleButtonEntity> {
         matrixStack.pushPose();
         matrixStack.translate(offset.x(), offset.y() + 0.5, offset.z() - 0.65);
         matrixStack.scale(1, 1, 1);
-        matrixStack.mulPose(Vector3f.XP.rotationDegrees(eleButtonEntity.xRot));
+        //matrixStack.mulPose(Vector3f.XP.rotationDegrees(eleButtonEntity.xRot));
         matrixStack.mulPose(Vector3f.YP.rotationDegrees(180 - eleButtonEntity.yRot));
 
-        itemRenderer.renderStatic(new ItemStack(REItems.ELEVATOR_BUTTON), ItemCameraTransforms.TransformType.GROUND, lightLevel, OverlayTexture.NO_OVERLAY,
+        itemRenderer.renderStatic(new ItemStack(REItems.ELEVATOR_BUTTON.get()), ItemCameraTransforms.TransformType.GROUND, lightLevel, OverlayTexture.NO_OVERLAY,
                 matrixStack, renderTypeBuffer);
 
         matrixStack.popPose();
         super.render(eleButtonEntity, v, v1, matrixStack, renderTypeBuffer, lightLevel);
     }
+
     @Override
     public ResourceLocation getTextureLocation(EleButtonEntity p_110775_1_) {
         return AtlasTexture.LOCATION_BLOCKS;

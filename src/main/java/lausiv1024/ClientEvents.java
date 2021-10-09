@@ -1,5 +1,6 @@
 package lausiv1024;
 
+import lausiv1024.renderer.DoorNoWindowRenderer;
 import lausiv1024.renderer.EleButtonRenderer;
 import lausiv1024.tileentity.render.FloorDisplayRenderer;
 import lausiv1024.tileentity.render.HoleLanternRender;
@@ -20,17 +21,18 @@ public class ClientEvents {
     @SubscribeEvent
     @OnlyIn(Dist.CLIENT)
     public static void setupClient(FMLClientSetupEvent event){
-        ClientRegistry.bindTileEntityRenderer(RETileEntities.HOLE_LANTERN,arg -> new HoleLanternRender(TileEntityRendererDispatcher.instance));
-        ClientRegistry.bindTileEntityRenderer(RETileEntities.FLOOR_DISPLAY, arg -> new FloorDisplayRenderer(TileEntityRendererDispatcher.instance));
+        ClientRegistry.bindTileEntityRenderer(RETileEntities.HOLE_LANTERN.get(),arg -> new HoleLanternRender(TileEntityRendererDispatcher.instance));
+        ClientRegistry.bindTileEntityRenderer(RETileEntities.FLOOR_DISPLAY.get(), arg -> new FloorDisplayRenderer(TileEntityRendererDispatcher.instance));
 
-        RenderingRegistry.registerEntityRenderingHandler(REEntities.ELEVATOR_BUTTON, EleButtonRenderer::new);
+        RenderingRegistry.registerEntityRenderingHandler(REEntities.ELEVATOR_BUTTON.get(), EleButtonRenderer::new);
+        RenderingRegistry.registerEntityRenderingHandler(REEntities.ELEVATOR_DOOR_NO_WINDOW_ENTITY_TYPE.get(), DoorNoWindowRenderer::new);
 
         setBlockRenderType();
     }
 
     private static void setBlockRenderType(){
         RenderType cutout = RenderType.cutout();
-        RenderType glint = RenderType.glint();
-        RenderTypeLookup.setRenderLayer(REBlocks.GUIDE_RAILA, cutout);
+        RenderTypeLookup.setRenderLayer(REBlocks.GUIDE_RAILA.get(), cutout);
+        RenderTypeLookup.setRenderLayer(REBlocks.GOMI.get(), cutout);
     }
 }

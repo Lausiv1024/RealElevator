@@ -8,6 +8,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.network.IPacket;
 import net.minecraft.util.ActionResultType;
+import net.minecraft.util.DamageSource;
 import net.minecraft.util.Direction;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.AxisAlignedBB;
@@ -26,17 +27,12 @@ public class EleButtonEntity extends ElevatorPartEntity {
     }
 
     public EleButtonEntity(World world){
-        super(REEntities.ELEVATOR_BUTTON, world);
+        super(REEntities.ELEVATOR_BUTTON.get(), world);
     }
 
     public EleButtonEntity(World world, Direction direction) {
-        super(REEntities.ELEVATOR_BUTTON, world);
-        //setAnBoundingBox();
+        super(REEntities.ELEVATOR_BUTTON.get(), world);
         updateBoundingBox();
-    }
-
-    public int getWidthAndHeightPixels(){
-        return 4;
     }
 
     @Override
@@ -44,42 +40,7 @@ public class EleButtonEntity extends ElevatorPartEntity {
         return ActionResultType.SUCCESS;
     }
 
-    private void setAnBoundingBox(){
-        double boundStartX = this.blockPosition().getX() + 0.5;
-        double boundStartY = this.blockPosition().getY() + 0.5;
-        double boundStartZ = this.blockPosition().getZ() + 0.5;
-        this.setBoundingBox(new AxisAlignedBB(boundStartX - 0.375, boundStartY - 0.375, boundStartZ - 0.03,
-                boundStartX + 0.375, boundStartY + 0.375, boundStartZ + 0.03));
-    }
-
     private void updateBoundingBox(){
-        if (direction != null){
-            double off = 0.2 - 1 / 256d;
-
-            double x = this.getX() + 0.3 + direction.getStepX() * off;
-            double y = this.getY() + 0.3 + direction.getStepY() * off;
-            double z = this.getZ() + 0.3 + direction.getStepZ() * off;
-            this.setPosRaw(x, y, z);
-            double w = getWidthAndHeightPixels();
-            double h = getWidthAndHeightPixels();
-            double l = getWidthAndHeightPixels();
-            Direction.Axis axis = this.direction.getAxis();
-            double dep = 2 - 1 / 128d;
-            switch (axis){
-                case X:
-                    w = dep;
-                    break;
-                case Y:
-                    h = dep;
-                    break;
-                case Z:
-                    l = dep;
-            }
-            w = w / 64.0D;
-            h = h / 64.0D;
-            l = l / 64.0D;
-            this.setBoundingBox(new AxisAlignedBB(x - w, y - h, z - l, x + w, y + h, z + l));
-        }
     }
 
     @Override
@@ -95,6 +56,17 @@ public class EleButtonEntity extends ElevatorPartEntity {
     @Override
     protected void defineSynchedData() {
 
+    }
+
+    @Override
+    public boolean hurt(DamageSource source, float f1a) {
+        if (source.getEntity() instanceof PlayerEntity){
+            if (isAlive() && !level.isClientSide){
+                remove();
+            }
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -139,4 +111,37 @@ public class EleButtonEntity extends ElevatorPartEntity {
         return true;
     }
 
+    @Override
+    public AxisAlignedBB getBoundingBox() {
+        if (direction != null){
+            double x = this.getX() - 1 / 16d;
+            double y = this.getY() - 1 / 16d;
+            double z = this.getZ() - 1 / 16d;
+
+            double x1 = this.getX() - 1 / 64d;
+            double z1 = this.getZ() - 1 / 64d;
+
+            Direction.Axis axis = this.direction.getAxis();
+            boolean isZ = false;
+
+            double a = 1 / 8d;
+            double usui = 1 / 32d;
+
+            switch (axis){
+                case X:
+                    x = x1;
+                    break;
+                case Z:
+                    z = z1;
+                    isZ = true;
+            }
+
+            if (isZ){
+                return new AxisAlignedBB(x, y, z, x + a, y + a, z + usui);
+            }else {
+                return new AxisAlignedBB(x, y, z, x + usui, y + a, z + a);
+            }
+        }
+        return super.getBoundingBox();
+    }
 }

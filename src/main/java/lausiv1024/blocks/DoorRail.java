@@ -19,7 +19,7 @@ import net.minecraft.world.IWorld;
 import javax.annotation.Nullable;
 
 public class DoorRail extends ElevatorPartBlock {
-    private static final DirectionProperty FACING = HorizontalBlock.FACING;
+    public static final DirectionProperty FACING = HorizontalBlock.FACING;
     private static final VoxelShape NORTH = Block.box(0, 13.8, 0, 16, 15.8, 2);
     private static final VoxelShape NORTH_MIZO0 = Block.box(0, 15.8, 0, 16, 16, 0.4);
     private static final VoxelShape NORTH_MIZO1 = Block.box(0, 15.8, 0.8, 16, 16, 1.2);

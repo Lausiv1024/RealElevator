@@ -1,0 +1,16 @@
+{
+"variants": {
+        "tall=false,part=1":{
+            "model": "realelevator:block/door_no_window13"
+        },
+        "tall=false,part=2":{
+            "model": "realelevator:block/door_no_window23"
+        },
+        "tall=true,part=1":{
+            "model": "realelevator:block/door_no_window14"
+        },
+        "tall=true,part=2":{
+            "model": "realelevator:block/door_no_window24"
+        }
+    }
+}

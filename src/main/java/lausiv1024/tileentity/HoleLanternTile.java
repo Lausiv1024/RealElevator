@@ -6,6 +6,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.tileentity.ITickableTileEntity;
+import net.minecraft.tileentity.TileEntityType;
 
 import java.util.UUID;
 
@@ -18,11 +19,15 @@ public class HoleLanternTile extends ElevatorPartTE implements ITickableTileEnti
     boolean isBlinking = true;
 
     public HoleLanternTile(UUID elevatorID){
-        super(RETileEntities.HOLE_LANTERN, elevatorID);
+        super(RETileEntities.HOLE_LANTERN.get(), elevatorID);
     }
 
     public HoleLanternTile(){
-        super(RETileEntities.HOLE_LANTERN, UUID.randomUUID());
+        super(RETileEntities.HOLE_LANTERN.get());
+    }
+
+    public HoleLanternTile(TileEntityType<?> tileEntityType){
+        super(tileEntityType);
     }
 
     public void setLightMode(int a){

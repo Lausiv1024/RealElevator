@@ -1,0 +1,38 @@
+{
+	"credit": "Made with Blockbench",
+	"parent": "elebutton",
+	"textures": {
+		"0": "realelevator:entities/ele_button",
+		"particle": "realelevator:entities/ele_button"
+	},
+	"elements": [
+		{
+			"from": [6, 6, 6],
+			"to": [10, 10, 7],
+			"faces": {
+				"north": {"uv": [6, 1, 10, 5], "texture": "#0"},
+				"east": {"uv": [0, 1, 1, 5], "texture": "#0"},
+				"south": {"uv": [1, 1, 5, 5], "texture": "#0"},
+				"west": {"uv": [0, 1, 1, 5], "texture": "#0"},
+				"up": {"uv": [1, 0, 5, 1], "texture": "#0"},
+				"down": {"uv": [1, 0, 5, 1], "texture": "#0"}
+			}
+		}
+	],
+	"display": {
+		"thirdperson_righthand": {
+			"translation": [0, 0, 1.25]
+		},
+		"thirdperson_lefthand": {
+			"translation": [0, 0, 1]
+		},
+		"ground": {
+			"scale": [0.4, 0.4, 0.4]
+		},
+		"gui": {
+			"rotation": [21, -63, 0],
+			"translation": [-1.25, 0, 0],
+			"scale": [1.61, 1.61, 1.61]
+		}
+	}
+}

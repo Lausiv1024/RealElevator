@@ -27,10 +27,10 @@ public class FloorDisplayTile extends ElevatorPartTE implements ITickableTileEnt
     }
 
     public FloorDisplayTile() {
-        super(RETileEntities.FLOOR_DISPLAY, UUID.randomUUID());
+        super(RETileEntities.FLOOR_DISPLAY.get(), UUID.randomUUID());
     }
     public FloorDisplayTile(UUID uuid){
-        super(RETileEntities.FLOOR_DISPLAY, uuid);
+        super(RETileEntities.FLOOR_DISPLAY.get(), uuid);
     }
 
     public void setMoving(int moving) {

@@ -1,5 +1,6 @@
 package lausiv1024;
 
+import lausiv1024.devItem.REDevItems;
 import net.minecraft.item.ItemGroup;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
@@ -21,18 +22,24 @@ public class RealElevatorCore {
 
     public RealElevatorCore(){
         IEventBus eventBus = FMLJavaModLoadingContext.get().getModEventBus();
+        REEntities.register(eventBus);
+        REBlocks.register(eventBus);
+        REItems.register(eventBus);
+        REDevItems.register(eventBus);
+        RETileEntities.register(eventBus);
     }
 
     public static final ItemGroup REAL_ELEVATOR_GROUP = new ItemGroup("real_elevator") {
         @Override
         public ItemStack makeIcon() {
-            return new ItemStack(REItems.FLOOR_MARKER);
+            return new ItemStack(REItems.FLOOR_MARKER.get());
         }
     };
 
     @SubscribeEvent
     public static void loadComplete(FMLLoadCompleteEvent event){
     }
+
     @SubscribeEvent
     @OnlyIn(Dist.CLIENT)
     public void modelRegistry(ModelRegistryEvent event){

@@ -24,7 +24,7 @@ public abstract class ElevatorPartBlock extends Block /*implements IWaterLoggabl
 
     @Override
     public ActionResultType use(BlockState state, World world, BlockPos pos, PlayerEntity playerEntity, Hand hand, BlockRayTraceResult result) {
-        if (playerEntity.getItemInHand(hand).getItem() == REItems.WRENCH){
+        if (playerEntity.getItemInHand(hand).getItem() == REItems.WRENCH.get()){
             world.destroyBlock(pos, true);
             return ActionResultType.SUCCESS;
         }

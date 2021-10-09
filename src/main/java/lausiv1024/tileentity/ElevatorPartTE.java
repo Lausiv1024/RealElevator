@@ -18,6 +18,10 @@ public abstract class ElevatorPartTE extends TileEntity {
         this.elevatorID = elevatorID;
     }
 
+    public ElevatorPartTE(TileEntityType<?> tileEntityType){
+        super(tileEntityType);
+    }
+
     public void setElevatorID(UUID uuid){
         elevatorID = uuid;
         registered = true;

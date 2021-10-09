@@ -6,50 +6,46 @@ import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraftforge.common.ToolType;
 import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.RegistryObject;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 public class REBlocks {
-    public static final List<Block> BLOCK_LIST = new ArrayList<>();
+    private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, RealElevatorCore.ID);
 
-    private static Block register(String registryName, Block block){
-        Block blockNamed = block.setRegistryName(RealElevatorCore.ID, registryName);
-        BLOCK_LIST.add(blockNamed);
-        return blockNamed;
-    }
-
-    public static final Block ELEVATOR_BUTTON_SINGLE = register("elevator_button_single", new ElevatorButtonSingleBlock());
-    public static final Block ELEVATOR_BUTTON = register("elevator_button", new ElevatorButtonBlock());
-    public static final Block DOOR_RAIL = register("door_rail", new DoorRail());
-    public static final Block HOLE_LANTERN = register("hole_lantern", new HoleLantern());
-    public static final Block GUIDE_RAIL = register("guide_rail", new GuideRailBlock());
-    public static final Block ELEVATOR_MARKER = register("elevator_marker",
+    public static final RegistryObject<Block> ELEVATOR_BUTTON_SINGLE = BLOCKS.register("elevator_button_single", ElevatorButtonSingleBlock::new);
+    public static final RegistryObject<Block> ELEVATOR_BUTTON = BLOCKS.register("elevator_button", ElevatorButtonBlock::new);
+    public static final RegistryObject<Block> DOOR_RAIL = BLOCKS.register("door_rail", DoorRail::new);
+    public static final RegistryObject<Block> HOLE_LANTERN = BLOCKS.register("hole_lantern", HoleLantern::new);
+    public static final RegistryObject<Block> GUIDE_RAIL = BLOCKS.register("guide_rail", GuideRailBlock::new);
+    public static final RegistryObject<Block> ELEVATOR_MARKER = BLOCKS.register("elevator_marker",() ->
             new ElevatorMarker(AbstractBlock.Properties.of(Material.METAL).
                     strength(2, 10).harvestTool(ToolType.PICKAXE).harvestLevel(2)));
-    public static final Block RANGE_DISPLAY = register("range_display",
+    public static final RegistryObject<Block> RANGE_DISPLAY = BLOCKS.register("range_display",() ->
             new RangeDisplay(AbstractBlock.Properties.of(Material.METAL)));
-    public static final Block ELEVATOR_CONSTRUCTOR = register("elevator_constructor",
+    public static final RegistryObject<Block> ELEVATOR_CONSTRUCTOR = BLOCKS.register("elevator_constructor",() ->
             new ElevatorConstructor(AbstractBlock.Properties.of(Material.METAL)
             .strength(0.6f, 10).harvestTool(ToolType.PICKAXE).harvestLevel(2)));
-    public static final Block FLOOR_DISPLAY = register("floor_display",
-            new FloorDisplay());
-    public static final Block DOOR_RAIL_DOUBLE = register("door_rail_double",
-            new DoorRailDouble());
-    public static final Block ELEVATOR_CONTROLLER = register("controller_module",
-            new ElevatorControllerBlock());
-    public static final Block GUIDE_RAILA = register("guide_rail1",
-            new GuideRailA());
-    public static final Block GUIDE_RAIL_NO_WEIGHT = register("guide_rail_no_weight",
-            new GuideRailNoWeight());
+    public static final RegistryObject<Block> FLOOR_DISPLAY = BLOCKS.register("floor_display", FloorDisplay::new);
+    public static final RegistryObject<Block> DOOR_RAIL_DOUBLE = BLOCKS.register("door_rail_double", DoorRailDouble::new);
+    public static final RegistryObject<Block> ELEVATOR_CONTROLLER = BLOCKS.register("controller_module", ElevatorControllerBlock::new);
+    public static final RegistryObject<Block> GUIDE_RAILA = BLOCKS.register("guide_rail1", GuideRailA::new);
+    public static final RegistryObject<Block> GUIDE_RAIL_NO_WEIGHT = BLOCKS.register("guide_rail_no_weight", GuideRailNoWeight::new);
+    public static final RegistryObject<Block> FLOOR_CONTROLLER = BLOCKS.register("floor_controller", FloorController::new);
 
-    @SubscribeEvent
-    public static void registerBlocks(final RegistryEvent.Register<Block> event){
-        for (Block block : BLOCK_LIST){
-            event.getRegistry().register(block);
-        }
+    public static final RegistryObject<Block> GOMI = BLOCKS.register("elevatordoor_no_window31", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
+    public static final RegistryObject<Block> GOMI2 = BLOCKS.register("elevatordoor_no_window32", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
+    public static final RegistryObject<Block> GOMI3 = BLOCKS.register("elevatordoor_no_window41", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
+    public static final RegistryObject<Block> GOMI4 = BLOCKS.register("elevatordoor_no_window42", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
+
+    public static void register(IEventBus eventBus){
+        BLOCKS.register(eventBus);
     }
 }

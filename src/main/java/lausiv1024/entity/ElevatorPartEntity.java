@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public abstract class ElevatorPartEntity extends Entity {
     protected UUID elevatorId = UUID.fromString("114514-1919-810-000-000");
-    public ElevatorPartEntity(EntityType<?> type, World world) {
+    public ElevatorPartEntity(EntityType<? extends Entity> type, World world) {
         super(type, world);
     }
 

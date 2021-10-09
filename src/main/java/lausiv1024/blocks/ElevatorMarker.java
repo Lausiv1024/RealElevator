@@ -24,7 +24,7 @@ public class ElevatorMarker extends Block {
         for (int i = pos.getY() + 5; i < 256; i++){
             BlockPos upper = new BlockPos(pos.getX(), i, pos.getZ());
 
-            if (world.getBlockState(upper).getBlock() == REBlocks.ELEVATOR_MARKER){
+            if (world.getBlockState(upper).getBlock() == REBlocks.ELEVATOR_MARKER.get()){
                 match = true;
                 count = i;
             }else if (world.getBlockState(upper).getBlock() != Blocks.AIR){
@@ -36,7 +36,7 @@ public class ElevatorMarker extends Block {
             playerEntity.playSound(SoundEvents.ANVIL_LAND, 1, 1);
             for (int i = pos.getY() + 1; i < count; i++){
                 world.setBlock(new BlockPos(pos.getX(), i, pos.getZ()),
-                        REBlocks.RANGE_DISPLAY.defaultBlockState(), 3);
+                        REBlocks.RANGE_DISPLAY.get().defaultBlockState(), 3);
             }
         }
         return ActionResultType.SUCCESS;
