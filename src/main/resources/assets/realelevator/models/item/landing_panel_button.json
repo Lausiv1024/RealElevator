@@ -1,0 +1,22 @@
+{
+	"credit": "Made with Blockbench",
+	"texture_size": [64, 64],
+	"textures": {
+		"0": "realelevator:blocks/button2",
+		"particle": "realelevator:blocks/button2"
+	},
+	"elements": [
+		{
+			"from": [7, 7, 7.6],
+			"to": [9, 9, 8.4],
+			"faces": {
+				"north": {"uv": [10, 14, 12, 16], "texture": "#0"},
+				"east": {"uv": [8.5, 15, 8.7, 15.5], "texture": "#0"},
+				"south": {"uv": [10, 14, 12, 16], "texture": "#0"},
+				"west": {"uv": [9.5, 15.5, 9.7, 16], "texture": "#0"},
+				"up": {"uv": [9, 14.75, 9.5, 14.95], "texture": "#0"},
+				"down": {"uv": [8.5, 14.5, 9, 14.7], "texture": "#0"}
+			}
+		}
+	]
+}

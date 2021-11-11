@@ -20,8 +20,8 @@ import org.lwjgl.opengl.GL11;
 @OnlyIn(Dist.CLIENT)
 public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRender<T> {
 
-    private static final RenderType LIGHT_ON_White = getTexture("hole_lantern_light_white");
-    private static final RenderType LIGHT_ON_YELLOW = getTexture("hole_lantern_light_yellow");
+    private static final RenderType LIGHT_ON_White = getTexture("hole_lantern_light_white_transpa");
+    private static final RenderType LIGHT_ON_YELLOW = getTexture("hole_lantern_light_yellow_transpa");
     private static final float[] vertex1_surface = {0.07f, 0.44f,-0.415f};
     private static final float[] vertex2_surface = {-0.07f, 0.44f, -0.415f};
     private static final float[] vertex3_surface = {-0.07f, -0.45f, -0.415f};

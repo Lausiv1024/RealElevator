@@ -4,6 +4,7 @@ import lausiv1024.renderer.DoorNoWindowRenderer;
 import lausiv1024.renderer.EleButtonRenderer;
 import lausiv1024.tileentity.render.FloorDisplayRenderer;
 import lausiv1024.tileentity.render.HoleLanternRender;
+import lausiv1024.tileentity.render.LandingButtonTERenderer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.RenderTypeLookup;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
@@ -23,6 +24,7 @@ public class ClientEvents {
     public static void setupClient(FMLClientSetupEvent event){
         ClientRegistry.bindTileEntityRenderer(RETileEntities.HOLE_LANTERN.get(),arg -> new HoleLanternRender(TileEntityRendererDispatcher.instance));
         ClientRegistry.bindTileEntityRenderer(RETileEntities.FLOOR_DISPLAY.get(), arg -> new FloorDisplayRenderer(TileEntityRendererDispatcher.instance));
+        ClientRegistry.bindTileEntityRenderer(RETileEntities.LANDING_BUTTON_TE.get(), arg -> new LandingButtonTERenderer(TileEntityRendererDispatcher.instance));
 
         RenderingRegistry.registerEntityRenderingHandler(REEntities.ELEVATOR_BUTTON.get(), EleButtonRenderer::new);
         RenderingRegistry.registerEntityRenderingHandler(REEntities.ELEVATOR_DOOR_NO_WINDOW_ENTITY_TYPE.get(), DoorNoWindowRenderer::new);
@@ -33,6 +35,7 @@ public class ClientEvents {
     private static void setBlockRenderType(){
         RenderType cutout = RenderType.cutout();
         RenderTypeLookup.setRenderLayer(REBlocks.GUIDE_RAILA.get(), cutout);
-        RenderTypeLookup.setRenderLayer(REBlocks.GOMI.get(), cutout);
+        //RenderTypeLookup.setRenderLayer(REBlocks.GOMI.get(), cutout);
+        RenderTypeLookup.setRenderLayer(REBlocks.EDNW.get(), cutout);
     }
 }

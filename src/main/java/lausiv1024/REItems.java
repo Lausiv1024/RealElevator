@@ -44,6 +44,7 @@ public class REItems {
             new Item(new Item.Properties()));
     public static final RegistryObject<Item> ITEM_FLOOR_CONTROLLER = ITEMS.register("floor_controller", () ->
         new BlockItem(REBlocks.FLOOR_CONTROLLER.get(), new Item.Properties().tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
+    public static final RegistryObject<Item> LANDING_PANEL_BUTTON = ITEMS.register("landing_panel_button", () -> new Item(new Item.Properties()));
 
 
     public static void register(IEventBus eventBus){

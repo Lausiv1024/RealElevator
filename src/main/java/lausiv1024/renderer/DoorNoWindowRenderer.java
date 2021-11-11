@@ -6,6 +6,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.IVertexBuilder;
 import lausiv1024.RealElevatorCore;
 import lausiv1024.entity.doors.ElevatorDoorNoWindow;
+import lausiv1024.util.EleVeneerType;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.*;
@@ -21,27 +22,37 @@ import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.vector.*;
+import net.minecraft.util.math.vector.Matrix3f;
+import net.minecraft.util.math.vector.Matrix4f;
+import net.minecraft.util.math.vector.Vector3d;
+import net.minecraft.util.math.vector.Vector3f;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.lwjgl.opengl.GL11;
 
 import java.util.List;
+import java.util.Locale;
 
 @OnlyIn(Dist.CLIENT)
 public class DoorNoWindowRenderer extends EntityRenderer<ElevatorDoorNoWindow> {
     private static final String BLOCKSTATE_ID = "elevatordoor_no_window";
 
     private static final RenderType RENDER_TYPE = getTexture(new ResourceLocation("minecraft:block/oak_planks"));
+    private static final ResourceLocation PART31 = new ResourceLocation(RealElevatorCore.ID, BLOCKSTATE_ID + 31);
+    private static final ResourceLocation PART32 = new ResourceLocation(RealElevatorCore.ID, BLOCKSTATE_ID + 32);
+    private static final ResourceLocation PART41 = new ResourceLocation(RealElevatorCore.ID, BLOCKSTATE_ID + 41);
+    private static final ResourceLocation PART42 = new ResourceLocation(RealElevatorCore.ID, BLOCKSTATE_ID + 42);
 
-    private static final ModelResourceLocation[] TALL3 = {
-            new ModelResourceLocation(new ResourceLocation(RealElevatorCore.ID, BLOCKSTATE_ID + "31"), "part=1"),
-            new ModelResourceLocation(new ResourceLocation(RealElevatorCore.ID, BLOCKSTATE_ID + "32"), "part=2")
+    private static final ModelResourceLocation[] TALL3_TYPE1 = {
+//            new ModelResourceLocation(new ResourceLocation(RealElevatorCore.ID, BLOCKSTATE_ID + "31"), "type=2"),
+//            new ModelResourceLocation(new ResourceLocation(RealElevatorCore.ID, BLOCKSTATE_ID + "32"), "part=2")
+            new ModelResourceLocation(PART31, "type=" + EleVeneerType.getSurfaceFromId(0).name().toLowerCase(Locale.ROOT)),
+            new ModelResourceLocation(PART31, "type=" + EleVeneerType.getSurfaceFromId(0).name().toLowerCase(Locale.ROOT))
     };
 
     private static final ModelResourceLocation[] TALL4 = {
-            new ModelResourceLocation(new ResourceLocation(RealElevatorCore.ID, BLOCKSTATE_ID), "part=1"),
-            new ModelResourceLocation(new ResourceLocation(RealElevatorCore.ID, BLOCKSTATE_ID), "part=2")
+//            new ModelResourceLocation(new ResourceLocation(RealElevatorCore.ID, BLOCKSTATE_ID + "41"), "part=1"),
+//            new ModelResourceLocation(new ResourceLocation(RealElevatorCore.ID, BLOCKSTATE_ID + "42"), "part=2")
     };
 
     private final Minecraft minecraft = Minecraft.getInstance();
@@ -72,32 +83,51 @@ public class DoorNoWindowRenderer extends EntityRenderer<ElevatorDoorNoWindow> {
 
         BlockRendererDispatcher dispatcher = minecraft.getBlockRenderer();
         ModelManager modelManager = dispatcher.getBlockModelShaper().getModelManager();
+        //事前に作っておく
+        String bState = "type=" + EleVeneerType.getSurfaceFromId(elevatorDoorNoWindow.surfaceType).name().toLowerCase(Locale.ROOT);
+        //ドアの高さが3ブロック
         if (elevatorDoorNoWindow.tall == 3){
+            ModelResourceLocation r1 = new ModelResourceLocation(PART31, bState);
+            ModelResourceLocation r2 = new ModelResourceLocation(PART32, bState);
             dispatcher.getModelRenderer().renderModel(matrixStack.last(), buffer.getBuffer(Atlases.cutoutBlockSheet()),
-                    (BlockState) null, modelManager.getModel(TALL3[0]), 1.0f, 1.0f, 1.0f, l1, OverlayTexture.NO_OVERLAY);
+                    (BlockState) null, modelManager.getModel(r1), 1.0f, 1.0f, 1.0f, l1, OverlayTexture.NO_OVERLAY);
             matrixStack.translate(0, 1.5, 0);
             dispatcher.getModelRenderer().renderModel(matrixStack.last(), buffer.getBuffer(Atlases.cutoutBlockSheet()),
-                    (BlockState)null, modelManager.getModel(TALL3[1]), 1.0f, 1.0f, 1.0f, l1, OverlayTexture.NO_OVERLAY);
+                    (BlockState) null, modelManager.getModel(r2), 1.0f, 1.0f, 1.0f, l1, OverlayTexture.NO_OVERLAY);
+//            dispatcher.getModelRenderer().renderModel(matrixStack.last(), buffer.getBuffer(Atlases.cutoutBlockSheet()),
+//                    (BlockState) null, modelManager.getModel(TALL3[0]), 1.0f, 1.0f, 1.0f, l1, OverlayTexture.NO_OVERLAY);
+//            matrixStack.translate(0, 1.5, 0);
+//            dispatcher.getModelRenderer().renderModel(matrixStack.last(), buffer.getBuffer(Atlases.cutoutBlockSheet()),
+//                    (BlockState)null, modelManager.getModel(TALL3[1]), 1.0f, 1.0f, 1.0f, l1, OverlayTexture.NO_OVERLAY);
+
         }else{
+            ModelResourceLocation r1 = new ModelResourceLocation(PART41, bState);
+            ModelResourceLocation r2 = new ModelResourceLocation(PART42, bState);
             dispatcher.getModelRenderer().renderModel(matrixStack.last(), buffer.getBuffer(Atlases.cutoutBlockSheet()),
-                    (BlockState)null, modelManager.getModel(TALL4[0]), 1.0f, 1.0f, 1.0f, l1, OverlayTexture.NO_OVERLAY);
+                    (BlockState)null, modelManager.getModel(r1), 1.0f, 1.0f, 1.0f, l1, OverlayTexture.NO_OVERLAY);
             matrixStack.translate(0, 2, 0);
             dispatcher.getModelRenderer().renderModel(matrixStack.last(), buffer.getBuffer(Atlases.cutoutBlockSheet()),
-                    (BlockState)null, modelManager.getModel(TALL4[1]), 1.0f, 1.0f, 1.0f, l1, OverlayTexture.NO_OVERLAY);
+                    (BlockState)null, modelManager.getModel(r2), 1.0f, 1.0f, 1.0f, l1, OverlayTexture.NO_OVERLAY);
+
+//            dispatcher.getModelRenderer().renderModel(matrixStack.last(), buffer.getBuffer(Atlases.cutoutBlockSheet()),
+//                    (BlockState)null, modelManager.getModel(TALL4[0]), 1.0f, 1.0f, 1.0f, l1, OverlayTexture.NO_OVERLAY);
+//            matrixStack.translate(0, 2, 0);
+//            dispatcher.getModelRenderer().renderModel(matrixStack.last(), buffer.getBuffer(Atlases.cutoutBlockSheet()),
+//                    (BlockState)null, modelManager.getModel(TALL4[1]), 1.0f, 1.0f, 1.0f, l1, OverlayTexture.NO_OVERLAY);
         }
 
         matrixStack.popPose();
-
-        matrixStack.pushPose();
-        //RealElevatorCore.LOGGER.info("l1 > " + l1 + " , lightLevel > " + lightLevel);
-        matrixStack.translate(offset.x, offset.y, offset.z);
-        matrixStack.mulPose(new Quaternion(0, 180 - elevatorDoorNoWindow.yRot, 0, true));
-        matrixStack.translate(-0.5, 0, -0.06);
-        for (int i = 0; i < elevatorDoorNoWindow.tall; i++){
-            matrixStack.translate(0, i == 0 ? 0 : 1, 0);
-            renderBlockSurface(elevatorDoorNoWindow, v, v1, matrixStack, buffer, lightLevel, dispatcher);
-        }
-        matrixStack.popPose();
+        //あああ
+//        matrixStack.pushPose();
+//        //RealElevatorCore.LOGGER.info("l1 > " + l1 + " , lightLevel > " + lightLevel);
+//        matrixStack.translate(offset.x, offset.y, offset.z);
+//        matrixStack.mulPose(new Quaternion(0, 180 - elevatorDoorNoWindow.yRot, 0, true));
+//        matrixStack.translate(-0.5, 0, -0.06);
+//        for (int i = 0; i < elevatorDoorNoWindow.tall; i++){
+//            matrixStack.translate(0, i == 0 ? 0 : 1, 0);
+//            renderBlockSurface(elevatorDoorNoWindow, v, v1, matrixStack, buffer, lightLevel, dispatcher);
+//        }
+//        matrixStack.popPose();
 
         super.render(elevatorDoorNoWindow, v, v1, matrixStack, buffer, lightLevel);
     }

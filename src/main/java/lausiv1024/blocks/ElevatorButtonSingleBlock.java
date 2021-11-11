@@ -1,6 +1,7 @@
 package lausiv1024.blocks;
 
 import lausiv1024.RESoundEvents;
+import lausiv1024.tileentity.LandingButtonBlockTE;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalBlock;
@@ -8,6 +9,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.state.DirectionProperty;
 import net.minecraft.state.StateContainer;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockRayTraceResult;
@@ -46,9 +48,13 @@ public class ElevatorButtonSingleBlock extends ElevatorPartBlock {
     @Override
     public ActionResultType use(BlockState state, World world, BlockPos pos, PlayerEntity playerEntity, Hand hand, BlockRayTraceResult result) {
         super.use(state, world, pos, playerEntity, hand, result);
+        TileEntity entity = world.getBlockEntity(pos);
+        if (!(entity instanceof LandingButtonBlockTE)) return ActionResultType.PASS;
+        LandingButtonBlockTE landingButtonBlockTE = (LandingButtonBlockTE) entity;
         boolean a = calculatePressedButton(state, result.getLocation(), pos);
         if (a){
             world.playSound(null, pos, RESoundEvents.CALLSOUND,SoundCategory.BLOCKS, 0.5f, 1f);
+            landingButtonBlockTE.down = true;
             return ActionResultType.SUCCESS;
         }
         return ActionResultType.PASS;
@@ -104,6 +110,17 @@ public class ElevatorButtonSingleBlock extends ElevatorPartBlock {
     @Override
     public BlockState rotate(BlockState state, IWorld world, BlockPos pos, Rotation direction) {
         return state.setValue(FACING, direction.rotate(state.getValue(FACING)));
+    }
+
+    @Override
+    public boolean hasTileEntity(BlockState state) {
+        return true;
+    }
+
+    @Nullable
+    @Override
+    public TileEntity createTileEntity(BlockState state, IBlockReader world) {
+        return new LandingButtonBlockTE(true);
     }
 
     @Override

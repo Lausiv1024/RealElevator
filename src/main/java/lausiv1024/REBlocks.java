@@ -3,6 +3,7 @@ package lausiv1024;
 import lausiv1024.blocks.*;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.material.Material;
 import net.minecraftforge.common.ToolType;
 import net.minecraftforge.event.RegistryEvent;
@@ -39,11 +40,12 @@ public class REBlocks {
     public static final RegistryObject<Block> GUIDE_RAILA = BLOCKS.register("guide_rail1", GuideRailA::new);
     public static final RegistryObject<Block> GUIDE_RAIL_NO_WEIGHT = BLOCKS.register("guide_rail_no_weight", GuideRailNoWeight::new);
     public static final RegistryObject<Block> FLOOR_CONTROLLER = BLOCKS.register("floor_controller", FloorController::new);
-
-    public static final RegistryObject<Block> GOMI = BLOCKS.register("elevatordoor_no_window31", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
-    public static final RegistryObject<Block> GOMI2 = BLOCKS.register("elevatordoor_no_window32", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
-    public static final RegistryObject<Block> GOMI3 = BLOCKS.register("elevatordoor_no_window41", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
-    public static final RegistryObject<Block> GOMI4 = BLOCKS.register("elevatordoor_no_window42", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
+//
+//    public static final RegistryObject<Block> GOMI = BLOCKS.register("elevatordoor_no_window31", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
+//    public static final RegistryObject<Block> GOMI2 = BLOCKS.register("elevatordoor_no_window32", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
+//    public static final RegistryObject<Block> GOMI3 = BLOCKS.register("elevatordoor_no_window41", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
+//    public static final RegistryObject<Block> GOMI4 = BLOCKS.register("elevatordoor_no_window42", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
+    public static final RegistryObject<Block> EDNW = BLOCKS.register("door_nowindow13", () -> new DoorNoWindow(AbstractBlock.Properties.of(Material.WOOL)));
 
     public static void register(IEventBus eventBus){
         BLOCKS.register(eventBus);

@@ -35,13 +35,15 @@ public abstract class ElevatorPartTE extends TileEntity {
     @Override
     public void load(BlockState state, CompoundNBT nbt) {
         super.load(state, nbt);
-        elevatorID = nbt.getUUID("ElevatorId");
+        if (nbt.hasUUID("ElevatorId"))
+            elevatorID = nbt.getUUID("ElevatorId");
     }
 
     @Override
     public CompoundNBT save(CompoundNBT nbt) {
         super.save(nbt);
-        nbt.putUUID("ElevatorId", elevatorID);
+        if (elevatorID != null)
+            nbt.putUUID("ElevatorId", elevatorID);
         return nbt;
     }
 

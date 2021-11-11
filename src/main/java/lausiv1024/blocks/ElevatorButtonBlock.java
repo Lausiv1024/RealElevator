@@ -1,5 +1,6 @@
 package lausiv1024.blocks;
 
+import lausiv1024.tileentity.LandingButtonBlockTE;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalBlock;
@@ -7,6 +8,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.state.DirectionProperty;
 import net.minecraft.state.StateContainer;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockRayTraceResult;
@@ -70,15 +72,17 @@ public class ElevatorButtonBlock extends ElevatorPartBlock {
         double x = result.getLocation().x - pos.getX();
         double y = result.getLocation().y - pos.getY();
         double z = result.getLocation().z - pos.getZ();
+        LandingButtonBlockTE landingButtonBlockTE = getTE(world, pos);
+        if (landingButtonBlockTE == null) return ActionResultType.PASS;
         int a = 0;
         a = calculatePressedButton(state, result.getLocation(), pos);
 
         if (a == 0) return ActionResultType.PASS;
+        playerEntity.playSound(SoundEvents.STONE_BUTTON_CLICK_ON, 1, 1f);
         if (a == 1){
-            playerEntity.playSound(SoundEvents.STONE_BUTTON_CLICK_ON, 1, 0.5f);
-            return ActionResultType.SUCCESS;
+            landingButtonBlockTE.up = true;
         }else{
-            playerEntity.playSound(SoundEvents.STONE_BUTTON_CLICK_OFF, 1, 0.6f);
+            landingButtonBlockTE.down = true;
         }
         return ActionResultType.SUCCESS;
     }
@@ -92,6 +96,14 @@ public class ElevatorButtonBlock extends ElevatorPartBlock {
         return this.defaultBlockState().setValue(FACING, context.getClickedFace().getOpposite());
     }
 
+    private LandingButtonBlockTE getTE(World world, BlockPos pos){
+        TileEntity entity = world.getBlockEntity(pos);
+        if (entity instanceof LandingButtonBlockTE){
+            return (LandingButtonBlockTE)entity;
+        }
+        return null;
+    }
+
     @Override
     public BlockState rotate(BlockState state, IWorld world, BlockPos pos, Rotation direction) {
         return state.setValue(FACING, direction.rotate(state.getValue(FACING)));
@@ -101,11 +113,23 @@ public class ElevatorButtonBlock extends ElevatorPartBlock {
     public BlockState mirror(BlockState state, Mirror mirror) {
         return state.rotate(mirror.getRotation(state.getValue(FACING)));
     }
+
+    @Override
+    public boolean hasTileEntity(BlockState state) {
+        return true;
+    }
+
+    @Nullable
+    @Override
+    public TileEntity createTileEntity(BlockState state, IBlockReader world) {
+        return new LandingButtonBlockTE(false);
+    }
+
     protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> p_206840_1_) {
         p_206840_1_.add(FACING);
     }
     /*
-    0 : no button pressed 1 : up button 2: down button
+    0 : no button pressed, 1 : up button, 2: down button
      */
     private int calculatePressedButton(BlockState state, Vector3d vector3d, BlockPos pos){
         double x = vector3d.x - pos.getX();

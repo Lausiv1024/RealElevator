@@ -85,10 +85,11 @@ public class HoleLantern extends ElevatorPartBlock {
     private void test(ItemStack stack, HoleLanternTile holeLanternTile, World world, BlockPos pos){
         if (stack.getItem() == Items.REDSTONE_TORCH){
             holeLanternTile.setLightMode(1);
-            world.playSound((PlayerEntity) null, holeLanternTile.getBlockPos(),  RESoundEvents.UPSOUND, SoundCategory.BLOCKS, 0.5f, 1);
+
+            world.playSound(null, holeLanternTile.getBlockPos(),  RESoundEvents.UPSOUND, SoundCategory.BLOCKS, 0.5f, 1);
         }else if (stack.getItem() == Items.REDSTONE_BLOCK){
             holeLanternTile.setLightMode(2);
-            world.playSound((PlayerEntity) null, holeLanternTile.getBlockPos(),  RESoundEvents.DOWNSOUND, SoundCategory.BLOCKS, 0.5f, 1);
+            world.playSound(null, holeLanternTile.getBlockPos(),  RESoundEvents.DOWNSOUND, SoundCategory.BLOCKS, 0.5f, 1);
         }else if (stack.getItem() == Items.STICK){
             holeLanternTile.setLightMode(3);
         }else if (stack.getItem() == Items.REDSTONE){

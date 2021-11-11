@@ -1,0 +1,31 @@
+
+{
+    "variants":{
+       "type=oak" : {"model" : "realelevator:ele_part/door/nowindow/h4/planks/door_no_window24_oak"},
+       "type=dark_oak" : {"model" : "realelevator:ele_part/door/nowindow/h4/planks/door_no_window24_dark_oak"},
+       "type=birch" : {"model" : "realelevator:ele_part/door/nowindow/h4/planks/door_no_window24_birch"},
+       "type=jungle" : {"model" : "realelevator:ele_part/door/nowindow/h4/planks/door_no_window24_jungle"},
+       "type=acacia" : {"model" : "realelevator:ele_part/door/nowindow/h4/planks/door_no_window24_acacia"},
+       "type=spruce" : {"model" : "realelevator:ele_part/door/nowindow/h4/planks/door_no_window24_spruce"},
+       "type=crimson" : {"model" : "realelevator:ele_part/door/nowindow/h4/planks/door_no_window24_crimson"},
+       "type=warped" : {"model" : "realelevator:ele_part/door/nowindow/h4/planks/door_no_window24_warped"},
+       "type=smooth_stone" : {"model" : "realelevator:ele_part/door/nowindow/h4/stones/door_no_window24_smooth_stone"},
+       "type=diorite" : {"model" : "realelevator:ele_part/door/nowindow/h4/stones/door_no_window24_diorite"},
+       "type=granite" : {"model" : "realelevator:ele_part/door/nowindow/h4/stones/door_no_window24_granite"},
+       "type=andesite" : {"model" : "realelevator:ele_part/door/nowindow/h4/stones/door_no_window24_andesite"},
+       "type=black" : {"model" : "realelevator:ele_part/door/nowindow/h4/colors/door_no_window24_black"},
+       "type=blue" : {"model" : "realelevator:ele_part/door/nowindow/h4/colors/door_no_window24_blue"},
+       "type=brown" : {"model" : "realelevator:ele_part/door/nowindow/h4/colors/door_no_window24_brown"},
+       "type=cyan" : {"model" : "realelevator:ele_part/door/nowindow/h4/colors/door_no_window24_cyan"},
+       "type=gray" : {"model" : "realelevator:ele_part/door/nowindow/h4/colors/door_no_window24_gray"},
+       "type=green" : {"model" : "realelevator:ele_part/door/nowindow/h4/colors/door_no_window24_green"},
+       "type=light_gray" : {"model" : "realelevator:ele_part/door/nowindow/h4/colors/door_no_window24_light_gray"},
+       "type=lime" : {"model" : "realelevator:ele_part/door/nowindow/h4/colors/door_no_window24_lime"},
+       "type=pink" : {"model" : "realelevator:ele_part/door/nowindow/h4/colors/door_no_window24_pink"},
+       "type=red" : {"model" : "realelevator:ele_part/door/nowindow/h4/colors/door_no_window24_red"},
+       "type=white" : {"model" : "realelevator:ele_part/door/nowindow/h4/colors/door_no_window24_white"},
+       "type=yellow" : {"model" : "realelevator:ele_part/door/nowindow/h4/colors/door_no_window24_yellow"},
+       "type=stainless" : {"model" : "realelevator:ele_part/door/nowindow/h4/stainless/door_no_window24_stainless"}
+
+    }
+}
