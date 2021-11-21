@@ -1,0 +1,16 @@
+{
+    "variants":{
+        "facing=north":{
+            "model":"realelevator:block/guide_rail_counter_weight"
+        },
+        "facing=east":{
+            "model":"realelevator:block/guide_rail_counter_weight", "y":90
+        },
+        "facing=south":{
+            "model":"realelevator:block/guide_rail_counter_weight", "y":180
+        },
+        "facing=west":{
+            "model":"realelevator:block/guide_rail_counter_weight", "y" :270
+        }
+    }
+}

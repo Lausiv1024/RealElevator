@@ -1,0 +1,16 @@
+{
+    "variants":{
+        "facing=north":{
+            "model" :"realelevator:block/door_threshold"
+        },
+        "facing=east":{
+            "model":"realelevator:block/door_threshold","y":90
+        },
+        "facing=south":{
+            "model":"realelevator:block/door_threshold","y":180
+        },
+        "facing=west":{
+            "model":"realelevator:block/door_threshold","y":270
+        }
+    }
+}
