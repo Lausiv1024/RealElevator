@@ -16,30 +16,12 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class REEvents {
-    @SubscribeEvent
-    public static void destroyBlockEvent(LivingDestroyBlockEvent event){
-    }
-
-    @SubscribeEvent
-    public static void event2(BlockEvent.BreakEvent event){
-        BlockPos pos = event.getPos();
-        IWorld world = event.getWorld();
-        if (world.getBlockState(pos).getBlock() instanceof ElevatorPartBlock){
-            event.setCanceled(true);
-        }
-    }
-
-    @SubscribeEvent
-    public static void event3(LivingEvent.LivingJumpEvent event){
-//        LivingEntity entity = event.getEntityLiving();
-//        if (entity instanceof PlayerEntity){
-//            EffectInstance instance = new EffectInstance(Effects.JUMP, 40, 5, true, false);
-//            entity.addEffect(instance);
+//    @SubscribeEvent
+//    public static void event2(BlockEvent.BreakEvent event){
+//        BlockPos pos = event.getPos();
+//        IWorld world = event.getWorld();
+//        if (world.getBlockState(pos).getBlock() instanceof ElevatorPartBlock){
+//            event.setCanceled(true);
 //        }
-    }
-
-    @SubscribeEvent
-    public static void event3(LivingEntityUseItemEvent event){
-        RealElevatorCore.LOGGER.info("LivingEntityUse");
-    }
+//    }
 }

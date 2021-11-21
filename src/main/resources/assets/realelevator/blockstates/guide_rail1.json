@@ -1,28 +1,28 @@
 {
     "variants":{
         "facing=north,part=1":{
-            "model" : "realelevator:block/guide_rail1"
+            "model" : "realelevator:block/guide_rail1a"
         },
         "facing=south,part=1":{
-            "model" : "realelevator:block/guide_rail1","y":180
+            "model" : "realelevator:block/guide_rail1a","y":180
         },
         "facing=east,part=1":{
-            "model" : "realelevator:block/guide_rail1", "y":90
+            "model" : "realelevator:block/guide_rail1a", "y":90
         },
         "facing=west,part=1":{
-            "model" : "realelevator:block/guide_rail1","y":270
+            "model" : "realelevator:block/guide_rail1a","y":270
         },
         "facing=north,part=2":{
-            "model" : "realelevator:block/guide_rail2"
+            "model" : "realelevator:block/guide_rail2a"
         },
         "facing=south,part=2":{
-            "model" : "realelevator:block/guide_rail2","y":180
+            "model" : "realelevator:block/guide_rail2a","y":180
         },
         "facing=east,part=2":{
-            "model" : "realelevator:block/guide_rail2", "y":90
+            "model" : "realelevator:block/guide_rail2a", "y":90
         },
         "facing=west,part=2":{
-            "model" : "realelevator:block/guide_rail2","y":270
+            "model" : "realelevator:block/guide_rail2a","y":270
         }
     }
 }

@@ -1,10 +1,13 @@
-package lausiv1024;
+package lausiv1024.client;
 
-import lausiv1024.renderer.DoorNoWindowRenderer;
-import lausiv1024.renderer.EleButtonRenderer;
-import lausiv1024.tileentity.render.FloorDisplayRenderer;
-import lausiv1024.tileentity.render.HoleLanternRender;
-import lausiv1024.tileentity.render.LandingButtonTERenderer;
+import lausiv1024.REBlocks;
+import lausiv1024.REEntities;
+import lausiv1024.RETileEntities;
+import lausiv1024.client.render.entity.DoorNoWindowRenderer;
+import lausiv1024.client.render.entity.EleButtonRenderer;
+import lausiv1024.client.render.tileentity.FloorDisplayRenderer;
+import lausiv1024.client.render.tileentity.HoleLanternRender;
+import lausiv1024.client.render.tileentity.LandingButtonTERenderer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.RenderTypeLookup;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
@@ -22,7 +25,7 @@ public class ClientEvents {
     @SubscribeEvent
     @OnlyIn(Dist.CLIENT)
     public static void setupClient(FMLClientSetupEvent event){
-        ClientRegistry.bindTileEntityRenderer(RETileEntities.HOLE_LANTERN.get(),arg -> new HoleLanternRender(TileEntityRendererDispatcher.instance));
+        ClientRegistry.bindTileEntityRenderer(RETileEntities.HOLE_LANTERN.get(), arg -> new HoleLanternRender(TileEntityRendererDispatcher.instance));
         ClientRegistry.bindTileEntityRenderer(RETileEntities.FLOOR_DISPLAY.get(), arg -> new FloorDisplayRenderer(TileEntityRendererDispatcher.instance));
         ClientRegistry.bindTileEntityRenderer(RETileEntities.LANDING_BUTTON_TE.get(), arg -> new LandingButtonTERenderer(TileEntityRendererDispatcher.instance));
 
@@ -34,7 +37,7 @@ public class ClientEvents {
 
     private static void setBlockRenderType(){
         RenderType cutout = RenderType.cutout();
-        RenderTypeLookup.setRenderLayer(REBlocks.GUIDE_RAILA.get(), cutout);
+        //RenderTypeLookup.setRenderLayer(REBlocks.GUIDE_RAILA.get(), cutout);
         //RenderTypeLookup.setRenderLayer(REBlocks.GOMI.get(), cutout);
         RenderTypeLookup.setRenderLayer(REBlocks.EDNW.get(), cutout);
     }

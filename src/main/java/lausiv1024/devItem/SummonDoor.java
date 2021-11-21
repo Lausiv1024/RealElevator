@@ -25,7 +25,7 @@ public class SummonDoor extends DebugItem{
         Direction clickedFace = context.getClickedFace();
 
         if (clickedFace == Direction.UP){
-            if (clickedState.getBlock() == REBlocks.DOOR_RAIL.get()){
+            if (clickedState.getBlock() == REBlocks.DOOR_THRESHOLD.get()){
                 Direction blockDirection = clickedState.getValue(DoorRail.FACING);
                 ElevatorDoorNoWindow elevatorDoorNoWindow = new ElevatorDoorNoWindow(level, blockDirection.getOpposite());
                 elevatorDoorNoWindow.setPos(clickedPos.getX() + 0.5, clickedPos.getY(), clickedPos.getZ());

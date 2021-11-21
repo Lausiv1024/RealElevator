@@ -1,4 +1,4 @@
-package lausiv1024.tileentity.render;
+package lausiv1024.client.render.tileentity;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;

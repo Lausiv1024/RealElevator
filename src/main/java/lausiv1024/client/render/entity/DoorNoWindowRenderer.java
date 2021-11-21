@@ -1,4 +1,4 @@
-package lausiv1024.renderer;
+package lausiv1024.client.render.entity;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.platform.GlStateManager;

@@ -19,13 +19,13 @@ public class REItems {
     public static final RegistryObject<Item> ITEM_ELEVATOR_BUTTON = ITEMS.register("elevator_button",() ->
             new BlockItem(REBlocks.ELEVATOR_BUTTON.get(), new Item.Properties().tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> ITEM_DOOR_RAIL = ITEMS.register("door_rail",() ->
-            new BlockItem(REBlocks.DOOR_RAIL.get(), new Item.Properties().tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
+            new BlockItem(REBlocks.DOOR_THRESHOLD.get(), new Item.Properties().tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> ITEM_HOLE_LANTERN = ITEMS.register("hole_lantern",() ->
             new BlockItem(REBlocks.HOLE_LANTERN.get(), new Item.Properties().tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> WRENCH = ITEMS.register("wrench",() ->
             new Item(new Item.Properties().stacksTo(1).tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> ITEM_GUIDE_RAIL = ITEMS.register("guide_rail",() ->
-            new BlockItem(REBlocks.GUIDE_RAIL.get(), new Item.Properties().tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
+            new BlockItem(REBlocks.GUIDE_RAIL_CAGE.get(), new Item.Properties().tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> ITEM_RANGE_DISPLAY = ITEMS.register("range_display",() ->
             new BlockItem(REBlocks.RANGE_DISPLAY.get(), new Item.Properties()));
     public static final RegistryObject<Item> ITEM_ELEVATOR_CONSTRUCTOR = ITEMS.register("elevator_constructor",() ->
@@ -36,10 +36,8 @@ public class REItems {
             new BlockItem(REBlocks.DOOR_RAIL_DOUBLE.get(), new Item.Properties().tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> ITEM_ELEVATOR_CONTROLLER = ITEMS.register("controller_module",() ->
             new BlockItem(REBlocks.ELEVATOR_CONTROLLER.get(), new Item.Properties().tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
-    public static final RegistryObject<Item> ITEM_GUIDE_RAILA = ITEMS.register("guide_rail1",() ->
-            new BlockItem(REBlocks.GUIDE_RAILA.get(), new Item.Properties().tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> ITEM_GUIDE_RAIL_NO_WEIGHT = ITEMS.register("guide_rail_no_weight",() ->
-            new BlockItem(REBlocks.GUIDE_RAIL_NO_WEIGHT.get(), new Item.Properties().tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
+            new BlockItem(REBlocks.GUIDE_RAIL_COUNTER_WEIGHT.get(), new Item.Properties().tab(RealElevatorCore.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> ELEVATOR_BUTTON = ITEMS.register("elevator_button1",() ->
             new Item(new Item.Properties()));
     public static final RegistryObject<Item> ITEM_FLOOR_CONTROLLER = ITEMS.register("floor_controller", () ->
