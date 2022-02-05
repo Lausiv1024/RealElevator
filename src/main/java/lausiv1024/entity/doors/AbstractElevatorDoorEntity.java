@@ -1,8 +1,6 @@
 package lausiv1024.entity.doors;
 
-import lausiv1024.RealElevatorCore;
 import lausiv1024.entity.ElevatorPartEntity;
-import mcp.MethodsReturnNonnullByDefault;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntitySize;
 import net.minecraft.entity.EntityType;

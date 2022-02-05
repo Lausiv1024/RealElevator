@@ -3,11 +3,11 @@ package lausiv1024.client.render.tileentity;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.IVertexBuilder;
-import lausiv1024.RealElevatorCore;
+import lausiv1024.RealElevator;
 import lausiv1024.blocks.FloorDisplay;
 import lausiv1024.blocks.HoleLantern;
 import lausiv1024.tileentity.FloorDisplayTile;
-import lausiv1024.util.ElevatorDirection;
+import lausiv1024.elevator.ElevatorDirection;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.RenderState;
 import net.minecraft.client.renderer.RenderType;
@@ -55,7 +55,7 @@ public class FloorDisplayRenderer<T extends FloorDisplayTile> extends ElevatorPa
         }, () -> {
             RenderSystem.disableBlend();
             RenderSystem.disableAlphaTest();
-        })).setTextureState(new RenderState.TextureState(new ResourceLocation(RealElevatorCore.ID, "textures/blocks/floor_display/" + name + ".png"), false, false)).createCompositeState(false);
+        })).setTextureState(new RenderState.TextureState(new ResourceLocation(RealElevator.ID, "textures/blocks/floor_display/" + name + ".png"), false, false)).createCompositeState(false);
         return RenderType.create("realelevator_texture_" + name, DefaultVertexFormats.POSITION_TEX, GL11.GL_QUADS, 256, false, true, state);
     }
 

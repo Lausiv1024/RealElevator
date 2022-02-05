@@ -1,9 +1,7 @@
 package lausiv1024.devItem;
 
-import lausiv1024.Elevator;
 import lausiv1024.entity.EleButtonEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.EggItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;

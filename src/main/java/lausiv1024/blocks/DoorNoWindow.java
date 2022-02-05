@@ -1,6 +1,6 @@
 package lausiv1024.blocks;
 
-import lausiv1024.util.EleVeneerType;
+import lausiv1024.elevator.EleVeneerType;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.state.EnumProperty;

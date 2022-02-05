@@ -1,5 +1,6 @@
 package lausiv1024.blocks;
 
+import lausiv1024.blocks.interfaces.IHasBounding;
 import lausiv1024.util.RotatableBoxShape;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -20,18 +21,17 @@ import net.minecraft.world.IWorld;
 
 import javax.annotation.Nullable;
 
-public class GuideRailBlockCounterWeight extends ElevatorPartBlock {
+public class Motor extends ElevatorPartBlock implements IHasBounding {
     public static final DirectionProperty FACING = HorizontalBlock.FACING;
-    public static final IntegerProperty PART = IntegerProperty.create("part", 0, 1);
-    private static final RotatableBoxShape BASE1 = new RotatableBoxShape(3.4, 0, 8.5, 4, 16, 10);
-    private static final RotatableBoxShape BASE2 = new RotatableBoxShape(10, 0, 8.5, 10.6, 16, 10);
+    public static final IntegerProperty GRADE = IntegerProperty.create("grade", 0, 2);
 
-    private static final RotatableBoxShape RAIL1 = new RotatableBoxShape(3.4, 0, 7.9, 6.4, 16, 8.5);
-    private static final RotatableBoxShape RAIL2 = new RotatableBoxShape(7.6, 0, 7.9, 10.6, 16, 8.5);
+    private static final RotatableBoxShape BASE = new RotatableBoxShape(-2, 0, 7, 29, 3, 11);
+    private static final RotatableBoxShape[] PARTS = {new RotatableBoxShape(25, 3, 2, 29, 16, 16),
+    new RotatableBoxShape(12, 3, 3, 26, 15, 15),
+    new RotatableBoxShape(5, 4, 3.5, 12, 14, 14.5)};
 
-    public GuideRailBlockCounterWeight(){
-        super();
-        this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH).setValue(PART, 0));
+    public Motor(){
+        this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH).setValue(GRADE, 0));
     }
 
     @Nullable
@@ -41,7 +41,6 @@ public class GuideRailBlockCounterWeight extends ElevatorPartBlock {
                 this.defaultBlockState().setValue(FACING, context.getHorizontalDirection()) :
                 this.defaultBlockState().setValue(FACING, context.getClickedFace().getOpposite());
     }
-
     @Override
     public BlockState rotate(BlockState state, IWorld world, BlockPos pos, Rotation direction) {
         return state.setValue(FACING, direction.rotate(state.getValue(FACING)));
@@ -51,16 +50,22 @@ public class GuideRailBlockCounterWeight extends ElevatorPartBlock {
     public BlockState mirror(BlockState state, Mirror mirror) {
         return state.rotate(mirror.getRotation(state.getValue(FACING)));
     }
+
+    @Override
+    public VoxelShape getShape(BlockState state, IBlockReader reader, BlockPos pos, ISelectionContext context) {
+        Direction facing = state.getValue(FACING);
+
+
+        return VoxelShapes.or(BASE.rotateAndConvert(facing),PARTS[0].rotateAndConvert(facing),
+                PARTS[1].rotateAndConvert(facing), PARTS[2].rotateAndConvert(facing));
+    }
+
     protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> p_206840_1_) {
-        p_206840_1_.add(FACING, PART);
+        p_206840_1_.add(FACING, GRADE);
     }
 
     @Override
-    public VoxelShape getShape(BlockState p_220053_1_, IBlockReader reader, BlockPos pos, ISelectionContext context) {
-        Direction facing = p_220053_1_.getValue(FACING);
-        VoxelShape v;
-        if (p_220053_1_.getValue(PART) == 0) v = VoxelShapes.or(BASE1.rotateAndConvert(facing), RAIL1.rotateAndConvert(facing));
-        else v = VoxelShapes.or(BASE2.rotateAndConvert(facing), RAIL2.rotateAndConvert(facing));
-        return v;
+    public BlockPos[] getBoundingPosList() {
+        return new BlockPos[]{new BlockPos(1, 0, 0)};
     }
 }

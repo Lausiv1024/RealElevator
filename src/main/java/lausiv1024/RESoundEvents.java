@@ -13,9 +13,9 @@ import java.util.List;
 public class RESoundEvents {
     private static final List<SoundEvent> SOUND_EVENTS = new ArrayList<>();
 
-    public static final SoundEvent CALLSOUND = register("call", new ResourceLocation(RealElevatorCore.ID, "call"));
-    public static final SoundEvent UPSOUND = register("up", new ResourceLocation(RealElevatorCore.ID, "up"));
-    public static final SoundEvent DOWNSOUND = register("down", new ResourceLocation(RealElevatorCore.ID, "down"));
+    public static final SoundEvent CALLSOUND = register("call", new ResourceLocation(RealElevator.ID, "call"));
+    public static final SoundEvent UPSOUND = register("up", new ResourceLocation(RealElevator.ID, "up"));
+    public static final SoundEvent DOWNSOUND = register("down", new ResourceLocation(RealElevator.ID, "down"));
 
     private static SoundEvent register(String registryName, ResourceLocation location){
         SoundEvent soundEvent = new SoundEvent(location).setRegistryName(registryName);

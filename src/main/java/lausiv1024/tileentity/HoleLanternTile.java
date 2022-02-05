@@ -1,10 +1,8 @@
 package lausiv1024.tileentity;
 
 import lausiv1024.RETileEntities;
-import lausiv1024.RealElevatorCore;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.ListNBT;
 import net.minecraft.tileentity.ITickableTileEntity;
 import net.minecraft.tileentity.TileEntityType;
 

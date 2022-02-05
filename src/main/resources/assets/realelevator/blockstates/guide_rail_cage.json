@@ -1,28 +1,16 @@
 {
     "variants":{
-        "facing=north,mirror=false":{
+        "facing=north":{
             "model":"realelevator:block/guide_rail_cage"
         },
-        "facing=east,mirror=false":{
+        "facing=east":{
             "model":"realelevator:block/guide_rail_cage", "y":90
         },
-        "facing=south,mirror=false":{
+        "facing=south":{
             "model":"realelevator:block/guide_rail_cage", "y":180
         },
-        "facing=west,mirror=false":{
+        "facing=west":{
             "model":"realelevator:block/guide_rail_cage", "y" :270
-        },
-        "facing=north,mirror=true":{
-            "model":"realelevator:block/guide_rail_cage", "x":270
-        },
-        "facing=east,mirror=true":{
-            "model":"realelevator:block/guide_rail_cage", "y":90, "x":270
-        },
-        "facing=south,mirror=true":{
-            "model":"realelevator:block/guide_rail_cage", "y":180, "x":270
-        },
-        "facing=west,mirror=true":{
-            "model":"realelevator:block/guide_rail_cage", "y" :270, "x":270
         }
     }
 }

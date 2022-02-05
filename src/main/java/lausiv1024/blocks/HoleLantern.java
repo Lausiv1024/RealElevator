@@ -1,7 +1,7 @@
 package lausiv1024.blocks;
 
 import lausiv1024.RESoundEvents;
-import lausiv1024.RealElevatorCore;
+import lausiv1024.RealElevator;
 import lausiv1024.tileentity.HoleLanternTile;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -75,7 +75,7 @@ public class HoleLantern extends ElevatorPartBlock {
         TileEntity tileEntity = world.getBlockEntity(pos);
         if (tileEntity instanceof HoleLanternTile){
             HoleLanternTile holeLanternTile = (HoleLanternTile) tileEntity;
-            RealElevatorCore.LOGGER.info(state.getValue(FACING).getStepZ());
+            RealElevator.LOGGER.info(state.getValue(FACING).getStepZ());
             test(playerEntity.getItemInHand(hand), holeLanternTile, world, pos);
         }
 

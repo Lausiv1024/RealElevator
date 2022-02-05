@@ -13,20 +13,8 @@ public class RotatableBoxShape {
         end = new Vector3d(endX, endY, endZ);
     }
 
-    public VoxelShape getNorth(){
-        return ModelRotationHelper.rotate(start.x, start.y, start.z, end.x, end.y, end.z, Direction.NORTH);
-    }
-
-    public VoxelShape getSouth(){
-        return ModelRotationHelper.rotate(start.x, start.y, start.z, end.x, end.y, end.z, Direction.SOUTH);
-    }
-
-    public VoxelShape getEast(){
-        return ModelRotationHelper.rotate(start.x, start.y, start.z, end.x, end.y, end.z, Direction.EAST);
-    }
-
-    public VoxelShape getWest(){
-        return ModelRotationHelper.rotate(start.x, start.y, start.z, end.x, end.y, end.z, Direction.WEST);
+    public VoxelShape rotateAndConvert(Direction direction){
+        return ModelRotationHelper.rotate(start.x, start.y, start.z, end.x, end.y, end.z, direction);
     }
 
     public RotatableBoxShape move(double x, double y, double z){

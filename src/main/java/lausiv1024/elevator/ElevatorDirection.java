@@ -1,4 +1,4 @@
-package lausiv1024.util;
+package lausiv1024.elevator;
 
 public enum ElevatorDirection {
     NONE,

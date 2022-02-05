@@ -1,8 +1,8 @@
 package lausiv1024.blocks;
 
-import lausiv1024.RealElevatorCore;
+import lausiv1024.RealElevator;
 import lausiv1024.tileentity.FloorDisplayTile;
-import lausiv1024.util.ElevatorDirection;
+import lausiv1024.elevator.ElevatorDirection;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalBlock;
@@ -54,7 +54,7 @@ public class FloorDisplay extends ElevatorPartBlock {
         if (item == Items.REDSTONE){
             tile.curDirection = ElevatorDirection.UP;
             tile.setMoving(2);
-            RealElevatorCore.LOGGER.info("asd");
+            RealElevator.LOGGER.info("asd");
         }else if (item == Items.BLACK_CONCRETE){
             tile.curDirection = ElevatorDirection.DOWN;
         }else if (item == Items.BLUE_CONCRETE){

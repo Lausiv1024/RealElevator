@@ -13,7 +13,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 public class REBlocks {
-    private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, RealElevatorCore.ID);
+    private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, RealElevator.ID);
 
     public static final RegistryObject<Block> ELEVATOR_BUTTON_SINGLE = BLOCKS.register("elevator_button_single", ElevatorButtonSingleBlock::new);
     public static final RegistryObject<Block> ELEVATOR_BUTTON = BLOCKS.register("elevator_button", ElevatorButtonBlock::new);
@@ -33,6 +33,10 @@ public class REBlocks {
     public static final RegistryObject<Block> DOOR_RAIL_DOUBLE = BLOCKS.register("door_rail_double", DoorRailDouble::new);
     public static final RegistryObject<Block> ELEVATOR_CONTROLLER = BLOCKS.register("controller_module", ElevatorControllerBlock::new);
     public static final RegistryObject<Block> FLOOR_CONTROLLER = BLOCKS.register("floor_controller", FloorController::new);
+    public static final RegistryObject<Block> JAMB = BLOCKS.register("jamb", Jamb::new);
+    public static final RegistryObject<Block> JAMB_ROOF = BLOCKS.register("jamb_roof", JambRoof::new);
+    public static final RegistryObject<Block> MOTOR = BLOCKS.register("motor", Motor::new);
+    public static final RegistryObject<Block> BOUNDING_BLOCK = BLOCKS.register("bounding_block", () -> new BoundingBlock(AbstractBlock.Properties.of(Material.METAL)));
 //
 //    public static final RegistryObject<Block> GOMI = BLOCKS.register("elevatordoor_no_window31", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
 //    public static final RegistryObject<Block> GOMI2 = BLOCKS.register("elevatordoor_no_window32", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));

@@ -1,10 +1,9 @@
 package lausiv1024.entity.doors;
 
 import lausiv1024.REEntities;
-import lausiv1024.RealElevatorCore;
+import lausiv1024.RealElevator;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
@@ -45,7 +44,7 @@ public class ElevatorDoorNoWindow extends AbstractElevatorDoorEntity {
 
     public ElevatorDoorNoWindow(World world, Direction direction, int tall){
         super(REEntities.ELEVATOR_DOOR_NO_WINDOW_ENTITY_TYPE.get(), world);
-        RealElevatorCore.LOGGER.info("Cons5");
+        RealElevator.LOGGER.info("Cons5");
         this.tall = tall;
         setDirection(direction);
         applyDirection();
@@ -61,6 +60,7 @@ public class ElevatorDoorNoWindow extends AbstractElevatorDoorEntity {
     public void tick() {
         super.tick();
     }
+
 
     @Override
     public ActionResultType interact(PlayerEntity playerEntity, Hand hand) {

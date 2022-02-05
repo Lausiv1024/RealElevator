@@ -1,6 +1,7 @@
 package lausiv1024.blocks;
 
 import lausiv1024.RESoundEvents;
+import lausiv1024.blocks.interfaces.IHasBounding;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalBlock;
@@ -21,7 +22,7 @@ import net.minecraft.world.World;
 
 import javax.annotation.Nullable;
 
-public class FloorController extends ElevatorPartBlock{
+public class FloorController extends ElevatorPartBlock implements IHasBounding {
 
     public static final VoxelShape[] PLATE = {
         box(5, -4, 0, 11, 23, 0.2),
@@ -158,5 +159,11 @@ public class FloorController extends ElevatorPartBlock{
             default:
                 throw new IllegalStateException("Invalid Facing Value - " + direction.toString());
         }
+    }
+
+    @Override
+    public BlockPos[] getBoundingPosList() {
+        return new BlockPos[]{new BlockPos(0, 1, 0),
+        new BlockPos(0, -1, 0)};
     }
 }

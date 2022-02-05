@@ -3,11 +3,13 @@ package lausiv1024.client;
 import lausiv1024.REBlocks;
 import lausiv1024.REEntities;
 import lausiv1024.RETileEntities;
+import lausiv1024.client.render.entity.CwtEntityRenderer;
 import lausiv1024.client.render.entity.DoorNoWindowRenderer;
 import lausiv1024.client.render.entity.EleButtonRenderer;
 import lausiv1024.client.render.tileentity.FloorDisplayRenderer;
 import lausiv1024.client.render.tileentity.HoleLanternRender;
 import lausiv1024.client.render.tileentity.LandingButtonTERenderer;
+import lausiv1024.entity.CwtEntity;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.RenderTypeLookup;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
@@ -31,6 +33,7 @@ public class ClientEvents {
 
         RenderingRegistry.registerEntityRenderingHandler(REEntities.ELEVATOR_BUTTON.get(), EleButtonRenderer::new);
         RenderingRegistry.registerEntityRenderingHandler(REEntities.ELEVATOR_DOOR_NO_WINDOW_ENTITY_TYPE.get(), DoorNoWindowRenderer::new);
+        RenderingRegistry.registerEntityRenderingHandler(REEntities.CWT.get(), CwtEntityRenderer::new);
 
         setBlockRenderType();
     }

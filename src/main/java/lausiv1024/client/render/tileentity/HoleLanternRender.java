@@ -3,7 +3,7 @@ package lausiv1024.client.render.tileentity;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.IVertexBuilder;
-import lausiv1024.RealElevatorCore;
+import lausiv1024.RealElevator;
 import lausiv1024.blocks.HoleLantern;
 import lausiv1024.tileentity.HoleLanternTile;
 import net.minecraft.client.renderer.RenderState;
@@ -46,7 +46,7 @@ public class HoleLanternRender<T extends HoleLanternTile> extends ElevatorPartRe
     }, () -> {
         RenderSystem.disableBlend();
         RenderSystem.disableAlphaTest();
-    })).setTextureState(new RenderState.TextureState(new ResourceLocation(RealElevatorCore.ID, "textures/blocks/hole_lantern/" + name + ".png"), false, false)).createCompositeState(false);
+    })).setTextureState(new RenderState.TextureState(new ResourceLocation(RealElevator.ID, "textures/blocks/hole_lantern/" + name + ".png"), false, false)).createCompositeState(false);
         return RenderType.create("realelevator_texture_" + name, DefaultVertexFormats.POSITION_TEX, GL11.GL_QUADS, 256, false, true, state);
     }
 

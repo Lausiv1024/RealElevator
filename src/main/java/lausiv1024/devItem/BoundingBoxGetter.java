@@ -1,6 +1,6 @@
 package lausiv1024.devItem;
 
-import lausiv1024.RealElevatorCore;
+import lausiv1024.RealElevator;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
@@ -26,7 +26,7 @@ public class BoundingBoxGetter extends DebugItem {
         entity.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1, 1);
         List<Entity> entities = world.getEntities((Entity) null, bb, (entity1) -> !(entity1 instanceof PlayerEntity));
         for (Entity entity1 : entities){
-            RealElevatorCore.LOGGER.info(entity1.getName().getString() + " : " + entity1.getBoundingBox().toString());
+            RealElevator.LOGGER.info(entity1.getName().getString() + " : " + entity1.getBoundingBox().toString());
         }
         return ActionResult.success(entity.getItemInHand(hand));
     }
@@ -34,7 +34,7 @@ public class BoundingBoxGetter extends DebugItem {
     @Override
     public boolean onLeftClickEntity(ItemStack stack, PlayerEntity player, Entity entity) {
         player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 1, 1);
-        RealElevatorCore.LOGGER.info(entity.getBoundingBox().toString());
+        RealElevator.LOGGER.info(entity.getBoundingBox().toString());
         return true;
     }
 }
