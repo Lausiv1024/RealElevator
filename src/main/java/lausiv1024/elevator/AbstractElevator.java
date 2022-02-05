@@ -84,6 +84,10 @@ public abstract class AbstractElevator {
     }
 
     public void elevatorMainTick(){
+        if (going == -1) setGoingFloor();
+    }
+
+    private void setGoingFloor(){
         if (direction == ElevatorDirection.UP){
             for (int i = curFloor + 1; i < floorCount; i++){
                 if (registered[i]){
@@ -103,13 +107,16 @@ public abstract class AbstractElevator {
             for (int i = 0; i < floorCount; i++){
                 boolean reg = registered[i];
                 if (reg){
+                    boolean flag = false;
                     if (i < curFloor){
                         direction = ElevatorDirection.DOWN;
+                        flag = true;
                     }else if (i > curFloor){
                         direction = ElevatorDirection.UP;
+                        flag = true;
                     }
+                    if (flag) lastI = i;
                 }
-                lastI = i;
             }
             going = lastI;
         }
