@@ -6,12 +6,7 @@ public class Elevator extends AbstractElevator {
     }
 
     @Override
-    public void doorMotion() {
-        if (doorState == 2){
-            doorCloseTick++;
-            if (doorCloseTick == 0){
-                doorState = 3;
-            }
-        }
+    public void setDoorMotion(double speed) {
+
     }
 }
