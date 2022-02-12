@@ -23,7 +23,8 @@ public class CwtEntity extends ElevatorPartEntity{
     private static final int saVertical = 48;
     private static final int saHorizontal1 = 18;
     private static final int saHorizontal2 = 4;
-
+    private boolean tes1 = false;
+    private int tes2 = 0;
 
     public CwtEntity(EntityType<? extends Entity> type, World world) {
         super(type, world);
@@ -67,7 +68,8 @@ public class CwtEntity extends ElevatorPartEntity{
     public ActionResultType interact(PlayerEntity playerEntity, Hand hand) {
         LOGGER.info("Interact");
         moving = true;
-        setDeltaMovement(getDeltaMovement().add(new Vector3d(0.0, 0.4, 0.0)));
+        tes1 = true;
+        //setDeltaMovement(getDeltaMovement().add(new Vector3d(0.0, 0.01, 0.0)));
         return ActionResultType.SUCCESS;
     }
 
@@ -103,6 +105,25 @@ public class CwtEntity extends ElevatorPartEntity{
         //LOGGER.info(getDeltaMovement());
         if (getY() > 255){
             setDeltaMovement(Vector3d.ZERO);
+        }
+        if (tes1){
+            if (tes2 < 5){
+                setDeltaMovement(getDeltaMovement().add(new Vector3d(0.0, 0.001 * (tes2 + 1), 0.0)));
+            }
+            else if (tes2 < 40){
+                setDeltaMovement(getDeltaMovement().add(new Vector3d(0.0, 0.005, 0.0)));
+            }
+            else if (tes2 < 75){
+                setDeltaMovement(getDeltaMovement().add(new Vector3d(0.0, -0.005, 0.0)));
+            }
+            else if (tes2 < 80){
+                setDeltaMovement(getDeltaMovement().add(new Vector3d(0.0, -0.001 * (tes2 - 74), 0.0)));
+            }
+            else{
+                tes1 = false;
+                tes2 = 0;
+            }
+            tes2++;
         }
     }
 

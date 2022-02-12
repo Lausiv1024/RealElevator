@@ -19,12 +19,14 @@ public abstract class AbstractElevator {
     protected ElevatorEntityHolder eleObj;
     protected Direction facingMain;
     protected int going = -1;
+    protected EnumCallingState[] called;
 
     public AbstractElevator(int index){
         floorCount = index;
         displayName = new String[index];
         floorAnnounceId = new int[index];
         registered = new boolean[index];
+        called = new EnumCallingState[index];
         doorCount = 2;
         direction = ElevatorDirection.NONE;
     }
@@ -84,10 +86,10 @@ public abstract class AbstractElevator {
     }
 
     public void elevatorMainTick(){
-        if (going == -1) setGoingFloor();
     }
 
-    private void setGoingFloor(){
+    //decideGoingFloor is called on door closed and called
+    private void decideGoingFloor(){
         if (direction == ElevatorDirection.UP){
             for (int i = curFloor + 1; i < floorCount; i++){
                 if (registered[i]){
@@ -119,6 +121,39 @@ public abstract class AbstractElevator {
                 }
             }
             going = lastI;
+            if (going == -1) direction = ElevatorDirection.NONE;
+        }
+    }
+
+    //setEleDirection is called on Call or Floor Button and arriving
+    private void setEleDirection(){
+        if (direction == ElevatorDirection.NONE){
+            for (int i = 0; i < called.length;i++){
+                EnumCallingState state = called[i];
+                if (state == EnumCallingState.NONE) continue;
+                if (curFloor == i){
+                    direction = EnumCallingState.convert(state);
+                    called[i] = EnumCallingState.NONE;
+                    return;
+                }
+
+                if (curFloor < i){
+                    direction = ElevatorDirection.UP;
+                    return;
+                }
+                direction = ElevatorDirection.DOWN;
+                return;
+            }
+
+            for (int j = 0; j < registered.length; j++){
+                boolean reg = registered[j];
+                if (!reg) continue;
+                if (curFloor > j){
+                    direction = ElevatorDirection.DOWN;
+                }else if (curFloor < j){
+                    direction = ElevatorDirection.UP;
+                }
+            }
         }
     }
 

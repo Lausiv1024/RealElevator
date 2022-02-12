@@ -1,0 +1,8 @@
+{
+    "variants":{
+        "facing=north":{"model":"realelevator:block/jamb_roof"},
+        "facing=east":{"model":"realelevator:block/jamb_roof", "y":90},
+        "facing=south":{"model":"realelevator:block/jamb_roof", "y":180},
+        "facing=west":{"model":"realelevator:block/jamb_roof", "y":270}
+    }
+}

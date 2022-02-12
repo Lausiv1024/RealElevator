@@ -1,0 +1,16 @@
+{
+    "variants":{
+        "facing=north,grade=0":{"model":"realelevator:block/motor_normal"},
+        "facing=east,grade=0":{"model":"realelevator:block/motor_normal", "y":90},
+        "facing=south,grade=0":{"model":"realelevator:block/motor_normal", "y":180},
+        "facing=west,grade=0":{"model":"realelevator:block/motor_normal", "y":270},
+        "facing=north,grade=1":{"model":"realelevator:block/motor_super"},
+        "facing=east,grade=1":{"model":"realelevator:block/motor_super", "y":90},
+        "facing=south,grade=1":{"model":"realelevator:block/motor_super", "y":180},
+        "facing=west,grade=1":{"model":"realelevator:block/motor_super", "y":270},
+        "facing=north,grade=2":{"model":"realelevator:block/motor_hyper"},
+        "facing=east,grade=2":{"model":"realelevator:block/motor_hyper", "y":90},
+        "facing=south,grade=2":{"model":"realelevator:block/motor_hyper", "y":180},
+        "facing=west,grade=2":{"model":"realelevator:block/motor_hyper", "y":270}
+    }
+}
