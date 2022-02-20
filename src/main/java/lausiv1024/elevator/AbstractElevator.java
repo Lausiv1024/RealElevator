@@ -20,6 +20,7 @@ public abstract class AbstractElevator {
     protected Direction facingMain;
     protected int going = -1;
     protected EnumCallingState[] called;
+    protected int[] floorYPos;
 
     public AbstractElevator(int index){
         floorCount = index;
@@ -27,6 +28,7 @@ public abstract class AbstractElevator {
         floorAnnounceId = new int[index];
         registered = new boolean[index];
         called = new EnumCallingState[index];
+        floorYPos = new int[index];
         doorCount = 2;
         direction = ElevatorDirection.NONE;
     }

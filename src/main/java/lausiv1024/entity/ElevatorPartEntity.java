@@ -1,14 +1,8 @@
 package lausiv1024.entity;
 
-import lausiv1024.networking.Vec3Serializer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
-import net.minecraft.entity.MoverType;
-import net.minecraft.entity.item.minecart.MinecartEntity;
 import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.network.datasync.DataParameter;
-import net.minecraft.network.datasync.EntityDataManager;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.world.World;
 import net.minecraftforge.api.distmarker.Dist;
@@ -45,8 +39,9 @@ public abstract class ElevatorPartEntity extends Entity {
     protected void readAdditionalSaveData(CompoundNBT nbt) {
         if (nbt.contains("ElevatorID"))
             elevatorId = nbt.getUUID("ElevatorID");
-        else
+        else {
             elevatorId = UUID.fromString("C4FBA282-1EBF-4747-A805-5F32B948A8FD");
+        }
         moving = nbt.getBoolean("Moving");
     }
 
@@ -56,7 +51,7 @@ public abstract class ElevatorPartEntity extends Entity {
         lerpX = lx;
         lerpY = ly;
         lerpZ = lz;
-        lerpStep = 32;
+        lerpStep = 10;
     }
 
     @Override

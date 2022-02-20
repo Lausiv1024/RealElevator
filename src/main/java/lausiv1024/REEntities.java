@@ -1,5 +1,6 @@
 package lausiv1024;
 
+import lausiv1024.entity.CageEntity;
 import lausiv1024.entity.CwtEntity;
 import lausiv1024.entity.EleButtonEntity;
 import lausiv1024.entity.doors.ElevatorDoorNoWindow;
@@ -23,6 +24,8 @@ public class REEntities {
                    .build(RealElevator.ID + ":door_no_window"));
     public static final RegistryObject<EntityType<CwtEntity>> CWT = ENTITY_TYPES.register("counter_weight",
             () -> EntityType.Builder.<CwtEntity>of(CwtEntity::new, EntityClassification.MISC).clientTrackingRange(10).build(RealElevator.ID + ":counter_weight"));
+    public static final RegistryObject<EntityType<CageEntity>> CAGE = ENTITY_TYPES.register("cage",
+            () -> EntityType.Builder.<CageEntity>of(CageEntity::new, EntityClassification.MISC).clientTrackingRange(10).build(RealElevator.ID + ":cage"));
 
     public static void register(IEventBus eventBus){
         ENTITY_TYPES.register(eventBus);

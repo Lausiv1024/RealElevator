@@ -3,6 +3,7 @@ package lausiv1024.client;
 import lausiv1024.REBlocks;
 import lausiv1024.REEntities;
 import lausiv1024.RETileEntities;
+import lausiv1024.client.render.entity.CageRenderer;
 import lausiv1024.client.render.entity.CwtEntityRenderer;
 import lausiv1024.client.render.entity.DoorNoWindowRenderer;
 import lausiv1024.client.render.entity.EleButtonRenderer;
@@ -34,6 +35,7 @@ public class ClientEvents {
         RenderingRegistry.registerEntityRenderingHandler(REEntities.ELEVATOR_BUTTON.get(), EleButtonRenderer::new);
         RenderingRegistry.registerEntityRenderingHandler(REEntities.ELEVATOR_DOOR_NO_WINDOW_ENTITY_TYPE.get(), DoorNoWindowRenderer::new);
         RenderingRegistry.registerEntityRenderingHandler(REEntities.CWT.get(), CwtEntityRenderer::new);
+        RenderingRegistry.registerEntityRenderingHandler(REEntities.CAGE.get(), CageRenderer::new);
 
         setBlockRenderType();
     }

@@ -2,6 +2,7 @@ package lausiv1024.entity;
 
 import lausiv1024.REEntities;
 import lausiv1024.REItems;
+import net.minecraft.client.renderer.entity.SheepRenderer;
 import net.minecraft.entity.*;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.CompoundNBT;
@@ -107,21 +108,16 @@ public class CwtEntity extends ElevatorPartEntity{
             setDeltaMovement(Vector3d.ZERO);
         }
         if (tes1){
-            if (tes2 < 5){
-                setDeltaMovement(getDeltaMovement().add(new Vector3d(0.0, 0.001 * (tes2 + 1), 0.0)));
-            }
-            else if (tes2 < 40){
+            if (tes2 < 30){
                 setDeltaMovement(getDeltaMovement().add(new Vector3d(0.0, 0.005, 0.0)));
             }
-            else if (tes2 < 75){
+            else if (tes2 < 60){
                 setDeltaMovement(getDeltaMovement().add(new Vector3d(0.0, -0.005, 0.0)));
-            }
-            else if (tes2 < 80){
-                setDeltaMovement(getDeltaMovement().add(new Vector3d(0.0, -0.001 * (tes2 - 74), 0.0)));
             }
             else{
                 tes1 = false;
                 tes2 = 0;
+                setDeltaMovement(Vector3d.ZERO);
             }
             tes2++;
         }
