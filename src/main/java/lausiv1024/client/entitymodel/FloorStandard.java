@@ -20,20 +20,19 @@ public class FloorStandard extends EntityModel<Entity> {
 
 		bb_main = new ModelRenderer(this);
 		bb_main.setPos(0.0F, 24.0F, 0.0F);
-		bb_main.texOffs(0, 0).addBox(-26.0F, 0.0F, -28.0F, 52.0F, 6.0F, 56.0F, 0.0F, false);
-		bb_main.texOffs(0, 86).addBox(-27.0F, 0.0F, -30.0F, 54.0F, 4.0F, 2.0F, 0.0F, false);
-		bb_main.texOffs(100, 92).addBox(-14.0F, 4.0F, -29.0F, 28.0F, 20.0F, 1.0F, 0.0F, false);
-		bb_main.texOffs(0, 92).addBox(-21.0F, 6.0F, -11.0F, 42.0F, 6.0F, 8.0F, 0.0F, false);
-		bb_main.texOffs(20, 16).addBox(21.0F, 6.0F, -12.0F, 5.0F, 10.0F, 10.0F, 0.0F, false);
-		bb_main.texOffs(0, 6).addBox(-26.0F, 6.0F, -12.0F, 5.0F, 10.0F, 10.0F, 0.0F, false);
-		bb_main.texOffs(0, 26).addBox(-28.0F, 14.0F, -10.0F, 4.0F, 4.0F, 6.0F, 0.0F, false);
-		bb_main.texOffs(20, 6).addBox(24.0F, 14.0F, -10.0F, 4.0F, 4.0F, 6.0F, 0.0F, false);
-		bb_main.texOffs(8, 36).addBox(28.0F, 14.0F, -10.0F, 2.0F, 4.0F, 2.0F, 0.0F, false);
-		bb_main.texOffs(0, 36).addBox(28.0F, 14.0F, -6.0F, 2.0F, 4.0F, 2.0F, 0.0F, false);
-		bb_main.texOffs(34, 6).addBox(-30.0F, 14.0F, -10.0F, 2.0F, 4.0F, 2.0F, 0.0F, false);
-		bb_main.texOffs(0, 6).addBox(-30.0F, 14.0F, -6.0F, 2.0F, 4.0F, 2.0F, 0.0F, false);
-		bb_main.texOffs(0, 0).addBox(-9.0F, 6.0F, -3.0F, 17.0F, 1.0F, 5.0F, 0.0F, false);
-		bb_main.texOffs(0, 62).addBox(-30.0F, 6.0F, 7.0F, 60.0F, 16.0F, 8.0F, 0.0F, false);
+		bb_main.texOffs(0, 0).addBox(-26.0F, 0.0F, -27.0F, 52.0F, 6.0F, 55.0F, 0.0F, false);
+		bb_main.texOffs(0, 85).addBox(-27.0F, 0.0F, -29.0F, 54.0F, 4.0F, 2.0F, 0.0F, false);
+		bb_main.texOffs(100, 91).addBox(-14.0F, 3.0F, -28.0F, 28.0F, 24.0F, 1.0F, 0.0F, false);
+		bb_main.texOffs(0, 91).addBox(-21.0F, 6.0F, -12.0F, 42.0F, 6.0F, 8.0F, 0.0F, false);
+		bb_main.texOffs(0, 20).addBox(21.0F, 6.0F, -13.0F, 5.0F, 10.0F, 10.0F, 0.0F, false);
+		bb_main.texOffs(0, 0).addBox(-26.0F, 6.0F, -13.0F, 5.0F, 10.0F, 10.0F, 0.0F, false);
+		bb_main.texOffs(20, 20).addBox(-27.0F, 14.0F, -11.0F, 3.0F, 4.0F, 6.0F, 0.0F, false);
+		bb_main.texOffs(20, 0).addBox(24.0F, 14.0F, -11.0F, 3.0F, 4.0F, 6.0F, 0.0F, false);
+		bb_main.texOffs(30, 30).addBox(27.0F, 14.0F, -11.0F, 2.0F, 4.0F, 2.0F, 0.0F, false);
+		bb_main.texOffs(30, 10).addBox(27.0F, 14.0F, -7.0F, 2.0F, 4.0F, 2.0F, 0.0F, false);
+		bb_main.texOffs(0, 20).addBox(-29.0F, 14.0F, -11.0F, 2.0F, 4.0F, 2.0F, 0.0F, false);
+		bb_main.texOffs(0, 0).addBox(-29.0F, 14.0F, -7.0F, 2.0F, 4.0F, 2.0F, 0.0F, false);
+		bb_main.texOffs(0, 61).addBox(-30.0F, 6.0F, 7.0F, 60.0F, 16.0F, 8.0F, 0.0F, false);
 	}
 
 	@Override

@@ -16,6 +16,7 @@ import net.minecraft.client.renderer.entity.model.EntityModel;
 import net.minecraft.client.renderer.texture.AtlasTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.entity.item.BoatEntity;
+import net.minecraft.entity.monster.ShulkerEntity;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Vector3f;
 
@@ -32,11 +33,11 @@ public class CageRenderer extends EntityRenderer<CageEntity> {
     public void render(CageEntity cageEntity, float v, float v1, MatrixStack stack, IRenderTypeBuffer buffer, int color) {
         super.render(cageEntity, v, v1, stack, buffer, color);
         renderPart(cageEntity, v, v1, stack, buffer, color,
-                ws, new ResourceLocation(RealElevator.ID, "textures/entities/cage/wall_standard_sample.png"));
+                ws, new ResourceLocation(RealElevator.ID, "textures/entities/cage/wall_standard_sample1.png"));
         renderPart(cageEntity, v, v1, stack, buffer, color,
-                rs, new ResourceLocation(RealElevator.ID, "textures/entities/cage/roof_standard_1.png"));
+                rs, new ResourceLocation(RealElevator.ID, "textures/entities/cage/roof_standard_-1.png"));
         renderPart(cageEntity, v, v1, stack, buffer, color,
-                fs, new ResourceLocation(RealElevator.ID, "textures/entities/cage/floor_standard_sample.png"));
+                fs, new ResourceLocation(RealElevator.ID, "textures/entities/cage/floor_standard_sample1.png"));
     }
 
     private void renderPart(CageEntity entity, float v, float v1, MatrixStack stack, IRenderTypeBuffer buffer, int ctr, EntityModel model, ResourceLocation location){
