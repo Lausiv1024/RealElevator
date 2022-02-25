@@ -8,16 +8,13 @@ import lausiv1024.client.entitymodel.RoofStandard;
 import lausiv1024.client.entitymodel.WallStandard;
 import lausiv1024.entity.CageEntity;
 import net.minecraft.client.renderer.IRenderTypeBuffer;
-import net.minecraft.client.renderer.entity.BoatRenderer;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererManager;
-import net.minecraft.client.renderer.entity.LivingRenderer;
 import net.minecraft.client.renderer.entity.model.EntityModel;
 import net.minecraft.client.renderer.texture.AtlasTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.entity.item.BoatEntity;
-import net.minecraft.entity.monster.ShulkerEntity;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.vector.Vector3f;
 
 public class CageRenderer extends EntityRenderer<CageEntity> {
@@ -32,17 +29,26 @@ public class CageRenderer extends EntityRenderer<CageEntity> {
     @Override
     public void render(CageEntity cageEntity, float v, float v1, MatrixStack stack, IRenderTypeBuffer buffer, int color) {
         super.render(cageEntity, v, v1, stack, buffer, color);
+        //RealElevator.LOGGER.info("combinedColor : {}", color);
+        int d = cageEntity.getRotation();
         renderPart(cageEntity, v, v1, stack, buffer, color,
-                ws, new ResourceLocation(RealElevator.ID, "textures/entities/cage/wall_standard_sample1.png"));
+                ws, new ResourceLocation(RealElevator.ID, "textures/entities/cage/wall_standard_sample1.png"), d);
         renderPart(cageEntity, v, v1, stack, buffer, color,
-                rs, new ResourceLocation(RealElevator.ID, "textures/entities/cage/roof_standard_-1.png"));
+                rs, new ResourceLocation(RealElevator.ID, "textures/entities/cage/roof_standard_-1.png"), d);
         renderPart(cageEntity, v, v1, stack, buffer, color,
-                fs, new ResourceLocation(RealElevator.ID, "textures/entities/cage/floor_standard_sample1.png"));
+                fs, new ResourceLocation(RealElevator.ID, "textures/entities/cage/floor_standard_sample1.png"), d);
     }
 
-    private void renderPart(CageEntity entity, float v, float v1, MatrixStack stack, IRenderTypeBuffer buffer, int ctr, EntityModel model, ResourceLocation location){
+    @Override
+    protected int getBlockLightLevel(CageEntity p_225624_1_, BlockPos p_225624_2_) {
+        return 15;
+    }
+
+    private void renderPart(CageEntity entity, float v, float v1, MatrixStack stack, IRenderTypeBuffer buffer, int ctr, EntityModel model, ResourceLocation location, int rotation){
         stack.pushPose();
+        stack.translate(0, 1.5, 0);
         stack.mulPose(Vector3f.YP.rotationDegrees(180.0f - v));
+        stack.mulPose(Vector3f.YP.rotationDegrees(90.0f * rotation));
 
         stack.scale(1.0f, -1.0f, -1.0f);
 
