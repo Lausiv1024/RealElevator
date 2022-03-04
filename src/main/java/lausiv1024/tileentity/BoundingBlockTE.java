@@ -25,11 +25,10 @@ public class BoundingBlockTE extends TileEntity {
     }
 
     public void setMainLocation(BlockPos pos){
+        mainPos = pos;
         blockRegistered = mainPos != null;
-        if (!level.isClientSide){
-            mainPos = pos;
-        }
     }
+
     public BlockPos getMainPos(){
         if (mainPos == null){
             mainPos = BlockPos.ZERO;

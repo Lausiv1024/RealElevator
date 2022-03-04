@@ -1,5 +1,7 @@
 package lausiv1024.entity;
 
+import lausiv1024.elevator.AbstractElevator;
+import lausiv1024.elevator.Elevator;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.nbt.CompoundNBT;
@@ -16,9 +18,11 @@ public abstract class ElevatorPartEntity extends Entity {
     protected double lerpY;
     protected double lerpZ;
     protected int lerpStep;
+    protected AbstractElevator elevator;
 
     public ElevatorPartEntity(EntityType<? extends Entity> type, World world) {
         super(type, world);
+        elevator = null;
     }
 
     public void setElevatorId(UUID elevatorId) {
@@ -58,6 +62,10 @@ public abstract class ElevatorPartEntity extends Entity {
     public void tick() {
         super.tick();
         if (moving) doMotion();
+    }
+
+    public Vector3d getPrevPos(){
+        return new Vector3d(xo, yo, zo);
     }
 
     protected void doMotion(){

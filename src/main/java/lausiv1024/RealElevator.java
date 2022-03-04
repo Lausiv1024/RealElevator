@@ -22,6 +22,7 @@ import org.apache.logging.log4j.Logger;
 public class RealElevator {
     public static final String ID = "realelevator";
     public static final Logger LOGGER = LogManager.getLogger(ID);
+    public static final boolean[] TRUE_AND_FALSE = { true, false };
 
     public RealElevator(){
         IEventBus eventBus = FMLJavaModLoadingContext.get().getModEventBus();

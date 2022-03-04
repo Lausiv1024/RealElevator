@@ -1,11 +1,14 @@
 package lausiv1024.tileentity;
 
+import lausiv1024.elevator.Elevator;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.NBTUtil;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SUpdateTileEntityPacket;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityType;
+import net.minecraft.util.math.BlockPos;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
@@ -13,13 +16,17 @@ import java.util.UUID;
 public abstract class ElevatorPartTE extends TileEntity {
     protected UUID elevatorID;
     boolean registered = false;
+    protected boolean isController;
+    BlockPos controllerPos;
     public ElevatorPartTE(TileEntityType<?> tileEntityType, UUID elevatorID) {
         super(tileEntityType);
         this.elevatorID = elevatorID;
+        isController = false;
     }
 
     public ElevatorPartTE(TileEntityType<?> tileEntityType){
         super(tileEntityType);
+        isController = false;
     }
 
     public void setElevatorID(UUID uuid){
@@ -37,6 +44,10 @@ public abstract class ElevatorPartTE extends TileEntity {
         super.load(state, nbt);
         if (nbt.hasUUID("ElevatorId"))
             elevatorID = nbt.getUUID("ElevatorId");
+        if (nbt.contains("ControllerPos")){
+            NBTUtil.readBlockPos(nbt.getCompound("ControllerPos"));
+            //controllerPos = nbt.
+        }
     }
 
     @Override
@@ -44,6 +55,8 @@ public abstract class ElevatorPartTE extends TileEntity {
         super.save(nbt);
         if (elevatorID != null)
             nbt.putUUID("ElevatorId", elevatorID);
+        if (controllerPos != null)
+            nbt.put("ControllerPos",NBTUtil.writeBlockPos(controllerPos));
         return nbt;
     }
 
@@ -57,6 +70,10 @@ public abstract class ElevatorPartTE extends TileEntity {
     @Nullable
     public SUpdateTileEntityPacket getUpdatePacket() {
         return new SUpdateTileEntityPacket(this.worldPosition, 3, this.getUpdateTag());
+    }
+
+    public BlockPos getControllerPos() {
+        return controllerPos;
     }
 
     public CompoundNBT getUpdateTag() {

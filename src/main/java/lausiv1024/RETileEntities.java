@@ -1,9 +1,6 @@
 package lausiv1024;
 
-import lausiv1024.tileentity.BoundingBlockTE;
-import lausiv1024.tileentity.FloorDisplayTile;
-import lausiv1024.tileentity.HoleLanternTile;
-import lausiv1024.tileentity.LandingButtonBlockTE;
+import lausiv1024.tileentity.*;
 import net.minecraft.tileentity.TileEntityType;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.RegistryObject;
@@ -25,6 +22,10 @@ public class RETileEntities {
             TileEntityType.Builder.of(LandingButtonBlockTE::new, REBlocks.ELEVATOR_BUTTON_SINGLE.get()).build(null));
     public static final RegistryObject<TileEntityType<BoundingBlockTE>> BOUNDING_BLOCK_TE = TILEENTITY_TYPES.register("bounding_block",
             () -> TileEntityType.Builder.of(BoundingBlockTE::new, REBlocks.BOUNDING_BLOCK.get()).build(null));
+    public static final RegistryObject<TileEntityType<FloorControllerTE>> FLOOR_CONTROLLER_TE = TILEENTITY_TYPES.register("floor_controller",() ->
+            TileEntityType.Builder.of(FloorControllerTE::new, REBlocks.FLOOR_CONTROLLER.get()).build(null));
+    public static final RegistryObject<TileEntityType<ElevatorControllerTE>> ELEVATOR_CONTROLLER = TILEENTITY_TYPES.register("elevator_controller", () ->
+            TileEntityType.Builder.of(ElevatorControllerTE::new, REBlocks.ELEVATOR_CONTROLLER.get()).build(null));
 
     public static void register(IEventBus eventBus){
         TILEENTITY_TYPES.register(eventBus);

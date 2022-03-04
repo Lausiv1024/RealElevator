@@ -136,6 +136,6 @@ public class BoundingBlock extends Block {
         }
         VoxelShape shape = mainState.getShape(world, mainPos, context);
         BlockPos offset = pos.subtract(mainPos);
-        return shape.move(-offset.getX(), -offset.getY(), -offset.getZ());
+        return shape.move(offset.getX(), offset.getY(), offset.getZ());
     }
 }

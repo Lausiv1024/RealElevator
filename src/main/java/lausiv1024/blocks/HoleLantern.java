@@ -2,6 +2,7 @@ package lausiv1024.blocks;
 
 import lausiv1024.RESoundEvents;
 import lausiv1024.RealElevator;
+import lausiv1024.elevator.Elevator;
 import lausiv1024.tileentity.HoleLanternTile;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;

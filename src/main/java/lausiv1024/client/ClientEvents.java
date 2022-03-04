@@ -7,6 +7,7 @@ import lausiv1024.client.render.entity.CageRenderer;
 import lausiv1024.client.render.entity.CwtEntityRenderer;
 import lausiv1024.client.render.entity.DoorNoWindowRenderer;
 import lausiv1024.client.render.entity.EleButtonRenderer;
+import lausiv1024.client.render.tileentity.FlControllerRenderer;
 import lausiv1024.client.render.tileentity.FloorDisplayRenderer;
 import lausiv1024.client.render.tileentity.HoleLanternRender;
 import lausiv1024.client.render.tileentity.LandingButtonTERenderer;
@@ -28,9 +29,10 @@ public class ClientEvents {
     @SubscribeEvent
     @OnlyIn(Dist.CLIENT)
     public static void setupClient(FMLClientSetupEvent event){
-        ClientRegistry.bindTileEntityRenderer(RETileEntities.HOLE_LANTERN.get(), arg -> new HoleLanternRender(TileEntityRendererDispatcher.instance));
-        ClientRegistry.bindTileEntityRenderer(RETileEntities.FLOOR_DISPLAY.get(), arg -> new FloorDisplayRenderer(TileEntityRendererDispatcher.instance));
-        ClientRegistry.bindTileEntityRenderer(RETileEntities.LANDING_BUTTON_TE.get(), arg -> new LandingButtonTERenderer(TileEntityRendererDispatcher.instance));
+        ClientRegistry.bindTileEntityRenderer(RETileEntities.HOLE_LANTERN.get(), arg -> new HoleLanternRender<>(TileEntityRendererDispatcher.instance));
+        ClientRegistry.bindTileEntityRenderer(RETileEntities.FLOOR_DISPLAY.get(), arg -> new FloorDisplayRenderer<>(TileEntityRendererDispatcher.instance));
+        ClientRegistry.bindTileEntityRenderer(RETileEntities.LANDING_BUTTON_TE.get(), arg -> new LandingButtonTERenderer<>(TileEntityRendererDispatcher.instance));
+        ClientRegistry.bindTileEntityRenderer(RETileEntities.FLOOR_CONTROLLER_TE.get(), arg -> new FlControllerRenderer<>(TileEntityRendererDispatcher.instance));
 
         RenderingRegistry.registerEntityRenderingHandler(REEntities.ELEVATOR_BUTTON.get(), EleButtonRenderer::new);
         RenderingRegistry.registerEntityRenderingHandler(REEntities.ELEVATOR_DOOR_NO_WINDOW_ENTITY_TYPE.get(), DoorNoWindowRenderer::new);

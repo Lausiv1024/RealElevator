@@ -1,8 +1,12 @@
 {
     "variants":{
-        "facing=north":{"model":"realelevator:block/floor_controller"},
-        "facing=east":{"model":"realelevator:block/floor_controller", "y" : 90},
-        "facing=south":{"model":"realelevator:block/floor_controller", "y" : 180},
-        "facing=west":{"model":"realelevator:block/floor_controller", "y" : 270}
+        "facing=north,is_single=false":{"model":"realelevator:block/floor_controller"},
+        "facing=east,is_single=false":{"model":"realelevator:block/floor_controller", "y" : 90},
+        "facing=south,is_single=false":{"model":"realelevator:block/floor_controller", "y" : 180},
+        "facing=west,is_single=false":{"model":"realelevator:block/floor_controller", "y" : 270},
+        "facing=north,is_single=true":{"model":"realelevator:block/floor_controller_single"},
+        "facing=east,is_single=true":{"model":"realelevator:block/floor_controller_single", "y" : 90},
+        "facing=south,is_single=true":{"model":"realelevator:block/floor_controller_single", "y" : 180},
+        "facing=west,is_single=true":{"model":"realelevator:block/floor_controller_single", "y" : 270}
     }
 }

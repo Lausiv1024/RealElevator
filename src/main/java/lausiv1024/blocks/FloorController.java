@@ -2,13 +2,19 @@ package lausiv1024.blocks;
 
 import lausiv1024.RESoundEvents;
 import lausiv1024.blocks.interfaces.IHasBounding;
+import lausiv1024.elevator.ElevatorDirection;
+import lausiv1024.elevator.EnumCallingState;
+import lausiv1024.tileentity.FloorControllerTE;
+import lausiv1024.util.RotatableBoxShape;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalBlock;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItemUseContext;
+import net.minecraft.state.BooleanProperty;
 import net.minecraft.state.DirectionProperty;
 import net.minecraft.state.StateContainer;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockRayTraceResult;
@@ -23,49 +29,41 @@ import net.minecraft.world.World;
 import javax.annotation.Nullable;
 
 public class FloorController extends ElevatorPartBlock implements IHasBounding {
-
-    public static final VoxelShape[] PLATE = {
-        box(5, -4, 0, 11, 23, 0.2),
-            box(15.8, -4, 5, 16, 23, 11),
-            box(5, -4, 15.8, 11, 23, 16),
-            box(0, -4, 5, 0.2, 23, 11)
-    };
-    public static final VoxelShape[] BUTTON_UP = {
-        box(7, 4, 0.1, 9, 6, 0.9),
-            box(15.1, 4, 7, 15.9, 6, 9),
-            box(7, 4, 15.1, 9, 6, 15.9),
-            box(0.1, 4, 7, 0.9, 6, 9)
-    };
-    public static final VoxelShape[] BUTTON_DOWN = {
-        box(7, 0, 0.1, 9, 2, 0.9),
-            box(15.1, 0, 7, 15.9, 2, 9),
-            box(7, 0, 15.1, 9, 2, 15.9),
-            box(0.1, 0, 7, 0.9, 2, 9)
-    };
-
-    public static final VoxelShape[] ALL = {
-            VoxelShapes.or(PLATE[0], BUTTON_UP[0], BUTTON_DOWN[0]),
-            VoxelShapes.or(PLATE[1], BUTTON_UP[1], BUTTON_DOWN[1]),
-            VoxelShapes.or(PLATE[2], BUTTON_UP[2], BUTTON_DOWN[2]),
-            VoxelShapes.or(PLATE[3], BUTTON_UP[3], BUTTON_DOWN[3])
-    };
+    public static final RotatableBoxShape PLATE = new RotatableBoxShape(5, -4, 0, 11, 23, 0.2);
+    public static final RotatableBoxShape BUT_UP = new RotatableBoxShape(7, 4, 0.1, 9, 6, 0.9);
+    public static final RotatableBoxShape BUT_DOWN = new RotatableBoxShape(7, 0, 0.1, 9, 2, 0.9);
+    public static final RotatableBoxShape BUT_SINGLE = new RotatableBoxShape(7, 2, 0.1, 9, 4, 0.9);
 
     public static final DirectionProperty FACING = HorizontalBlock.FACING;
+    public static final BooleanProperty IS_SINGLE = BooleanProperty.create("is_single");
     public FloorController(){
         super();
-        this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH));
+        this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH).setValue(IS_SINGLE, false));
     }
 
     @Override
     public ActionResultType use(BlockState state, World world, BlockPos pos, PlayerEntity playerEntity, Hand hand, BlockRayTraceResult result) {
         test(pos, result);
+        FloorControllerTE tile = getTe(world, pos);
+        if (tile == null) return ActionResultType.FAIL;
         int a = calculatePressedButton(state, result.getLocation(), pos);
         if (a > 0){
-            if (a == 1) playerEntity.playSound(RESoundEvents.UPSOUND, 1, 1);
-            if (a == 2) playerEntity.playSound(RESoundEvents.DOWNSOUND, 1, 1);
+            if (a == 1) {
+                playerEntity.playSound(RESoundEvents.UPSOUND, 1, 1);
+                tile.setDirection(ElevatorDirection.UP);
+                tile.upA();
+            }
+            if (a == 2) {
+                playerEntity.playSound(RESoundEvents.DOWNSOUND, 1, 1);
+                tile.setDirection(ElevatorDirection.DOWN);
+                tile.dwA();
+            }
+            if (a == 3){
+                tile.setCalled(true);
+            }
             return ActionResultType.SUCCESS;
         }
-        return super.use(state, world, pos, playerEntity, hand, result);
+        return ActionResultType.FAIL;
     }
 
     private void test(BlockPos pos, BlockRayTraceResult result){
@@ -82,28 +80,41 @@ public class FloorController extends ElevatorPartBlock implements IHasBounding {
         double yKijun = 0.2;
 
         Direction facing = state.getValue(FACING);
+        boolean boo = state.getValue(IS_SINGLE);
+
         switch (facing){
             case WEST:
                 if (x > 0.015){
-                    if (y > yKijun){
+                    if (boo){
+                        a = 3;
+                    }
+                    else if (y > yKijun){
                         a = 1;
-                    }else{
+                    }
+                    else{
                         a = 2;
                     }
                 }
                 break;
             case SOUTH:
                 if (z < 0.985){
-                    if (y > yKijun){
+                    if (boo){
+                        a = 3;
+                    }
+                    else if (y > yKijun){
                         a = 1;
-                    }else{
+                    }
+                    else{
                         a = 2;
                     }
                 }
                 break;
             case NORTH:
                 if (z > 0.015){
-                    if (y > yKijun){
+                    if (boo){
+                        a = 3;
+                    }
+                    else if (y > yKijun){
                         a = 1;
                     }else{
                         a = 2;
@@ -112,9 +123,13 @@ public class FloorController extends ElevatorPartBlock implements IHasBounding {
                 break;
             case EAST:
                 if (x < 0.985){
-                    if (y > yKijun){
+                    if (boo){
+                        a = 3;
+                    }
+                    else if (y > yKijun){
                         a = 1;
-                    }else{
+                    }
+                    else{
                         a = 2;
                     }
                 }
@@ -122,6 +137,12 @@ public class FloorController extends ElevatorPartBlock implements IHasBounding {
         }
 
         return a;
+    }
+
+    private FloorControllerTE getTe(World world, BlockPos pos){
+        TileEntity tileEntity = world.getBlockEntity(pos);
+        if (!(tileEntity instanceof FloorControllerTE)) return null;
+        return (FloorControllerTE) tileEntity;
     }
 
     @Nullable
@@ -140,25 +161,30 @@ public class FloorController extends ElevatorPartBlock implements IHasBounding {
     public BlockState mirror(BlockState state, Mirror mirror) {
         return state.rotate(mirror.getRotation(state.getValue(FACING)));
     }
-    protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> p_206840_1_) {
-        p_206840_1_.add(FACING);
+    protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> state) {
+        state.add(FACING);
+        state.add(IS_SINGLE);
+    }
+
+    @Override
+    public boolean hasTileEntity(BlockState state) {
+        return true;
+    }
+
+    @Nullable
+    @Override
+    public TileEntity createTileEntity(BlockState state, IBlockReader world) {
+        return new FloorControllerTE();
     }
 
     @Override
     public VoxelShape getShape(BlockState state, IBlockReader reader, BlockPos pos, ISelectionContext context) {
         Direction direction = state.getValue(FACING);
-        switch (direction){
-            case NORTH:
-                return ALL[0];
-            case EAST:
-                return ALL[1];
-            case SOUTH:
-                return ALL[2];
-            case WEST:
-                return ALL[3];
-            default:
-                throw new IllegalStateException("Invalid Facing Value - " + direction.toString());
-        }
+        boolean isSingle = state.getValue(IS_SINGLE);
+        VoxelShape shape = PLATE.rotateAndConvert(direction);
+        shape = isSingle ? VoxelShapes.or(shape, BUT_SINGLE.rotateAndConvert(direction))
+                : VoxelShapes.or(shape, BUT_UP.rotateAndConvert(direction), BUT_DOWN.rotateAndConvert(direction));
+        return shape;
     }
 
     @Override
