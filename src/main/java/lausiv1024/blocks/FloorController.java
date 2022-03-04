@@ -3,7 +3,6 @@ package lausiv1024.blocks;
 import lausiv1024.RESoundEvents;
 import lausiv1024.blocks.interfaces.IHasBounding;
 import lausiv1024.elevator.ElevatorDirection;
-import lausiv1024.elevator.EnumCallingState;
 import lausiv1024.tileentity.FloorControllerTE;
 import lausiv1024.util.RotatableBoxShape;
 import net.minecraft.block.Block;
@@ -49,12 +48,12 @@ public class FloorController extends ElevatorPartBlock implements IHasBounding {
         int a = calculatePressedButton(state, result.getLocation(), pos);
         if (a > 0){
             if (a == 1) {
-                playerEntity.playSound(RESoundEvents.UPSOUND, 1, 1);
+                //playerEntity.playSound(RESoundEvents.UP_SOUND, 1, 1);
                 tile.setDirection(ElevatorDirection.UP);
                 tile.upA();
             }
             if (a == 2) {
-                playerEntity.playSound(RESoundEvents.DOWNSOUND, 1, 1);
+                //playerEntity.playSound(RESoundEvents.DOWN_SOUND, 1, 1);
                 tile.setDirection(ElevatorDirection.DOWN);
                 tile.dwA();
             }

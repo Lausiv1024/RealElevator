@@ -6,6 +6,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalBlock;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItemUseContext;
+import net.minecraft.state.BooleanProperty;
 import net.minecraft.state.DirectionProperty;
 import net.minecraft.state.StateContainer;
 import net.minecraft.tileentity.TileEntity;
@@ -24,6 +25,8 @@ import javax.annotation.Nullable;
 
 public class ElevatorButtonBlock extends ElevatorPartBlock {
     public static final DirectionProperty FACING = HorizontalBlock.FACING;
+    public static final BooleanProperty IS_SINGLE = BooleanProperty.create("is_single");
+
     /*-------------------------------------------------NORTH---------------------------------------------------------------*/
     private static final VoxelShape NORTH_BASE = Block.box(5,2,0,11,14,0.2);
     private static final VoxelShape NORTH_BUTTON_UP = Block.box(7,9,0.2,9,11,1);

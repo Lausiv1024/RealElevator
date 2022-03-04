@@ -25,6 +25,7 @@ public class FloorControllerTE extends ElevatorPartTE implements ITickableTileEn
     private boolean up;
     private boolean down;
     private boolean called;
+    private int color = 0;
 
     public FloorControllerTE(TileEntityType<?> tileEntityType, UUID elevatorID) {
         super(tileEntityType, elevatorID);
@@ -32,6 +33,11 @@ public class FloorControllerTE extends ElevatorPartTE implements ITickableTileEn
 
     public FloorControllerTE(){
         super(RETileEntities.FLOOR_CONTROLLER_TE.get());
+    }
+
+    public FloorControllerTE(int color){
+        super(RETileEntities.FLOOR_CONTROLLER_TE.get());
+        this.color = color;
     }
 
     public String getCurFlName() {
@@ -56,6 +62,10 @@ public class FloorControllerTE extends ElevatorPartTE implements ITickableTileEn
 
     public boolean isCalled() {
         return called;
+    }
+
+    public int getColor() {
+        return color;
     }
 
     public void upA(){
@@ -99,6 +109,7 @@ public class FloorControllerTE extends ElevatorPartTE implements ITickableTileEn
         up = nbt.getBoolean("Up");
         down = nbt.getBoolean("Down");
         called = nbt.getBoolean("Called");
+        color = nbt.getInt("Color");
     }
 
     @Override
@@ -113,6 +124,7 @@ public class FloorControllerTE extends ElevatorPartTE implements ITickableTileEn
         nbt.putBoolean("Up", up);
         nbt.putBoolean("Down", down);
         nbt.putBoolean("Called", called);
+        nbt.putInt("Color", color);
         return super.save(nbt);
     }
 

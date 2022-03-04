@@ -93,22 +93,30 @@ public class FlControllerRenderer<T extends FloorControllerTE> extends ElevatorP
 
     private void drawButLight(){
         if (tile.getBlockState().getValue(FloorController.IS_SINGLE) && tile.isCalled()){
-            button(new Vector3f(-0.07f, 0.025f, 0.466f),
-                    new Vector3f(0.07f, 0.05f, 0.416f));
+            button(new Vector3f(-0.07f, -0.38f, 0.49f),
+                    new Vector3f(0.07f, -0.24f, 0.43f));
         }else{
-
+            if (tile.isUp()){
+                button(new Vector3f(-0.07f, -0.26f, 0.49f),
+                        new Vector3f(0.07f, -0.12f, 0.43f));
+            }
+            if (tile.isDown()){
+                button(new Vector3f(-0.07f, -0.51f, 0.49f),
+                        new Vector3f(0.07f, -0.37f, 0.43f));
+            }
         }
     }
 
     private void button(Vector3f start, Vector3f end){
         matrixStack.pushPose();
+        RenderType type1 = tile.getColor() == 1 ? LIGHT_WHITE : LIGHT_YELLOW;
         matrixStack.translate(0.5, 0.5, .5);
         Direction direction = tile.getBlockState().getValue(HorizontalBlock.FACING);
         if (direction.getNormal().getX() == 0)
             matrixStack.mulPose(new Quaternion(0, direction.toYRot(), 0, true));
         else
             matrixStack.mulPose(new Quaternion(0, direction.getOpposite().toYRot(), 0, true));
-        BoxRenderer.render(LIGHT_WHITE, matrixStack, buffer, start, end);
+        BoxRenderer.render(type1, matrixStack, buffer, start, end);
         matrixStack.popPose();
     }
 

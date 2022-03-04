@@ -53,7 +53,7 @@ public class ElevatorButtonSingleBlock extends ElevatorPartBlock {
         LandingButtonBlockTE landingButtonBlockTE = (LandingButtonBlockTE) entity;
         boolean a = calculatePressedButton(state, result.getLocation(), pos);
         if (a){
-            world.playSound(null, pos, RESoundEvents.CALLSOUND,SoundCategory.BLOCKS, 0.5f, 1f);
+            world.playSound(null, pos, RESoundEvents.CALL_SOUND,SoundCategory.BLOCKS, 0.5f, 1f);
             landingButtonBlockTE.down = true;
             return ActionResultType.SUCCESS;
         }

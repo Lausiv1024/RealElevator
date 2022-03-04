@@ -2,7 +2,6 @@ package lausiv1024.blocks;
 
 import lausiv1024.RESoundEvents;
 import lausiv1024.RealElevator;
-import lausiv1024.elevator.Elevator;
 import lausiv1024.tileentity.HoleLanternTile;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -87,10 +86,10 @@ public class HoleLantern extends ElevatorPartBlock {
         if (stack.getItem() == Items.REDSTONE_TORCH){
             holeLanternTile.setLightMode(1);
 
-            world.playSound(null, holeLanternTile.getBlockPos(),  RESoundEvents.UPSOUND, SoundCategory.BLOCKS, 0.5f, 1);
+            world.playSound(null, holeLanternTile.getBlockPos(),  RESoundEvents.UP_SOUND, SoundCategory.BLOCKS, 0.5f, 1);
         }else if (stack.getItem() == Items.REDSTONE_BLOCK){
             holeLanternTile.setLightMode(2);
-            world.playSound(null, holeLanternTile.getBlockPos(),  RESoundEvents.DOWNSOUND, SoundCategory.BLOCKS, 0.5f, 1);
+            world.playSound(null, holeLanternTile.getBlockPos(),  RESoundEvents.DOWN_SOUND, SoundCategory.BLOCKS, 0.5f, 1);
         }else if (stack.getItem() == Items.STICK){
             holeLanternTile.setLightMode(3);
         }else if (stack.getItem() == Items.REDSTONE){
