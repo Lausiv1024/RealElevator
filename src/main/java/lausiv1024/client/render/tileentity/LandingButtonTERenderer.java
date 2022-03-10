@@ -5,7 +5,10 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.IVertexBuilder;
 import lausiv1024.RealElevator;
 import lausiv1024.blocks.ElevatorButtonBlock;
+import lausiv1024.blocks.FloorController;
+import lausiv1024.client.render.BoxRenderer;
 import lausiv1024.tileentity.LandingButtonBlockTE;
+import net.minecraft.block.HorizontalBlock;
 import net.minecraft.client.renderer.RenderState;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
@@ -14,6 +17,7 @@ import net.minecraft.util.Direction;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
+import net.minecraft.util.math.vector.Vector3f;
 import org.lwjgl.opengl.GL11;
 
 public class LandingButtonTERenderer<T extends LandingButtonBlockTE> extends ElevatorPartRender<T>{
@@ -27,7 +31,7 @@ public class LandingButtonTERenderer<T extends LandingButtonBlockTE> extends Ele
     @Override
     protected void render() {
         RenderType type;
-        if (tile.color == 0) type = LIGHT_YELLOW;
+        if (tile.getColor() == 0) type = LIGHT_YELLOW;
         else type = LIGHT_WHITE;
         matrixStack.pushPose();
         matrixStack.translate(0.5, 0.5, 0.5);
@@ -38,24 +42,40 @@ public class LandingButtonTERenderer<T extends LandingButtonBlockTE> extends Ele
             matrixStack.mulPose(new Quaternion(0,tile.getBlockState().getValue(ElevatorButtonBlock.FACING).getOpposite().toYRot(), 0, true));
         }
 
-        if (tile.up){
-            drawQuad(type, new float[]{0.07f, 0.058f, 0.436f}, new float[]{-0.07f, 0.058f, 0.436f},
-                    new float[]{-0.07f, 0.19f, 0.436f}, new float[]{0.07f, 0.19f, 0.436f});
+        matrixStack.popPose();
+        drawButLight();
+    }
+
+    private void drawButLight(){
+        if (!tile.isCalled()) return;
+        if (tile.getBlockState().getValue(FloorController.IS_SINGLE)){
+            button(new Vector3f(-0.07f, -0.2f, 0.49f),
+                    new Vector3f(0.07f, -0.06f, 0.43f));
+        }else{
+            if (tile.isUp()){
+                button(new Vector3f(-0.07f, -0.07f, 0.49f),
+                        new Vector3f(0.07f, 0.07f, 0.43f));
+            }
+            if (tile.isDown()){
+                button(new Vector3f(-0.07f, -0.32f, 0.49f),
+                        new Vector3f(0.07f, -0.18f, 0.43f));
+            }
         }
-        if (tile.down){
-            //drawQuad(type, new float[]{1.0f}, new float[]{1.0f}, new float[]{1.0f}, new float[]{1.0f});
-        }
+    }
+
+    private void button(Vector3f start, Vector3f end){
+        matrixStack.pushPose();
+        RenderType type1 = tile.getColor() == 1 ? LIGHT_WHITE : LIGHT_YELLOW;
+        matrixStack.translate(0.5, 0.5, .5);
+        Direction direction = tile.getBlockState().getValue(HorizontalBlock.FACING);
+        if (direction.getNormal().getX() == 0)
+            matrixStack.mulPose(new Quaternion(0, direction.toYRot(), 0, true));
+        else
+            matrixStack.mulPose(new Quaternion(0, direction.getOpposite().toYRot(), 0, true));
+        BoxRenderer.render(type1, matrixStack, buffer, start, end);
         matrixStack.popPose();
     }
 
-    private void drawQuad(RenderType type, float[] vertex1, float[] vertex2, float[] vertex3, float[] vertex4){
-        Matrix4f matrix = matrixStack.last().pose();
-        IVertexBuilder builder = buffer.getBuffer(type);
-        builder.vertex(matrix, vertex1[0], vertex2[1], vertex1[2]).uv(0, 1).endVertex();
-        builder.vertex(matrix, vertex2[0], vertex2[1], vertex2[2]).uv(0, 1).endVertex();
-        builder.vertex(matrix, vertex3[0], vertex3[1], vertex3[2]).uv(0, 1).endVertex();
-        builder.vertex(matrix, vertex4[0], vertex4[1], vertex4[2]).uv(0, 1).endVertex();
-    }
 
     private static RenderType getTexture(final String name){
         RenderType.State state = RenderType.State.builder().setTransparencyState(new RenderState.TransparencyState("translucent_transparency", () -> {

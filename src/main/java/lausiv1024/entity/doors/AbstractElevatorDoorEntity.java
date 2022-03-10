@@ -1,31 +1,34 @@
 package lausiv1024.entity.doors;
 
+import lausiv1024.REItems;
 import lausiv1024.entity.ElevatorPartEntity;
+import lausiv1024.items.REBaseItem;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntitySize;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.Pose;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.network.IPacket;
-import net.minecraft.util.Direction;
+import net.minecraft.network.datasync.DataParameter;
+import net.minecraft.network.datasync.DataSerializers;
+import net.minecraft.network.datasync.EntityDataManager;
+import net.minecraft.util.DamageSource;
+import net.minecraft.util.Hand;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.network.NetworkHooks;
 
 public abstract class AbstractElevatorDoorEntity extends ElevatorPartEntity {
+    public static final DataParameter<Integer> ROTATION = EntityDataManager.defineId(AbstractElevatorDoorEntity.class, DataSerializers.INT);
+    public static final DataParameter<Boolean> MIRROR = EntityDataManager.defineId(AbstractElevatorDoorEntity.class, DataSerializers.BOOLEAN);
+    public static final DataParameter<Integer> VENEER_ID = EntityDataManager.defineId(AbstractElevatorDoorEntity.class, DataSerializers.INT);
+    public static final DataParameter<Boolean> ISLANDING = EntityDataManager.defineId(AbstractElevatorDoorEntity.class, DataSerializers.BOOLEAN);
 
-    private Direction direction = Direction.NORTH;
-    public int tall = 3;
-    public int surfaceType = 0;
     public AbstractElevatorDoorEntity(EntityType<? extends Entity> type, World world) {
         super(type, world);
     }
 
-    protected void applyDirection(){
-        if (direction != null & !level.isClientSide){
-            this.yRot = this.direction.getOpposite().get2DDataValue() * 90;
-            this.yRotO = yRot;
-        }
-    }
 
     @Override
     protected float getEyeHeight(Pose pose, EntitySize entitySize) {
@@ -40,7 +43,6 @@ public abstract class AbstractElevatorDoorEntity extends ElevatorPartEntity {
     @Override
     public void setPos(double p_70107_1_, double p_70107_3_, double p_70107_5_) {
         super.setPos(p_70107_1_, p_70107_3_, p_70107_5_);
-        applyDirection();
     }
 
     @Override
@@ -54,57 +56,92 @@ public abstract class AbstractElevatorDoorEntity extends ElevatorPartEntity {
     }
 
     @Override
-    public Direction getDirection() {
-        return direction;
-    }
-
-    public void setDirection(Direction direction) {
-        this.direction = direction;
+    public AxisAlignedBB getBoundingBox() {
+        double sx = getX(), sy = getY(), sz = getZ();
+        double ex = getX(), ey = getY() + 3, ez= getZ();
+        if (getRotation1() == 1 || getRotation1() == 3){
+            sz -= 0.375;
+            ez += 0.375;
+            sx -= 0.0625;
+            ex += 0.0625;
+        }else{
+            sx -= 0.375;
+            ex += 0.375;
+            sz -= 0.0625;
+            ez += 0.0625;
+        }
+        return new AxisAlignedBB(sx, sy, sz, ex, ey, ez);
     }
 
     @Override
-    public AxisAlignedBB getBoundingBox() {
-        if (this.getDirection() != null){
-            double x = this.getX() - 0.5d;
-            //double y = tall == 3 ? this.getY() - 3d / 2 : this.getY() - 2;
-            double y = this.getY();
-            double z = this.getZ() - 0.5d;
-
-            double x1 = this.getX() - 1 / 16d;
-            double z1 = this.getZ() - 1 / 16d;
-
-            Direction.Axis axis = Direction.Axis.Z;
-            if (yRot == -90.0f || yRot == 90.0f){
-                axis = Direction.Axis.X;
-            }
-            boolean isZ = false;
-
-            double a = 1;
-            double height = tall;
-            double usui = 1 / 8d;
-
-            switch (axis){
-                case X:
-                    x = x1;
-                    break;
-                case Z:
-                    z = z1;
-                    isZ = true;
-                    break;
-            }
-
-            if (isZ){
-                return new AxisAlignedBB(x, y, z, x + a, y + height, z + usui);
-            }else {
-                return new AxisAlignedBB(x, y, z, x + usui, y + height, z + a);
+    public boolean hurt(DamageSource src, float v) {
+        if (src.getEntity() instanceof PlayerEntity){
+            if( ((PlayerEntity) src.getEntity()).getItemInHand(Hand.MAIN_HAND).getItem() == REItems.WRENCH.get()){
+                remove();
+                return true;
             }
         }
-        return super.getBoundingBox();
+        return false;
     }
 
     @Override
     protected void defineSynchedData() {
+        getEntityData().define(ROTATION, 0);
+        getEntityData().define(MIRROR, false);
+        getEntityData().define(VENEER_ID, 0);
+        getEntityData().define(ISLANDING, false);
+    }
 
+    @Override
+    protected void readAdditionalSaveData(CompoundNBT nbt) {
+        setMirror1(nbt.getBoolean("Mirror"));
+        setRotation1(nbt.getInt("Rotation"));
+        setVeneerId(nbt.getInt("VeneerID"));
+        setLand( nbt.getBoolean("IsLanding"));
+        super.readAdditionalSaveData(nbt);
+    }
+
+    @Override
+    protected void addAdditionalSaveData(CompoundNBT nbt) {
+        super.addAdditionalSaveData(nbt);
+        nbt.putBoolean("Mirror", isMirror1());
+        nbt.putBoolean("IsLanding", getLand());
+        nbt.putInt("Rotation", getRotation1());
+        nbt.putInt("VeneerID", getVeneerId());
+    }
+
+    //isMirrorがすでにEntityで定義されてるのでこうなった
+    public boolean isMirror1(){
+        return getEntityData().get(MIRROR);
+    }
+
+    public void setMirror1(boolean b){
+        getEntityData().set(MIRROR, b);
+    }
+
+    public void setRotation1(int rotation){
+        getEntityData().set(ROTATION, rotation);
+    }
+
+    public void setVeneerId(int veneerId){
+        getEntityData().set(VENEER_ID, veneerId);
+    }
+
+    //getrotationがすでにEntityで定義されてるのでこうなった
+    public int getRotation1(){
+        return getEntityData().get(ROTATION);
+    }
+
+    public int getVeneerId(){
+        return getEntityData().get(VENEER_ID);
+    }
+
+    public boolean getLand(){
+        return getEntityData().get(ISLANDING);
+    }
+
+    public void setLand(boolean a){
+        getEntityData().set(ISLANDING, a);
     }
 
     @Override

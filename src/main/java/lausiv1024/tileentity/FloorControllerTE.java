@@ -1,10 +1,7 @@
 package lausiv1024.tileentity;
 
 import lausiv1024.RETileEntities;
-import lausiv1024.RealElevator;
-import lausiv1024.blocks.FloorController;
 import lausiv1024.elevator.ElevatorDirection;
-import lausiv1024.elevator.EnumCallingState;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.tileentity.ITickableTileEntity;
@@ -12,7 +9,7 @@ import net.minecraft.tileentity.TileEntityType;
 
 import java.util.UUID;
 
-public class FloorControllerTE extends ElevatorPartTE implements ITickableTileEntity {
+public class FloorControllerTE extends LandingButtonBlockTE implements ITickableTileEntity {
     private String curFlName = "1";
     private ElevatorDirection direction = ElevatorDirection.NONE;
     private int arrowTick = 0;
@@ -22,10 +19,6 @@ public class FloorControllerTE extends ElevatorPartTE implements ITickableTileEn
     private int arrowFrame;
     private ElevatorDirection renderingDirection = ElevatorDirection.NONE;
     private int moveTimes;
-    private boolean up;
-    private boolean down;
-    private boolean called;
-    private int color = 0;
 
     public FloorControllerTE(TileEntityType<?> tileEntityType, UUID elevatorID) {
         super(tileEntityType, elevatorID);
@@ -52,44 +45,6 @@ public class FloorControllerTE extends ElevatorPartTE implements ITickableTileEn
         return direction;
     }
 
-    public boolean isUp() {
-        return up;
-    }
-
-    public boolean isDown() {
-        return down;
-    }
-
-    public boolean isCalled() {
-        return called;
-    }
-
-    public int getColor() {
-        return color;
-    }
-
-    public void upA(){
-        up = true;
-        called = true;
-    }
-
-    public void dwA(){
-        down = true;
-        called = true;
-    }
-
-    public void setCalled(boolean called) {
-        if (getBlockState().getValue(FloorController.IS_SINGLE))
-            this.called = called;
-    }
-
-    public void rm(boolean downM, boolean upM){
-        down = !downM;
-        up = !upM;
-        if (getBlockState().getValue(FloorController.IS_SINGLE)) return;
-        if (!down && !up) called = false;
-    }
-
     @Override
     public void load(BlockState state, CompoundNBT nbt) {
         super.load(state, nbt);
@@ -99,21 +54,12 @@ public class FloorControllerTE extends ElevatorPartTE implements ITickableTileEn
         blinking = nbt.getBoolean("Blinking");
         arrowFrame = nbt.getInt("ArrowFrame");
         direction = ElevatorDirection.getElevatorDirectionFromIndex(nbt.getInt("CurrentDirection"));
-//        try {
-//            registeredDirection = Enum.valueOf(EnumCallingState.class, nbt.getString("RegisteredDirection"));
-//        }catch (IllegalArgumentException e){
-//            registeredDirection = EnumCallingState.NONE;
-//            RealElevator.LOGGER.info("Registered Direction is Empty or invalid . None was inserted");
-//        }
         renderingDirection = ElevatorDirection.getElevatorDirectionFromIndex(nbt.getInt("RenderingDirection"));
-        up = nbt.getBoolean("Up");
-        down = nbt.getBoolean("Down");
-        called = nbt.getBoolean("Called");
-        color = nbt.getInt("Color");
     }
 
     @Override
     public CompoundNBT save(CompoundNBT nbt) {
+        super.save(nbt);
         nbt.putString("FloorName", curFlName);
         nbt.putBoolean("Moving", moving);
         nbt.putInt("MoveTime", moveTime);
@@ -121,11 +67,7 @@ public class FloorControllerTE extends ElevatorPartTE implements ITickableTileEn
         nbt.putInt("ArrowFrame", arrowFrame);
         nbt.putInt("CurrentDirection" ,direction.nbt_index);
         nbt.putInt("RenderingDirection", renderingDirection.nbt_index);
-        nbt.putBoolean("Up", up);
-        nbt.putBoolean("Down", down);
-        nbt.putBoolean("Called", called);
-        nbt.putInt("Color", color);
-        return super.save(nbt);
+        return nbt;
     }
 
     @Override
@@ -159,7 +101,7 @@ public class FloorControllerTE extends ElevatorPartTE implements ITickableTileEn
                 renderingDirection = direction;
             }else{
                 arrowTick++;
-                if (arrowTick % 3 == 0){
+                if (arrowTick % 4 == 0){
                     updateArrowFrame();
                 }
             }
@@ -168,7 +110,7 @@ public class FloorControllerTE extends ElevatorPartTE implements ITickableTileEn
         //シンプルに動かす
         renderingDirection = direction;
         arrowTick++;
-        if (arrowTick % 3 == 0){
+        if (arrowTick % 4 == 0){
             updateArrowFrame();
         }
     }

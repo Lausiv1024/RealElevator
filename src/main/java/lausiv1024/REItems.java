@@ -15,8 +15,6 @@ public class REItems {
             new BlockItem(REBlocks.ELEVATOR_MARKER.get(), new Item.Properties().tab(RealElevator.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> FLOOR_MARKER = ITEMS.register("floor_marker",() ->
             new Item(new Item.Properties().tab(RealElevator.REAL_ELEVATOR_GROUP)));
-    public static final RegistryObject<Item> ITEM_ELEVATOR_BUTTON_SINGLE = ITEMS.register("elevator_button_single",() ->
-            new BlockItem(REBlocks.ELEVATOR_BUTTON_SINGLE.get(), new Item.Properties().tab(RealElevator.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> ITEM_ELEVATOR_BUTTON = ITEMS.register("elevator_button",() ->
             new BlockItem(REBlocks.ELEVATOR_BUTTON.get(), new Item.Properties().tab(RealElevator.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> ITEM_DOOR_RAIL = ITEMS.register("door_rail",() ->

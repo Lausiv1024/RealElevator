@@ -1,6 +1,7 @@
 package lausiv1024.tileentity;
 
 import lausiv1024.RETileEntities;
+import lausiv1024.blocks.FloorController;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.tileentity.TileEntityType;
@@ -8,25 +9,64 @@ import net.minecraft.tileentity.TileEntityType;
 import java.util.UUID;
 
 public class LandingButtonBlockTE extends ElevatorPartTE{
-    boolean isSingle; //1ボタンかどうか
+    protected boolean up = false;
+    protected boolean down = false;
+    protected boolean called = false;
+    protected int color = 0;
 
-    public boolean up = false;
-    public boolean down = false;
-    public int color = 0;
-
-    public LandingButtonBlockTE(TileEntityType<?> tileEntityType, UUID elevatorID, boolean isSingle) {
+    public LandingButtonBlockTE(TileEntityType<?> tileEntityType, UUID elevatorID) {
         super(tileEntityType, elevatorID);
-        this.isSingle = isSingle;
     }
 
-    public LandingButtonBlockTE(boolean isSingle){
-        super(RETileEntities.LANDING_BUTTON_TE.get());
-        this.isSingle = isSingle;
+    public LandingButtonBlockTE(TileEntityType<?> tileEntityType){
+        super(tileEntityType);
     }
 
     public LandingButtonBlockTE(){
         super(RETileEntities.LANDING_BUTTON_TE.get());
-        isSingle = false;
+    }
+
+    public int getColor() {
+        return color;
+    }
+
+    public void setColor(int color) {
+        if (color > 1) return;
+        this.color = color;
+    }
+
+    public boolean isUp() {
+        return up;
+    }
+
+    public boolean isDown() {
+        return down;
+    }
+
+    public boolean isCalled() {
+        return called;
+    }
+
+    public void setCalled(boolean called) {
+        if (getBlockState().getValue(FloorController.IS_SINGLE))
+            this.called = called;
+    }
+
+    public void upA(){
+        up = true;
+        called = true;
+    }
+
+    public void dwA(){
+        down = true;
+        called = true;
+    }
+
+    public void rm(boolean downM, boolean upM){
+        down = !downM;
+        up = !upM;
+        if (getBlockState().getValue(FloorController.IS_SINGLE)) return;
+        if (!down && !up) called = false;
     }
 
     @Override
@@ -35,7 +75,7 @@ public class LandingButtonBlockTE extends ElevatorPartTE{
         up = nbt.getBoolean("Up");
         down = nbt.getBoolean("Down");
         color = nbt.getInt("Color");
-        isSingle = nbt.getBoolean("Single");
+        called = nbt.getBoolean("Called");
     }
 
     @Override
@@ -43,8 +83,8 @@ public class LandingButtonBlockTE extends ElevatorPartTE{
         super.save(nbt);
         nbt.putBoolean("Up", up);
         nbt.putBoolean("Down", down);
-        nbt.putBoolean("Single", isSingle);
         nbt.putInt("Color", color);
+        nbt.putBoolean("Called", called);
         return nbt;
     }
 }

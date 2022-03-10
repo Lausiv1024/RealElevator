@@ -7,6 +7,9 @@ import net.minecraft.entity.Pose;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.network.IPacket;
+import net.minecraft.network.datasync.DataParameter;
+import net.minecraft.network.datasync.DataSerializers;
+import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.ActionResultType;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.Direction;
@@ -16,10 +19,11 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.network.NetworkHooks;
 
 public class EleButtonEntity extends ElevatorPartEntity {
+    public static final DataParameter<Direction> DIRECTION_DATA = EntityDataManager.defineId(EleButtonEntity.class, DataSerializers.DIRECTION);
+    public static final DataParameter<Integer> LIGHT_COLOR = EntityDataManager.defineId(EleButtonEntity.class, DataSerializers.INT);
+    public static final DataParameter<String> DISP_FL = EntityDataManager.defineId(EleButtonEntity.class, DataSerializers.STRING);
+    public static final DataParameter<Boolean> IS_ACTIVE = EntityDataManager.defineId(EleButtonEntity.class, DataSerializers.BOOLEAN);
     protected int floorIndex = 0;
-    protected boolean isActive = false;
-    private Direction direction = Direction.NORTH;
-    private int count = 0;
 
     public EleButtonEntity(EntityType<?> type, World world) {
         super(type, world);
@@ -49,13 +53,12 @@ public class EleButtonEntity extends ElevatorPartEntity {
         updateBoundingBox();
     }
 
-    public void setDirection(Direction direction) {
-        this.direction = direction;
-    }
-
     @Override
     protected void defineSynchedData() {
-
+        getEntityData().define(DIRECTION_DATA, Direction.NORTH);
+        getEntityData().define(LIGHT_COLOR, 0);
+        getEntityData().define(DISP_FL, "");
+        getEntityData().define(IS_ACTIVE, false);
     }
 
     @Override
@@ -73,19 +76,48 @@ public class EleButtonEntity extends ElevatorPartEntity {
     protected void readAdditionalSaveData(CompoundNBT nbt) {
         super.readAdditionalSaveData(nbt);
         floorIndex = nbt.getInt("FloorIndex");
-        isActive = nbt.getBoolean("Active");
+        setActive(nbt.getBoolean("Active"));
+        putDisplayFloor(nbt.getString("DisplayStr"));
+        putLightColor(nbt.getInt("LightColor"));
+        try{
+            putButDirection(Direction.valueOf(nbt.getString("Direction")));
+        }catch (IllegalArgumentException e){
+            putButDirection(Direction.NORTH);
+        }
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundNBT nbt) {
         super.addAdditionalSaveData(nbt);
-        nbt.putBoolean("Active", isActive);
+        nbt.putBoolean("Active", isActive());
         nbt.putInt("FloorIndex", floorIndex);
+        nbt.putString("Direction", getButDirection().name());
+        nbt.putString("DisplayStr", getDisplayFloor());
+        nbt.putInt("LightColor", getLightColor());
     }
 
-    @Override
-    protected boolean repositionEntityAfterLoad() {
-        return false;
+    public int getLightColor(){
+        return entityData.get(LIGHT_COLOR);
+    }
+
+    public void putLightColor(int ctr){
+        entityData.set(LIGHT_COLOR, ctr);
+    }
+
+    public String getDisplayFloor(){
+        return entityData.get(DISP_FL);
+    }
+
+    public void putDisplayFloor(String val){
+        entityData.set(DISP_FL, val);
+    }
+
+    public boolean isActive(){
+        return entityData.get(IS_ACTIVE);
+    }
+
+    public void setActive(boolean val){
+        entityData.set(IS_ACTIVE, val);
     }
 
     @Override
@@ -102,46 +134,33 @@ public class EleButtonEntity extends ElevatorPartEntity {
     }
 
     @Override
-    public boolean isIgnoringBlockTriggers() {
-        return true;
-    }
-
-    @Override
     public boolean isPickable() {
         return true;
     }
 
+    public Direction getButDirection(){
+        return entityData.get(DIRECTION_DATA);
+    }
+
+    public void putButDirection(Direction direction){
+        entityData.set(DIRECTION_DATA, direction);
+    }
+
     @Override
     public AxisAlignedBB getBoundingBox() {
-        if (direction != null){
-            double x = this.getX() - 1 / 16d;
-            double y = this.getY() - 1 / 16d;
-            double z = this.getZ() - 1 / 16d;
-
-            double x1 = this.getX() - 1 / 64d;
-            double z1 = this.getZ() - 1 / 64d;
-
-            Direction.Axis axis = this.direction.getAxis();
-            boolean isZ = false;
-
-            double a = 1 / 8d;
-            double usui = 1 / 32d;
-
-            switch (axis){
-                case X:
-                    x = x1;
-                    break;
-                case Z:
-                    z = z1;
-                    isZ = true;
-            }
-
-            if (isZ){
-                return new AxisAlignedBB(x, y, z, x + a, y + a, z + usui);
-            }else {
-                return new AxisAlignedBB(x, y, z, x + usui, y + a, z + a);
-            }
+        double sx = getX(), sy = getY() , sz = getZ();
+        double ex = getX(), ey = getY() + 0.125, ez= getZ();
+        if (getButDirection() == Direction.EAST || getButDirection() == Direction.WEST){
+            sz -= 0.0625;
+            ez += 0.0625;
+            sx -= 0.015625;
+            ex += 0.015625;
+        }else{
+            sx -= 0.0625;
+            ex += 0.0625;
+            sz -= 0.015625;
+            ez += 0.015625;
         }
-        return super.getBoundingBox();
+        return new AxisAlignedBB(sx, sy, sz, ex, ey, ez);
     }
 }

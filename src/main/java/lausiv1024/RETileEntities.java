@@ -18,8 +18,6 @@ public class RETileEntities {
             TileEntityType.Builder.of(FloorDisplayTile::new, REBlocks.FLOOR_DISPLAY.get()).build(null));
     public static final RegistryObject<TileEntityType<LandingButtonBlockTE>> LANDING_BUTTON_TE = TILEENTITY_TYPES.register("landing_button", () ->
             TileEntityType.Builder.of(LandingButtonBlockTE::new, REBlocks.ELEVATOR_BUTTON.get()).build(null));
-    public static final RegistryObject<TileEntityType<LandingButtonBlockTE>> LANDING_BUTTON_SINGLE_TE = TILEENTITY_TYPES.register("landing_button_single", () ->
-            TileEntityType.Builder.of(LandingButtonBlockTE::new, REBlocks.ELEVATOR_BUTTON_SINGLE.get()).build(null));
     public static final RegistryObject<TileEntityType<BoundingBlockTE>> BOUNDING_BLOCK_TE = TILEENTITY_TYPES.register("bounding_block",
             () -> TileEntityType.Builder.of(BoundingBlockTE::new, REBlocks.BOUNDING_BLOCK.get()).build(null));
     public static final RegistryObject<TileEntityType<FloorControllerTE>> FLOOR_CONTROLLER_TE = TILEENTITY_TYPES.register("floor_controller",() ->

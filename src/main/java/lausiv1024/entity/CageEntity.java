@@ -1,6 +1,7 @@
 package lausiv1024.entity;
 
 import lausiv1024.REEntities;
+import lausiv1024.elevator.ElevatorDirection;
 import lausiv1024.util.CageUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntitySize;
@@ -21,11 +22,14 @@ import java.util.List;
 
 public class CageEntity extends ElevatorPartEntity implements IHasCollision{
     public static final DataParameter<Integer> ROTATION_DATA = EntityDataManager.defineId(CageEntity.class, DataSerializers.INT);
-    public static final DataParameter<Boolean> ON = EntityDataManager.defineId(CageEntity.class, DataSerializers.BOOLEAN);
     public static final DataParameter<String> CURRENT_FLOOR_DATA = EntityDataManager.defineId(CageEntity.class, DataSerializers.STRING);
-    public static final DataParameter<Integer> ARROW_DATA = EntityDataManager.defineId(CageEntity.class, DataSerializers.INT);
+    public static final DataParameter<Integer> ARROW_FRAME = EntityDataManager.defineId(CageEntity.class, DataSerializers.INT);
+    public static final DataParameter<Integer> RENDER_DIRECTION = EntityDataManager.defineId(CageEntity.class, DataSerializers.INT);
+    public static final DataParameter<Integer> CUR_DIRECTION = EntityDataManager.defineId(CageEntity.class, DataSerializers.INT);
 
     private boolean initialized = false;
+    private int arrowTick;
+    private int arrowSpeed;
 
     public CageEntity(EntityType<?> p_i48580_1_, World p_i48580_2_) {
         super(p_i48580_1_, p_i48580_2_);
@@ -38,18 +42,20 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
     @Override
     protected void defineSynchedData() {
         getEntityData().define(ROTATION_DATA, 0);
-        getEntityData().define(ON, false);
         getEntityData().define(CURRENT_FLOOR_DATA, "1");
-        getEntityData().define(ARROW_DATA, 0);
+        getEntityData().define(ARROW_FRAME, 0);
+        getEntityData().define(RENDER_DIRECTION, 0);
+        getEntityData().define(CUR_DIRECTION, 0);
     }
 
     @Override
     public void tick() {
         super.tick();
         if (!initialized) initCage();
-        if (elevator == null) initialized = false;
+        //if (elevator == null) initialized = false;
 
         applyCollisionToPassenger();
+        arrowTick();
 
         xo = getX();
         yo = getY();
@@ -64,7 +70,41 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         }
     }
 
+    private void arrowTick(){
+        if (getCurDirection() == ElevatorDirection.NONE || arrowSpeed == 0){
+            if (getArrowFrame() == 0){
+                arrowTick = 0;
+                setRenderDirection(getCurDirection());
+            }else{
+                arrowTick++;
+                if (arrowTick % 4 == 0){
+                    updateArrowFrame();
+                }
+            }
+            return;
+        }
+
+        setRenderDirection(getCurDirection());
+        arrowTick++;
+
+        //Core-i7 なんちゃって(は？)
+        int i7 = arrowSpeed > 1 ? 4 : 8;
+        if (arrowTick % i7 == 0){
+            updateArrowFrame();
+        }
+    }
+
+    private void updateArrowFrame(){
+        if (getArrowFrame() == 7) {
+            setArrowFrame(0);
+            return;
+        }
+        incrementFrame();
+    }
+
     private void initCage(){
+        setCurDirection(ElevatorDirection.UP);
+
         initialized = true;
     }
 
@@ -72,12 +112,20 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
     protected void readAdditionalSaveData(CompoundNBT nbt) {
         super.readAdditionalSaveData(nbt);
         putRotation(nbt.getInt("Rotation"));
+        putCurFloor(nbt.getString("Floor"));
+        setArrowFrame(nbt.getInt("ArrowFrame"));
+        setRenderDirection(ElevatorDirection.getElevatorDirectionFromIndex(nbt.getInt("RenderDirection")));
+        setCurDirection(ElevatorDirection.getElevatorDirectionFromIndex(nbt.getInt("CurDirection")));
     }
 
     @Override
     protected void addAdditionalSaveData(CompoundNBT nbt) {
         super.addAdditionalSaveData(nbt);
         nbt.putInt("Rotation", getRotation());
+        nbt.putInt("CurDirection", getCurDirection().nbt_index);
+        nbt.putString("Floor", getCurFloor());
+        nbt.putInt("ArrowFrame", getArrowFrame());
+        nbt.putInt("RenderDirection", getRenderDirection().nbt_index);
     }
 
     public Vector3d getPrevPos(){
@@ -89,9 +137,24 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         return new AxisAlignedBB(getX() - 2, getY() - 1.8, getZ() - 2, getX() + 2, getY() + 5, getZ() + 2);
     }
 
+    //データ参照ようにピックできるようにした。完成したら消去しろ(未来の自分に対して)
+    @Override
+    public boolean isPickable() {
+        return true;
+    }
+
     @Override
     protected float getEyeHeight(Pose p_213316_1_, EntitySize p_213316_2_) {
         return 0.0f;
+    }
+
+    public void putCurFloor(String floor){
+        if (floor.equals(getEntityData().get(CURRENT_FLOOR_DATA))) return;
+        getEntityData().set(CURRENT_FLOOR_DATA, floor);
+    }
+
+    public String getCurFloor(){
+        return getEntityData().get(CURRENT_FLOOR_DATA);
     }
 
     @Override
@@ -115,29 +178,44 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         return entityData.get(ROTATION_DATA);
     }
 
+    public void setArrowSpeed(int arrowSpeed) {
+        this.arrowSpeed = arrowSpeed;
+    }
+
+    public ElevatorDirection getRenderDirection(){
+        return ElevatorDirection.getElevatorDirectionFromIndex(getEntityData().get(RENDER_DIRECTION));
+    }
+
+    public void setRenderDirection(ElevatorDirection direction){
+        getEntityData().set(RENDER_DIRECTION, direction.nbt_index);
+    }
+
+    public int getArrowFrame(){
+        return getEntityData().get(ARROW_FRAME);
+    }
+
+    public void setArrowFrame(int frame){
+        getEntityData().set(ARROW_FRAME, frame);
+    }
+
+    private void incrementFrame(){
+        setArrowFrame(getArrowFrame() + 1);
+    }
+
+    public ElevatorDirection getCurDirection(){
+        return ElevatorDirection.getElevatorDirectionFromIndex(getEntityData().get(CUR_DIRECTION));
+    }
+
+    public void setCurDirection(ElevatorDirection direction){
+        getEntityData().set(CUR_DIRECTION, direction.nbt_index);
+    }
+
     @Override
     public List<AxisAlignedBB> getEntityCollisions() {
         List<AxisAlignedBB> l = new ArrayList<>();
         double x = getX();
         double y = getY();
         double z = getZ();
-//        l.add(new AxisAlignedBB(x + 27.0 / 16.0, y - 8.0 / 16.0, z - 29.0 / 16
-//                , x - 27.0 / 16.0, y, z + 27.0 / 16));//Floor
-//        l.add(new AxisAlignedBB(x + 25.0 / 16.0, y + 52.0 / 16.0, z - 27.0 / 16.0,
-//                x - 25.0 / 16.0, y + 60.0 / 16.0, z + 28.0 / 16.0));//Roof
-//        List<AxisAlignedBB> wallLocals = new ArrayList<>();
-//        wallLocals.add(REMathHelper.rotateLocalAABB(new AxisAlignedBB(24.0 / 16, -8.0 / 16, -27.0 / 16.0,
-//                12.0 / 16, 46.0 / 16, -25.0 / 16), getRotation()));
-//        wallLocals.add(REMathHelper.rotateLocalAABB(new AxisAlignedBB(-12.0 / 16, -8.0 / 16, -27.0 / 16,
-//                -24.0 / 16, 46 / 16.0, -25 / 16.0), getRotation()));
-//        wallLocals.add(REMathHelper.rotateLocalAABB(new AxisAlignedBB(24.0 / 16,  -8.0 / 16, -25.0 / 16,
-//                22.0 / 16, 46.0 / 16, 25.0 / 16), getRotation()));
-//        wallLocals.add(REMathHelper.rotateLocalAABB(new AxisAlignedBB(22.0 / 16,  -8.0 / 16, 26.0 / 16,
-//                -22.0 / 16, 46.0 / 16, 28.0 / 16), getRotation()));
-//        wallLocals.add(REMathHelper.rotateLocalAABB(new AxisAlignedBB(-22.0 / 16,  -8.0 / 16, -25.0 / 16,
-//                -26.0 / 16, 46.0 / 16, 25.0 / 16), getRotation()));
-//        wallLocals.forEach(item -> l.add(new AxisAlignedBB(item.minX + x, item.minY + y, item.minZ + z,
-//                item.maxX + x, item.maxY + y, item.maxZ + z)));
 
         l.add(new AxisAlignedBB(25.0 / 16, 52.0 / 16, -27.0 / 16
                 , -25.0 / 16, 60.0 / 16, 28.0 / 16));

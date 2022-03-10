@@ -20,7 +20,7 @@ public class EleButtonModel extends EntityModel<Entity> {
 
 		bb_main = new ModelRenderer(this);
 		bb_main.setPos(0.0F, 24.0F, 0.0F);
-		bb_main.texOffs(0, 0).addBox(-2.0F, -4.0F, 0.0F, 4.0F, 4.0F, 1.0F, 0.0F, false);
+		bb_main.texOffs(0, 0).addBox(-2.0F, -10.0F, -0.5F, 4.0F, 4.0F, 1.0F, 0.0F, false);
 	}
 
 	@Override

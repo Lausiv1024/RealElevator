@@ -1,6 +1,7 @@
 package lausiv1024.items;
 
 import lausiv1024.entity.CwtEntity;
+import net.minecraft.block.BlockState;
 import net.minecraft.client.renderer.entity.LivingRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -11,6 +12,7 @@ import net.minecraft.potion.Effects;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.Hand;
+import net.minecraft.util.SoundEvents;
 import net.minecraft.world.World;
 
 public class Cwt extends ElevatorPartItem{
@@ -33,6 +35,7 @@ public class Cwt extends ElevatorPartItem{
         if (entity instanceof LivingEntity){
             LivingEntity entity1 = (LivingEntity) entity;
             entity1.hurt(DamageSource.ANVIL, Float.MAX_VALUE);
+            player.playSound(SoundEvents.ZOMBIE_BREAK_WOODEN_DOOR, 1, 1);
         }
         return true;
     }
@@ -41,8 +44,13 @@ public class Cwt extends ElevatorPartItem{
     public void inventoryTick(ItemStack stack, World world, Entity entity, int p_77663_4_, boolean p_77663_5_) {
         if (entity instanceof PlayerEntity){
             PlayerEntity player = (PlayerEntity) entity;
-            EffectInstance instance = new EffectInstance(Effects.MOVEMENT_SLOWDOWN, 20, 4, true, true);
+            //EffectInstance instance = new EffectInstance(Effects.MOVEMENT_SLOWDOWN, 20, 4, true, true);
             //player.addEffect(instance);
         }
+    }
+
+    @Override
+    public boolean canHarvestBlock(ItemStack stack, BlockState state) {
+        return false;
     }
 }

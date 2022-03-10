@@ -30,7 +30,7 @@ public class RoofStandard extends EntityModel<Entity> {
 		bb_main.texOffs(0, 6).addBox(-29.0F, -79.0F, -11.0F, 2.0F, 4.0F, 2.0F, 0.0F, false);
 		bb_main.texOffs(0, 0).addBox(-29.0F, -79.0F, -7.0F, 2.0F, 4.0F, 2.0F, 0.0F, false);
 		bb_main.texOffs(28, 0).addBox(-27.0F, -79.0F, -11.0F, 3.0F, 4.0F, 6.0F, 0.0F, false);
-		bb_main.texOffs(0, 111).addBox(-27.0F, -65.0F, -29.0F, 54.0F, 14.0F, 2.0F, 0.0F, false);
+		bb_main.texOffs(0, 111).addBox(-27.0F, -62.0F, -29.0F, 54.0F, 14.0F, 2.0F, 0.0F, false);
 		bb_main.texOffs(0, 28).addBox(12.0F, -68.0F, -27.0F, 8.0F, 8.0F, 14.0F, 0.0F, false);
 		bb_main.texOffs(112, 111).addBox(-21.0F, -68.0F, -11.0F, 42.0F, 8.0F, 6.0F, 0.0F, false);
 		bb_main.texOffs(48, 0).addBox(-22.0F, -78.0F, 25.0F, 1.0F, 18.0F, 1.0F, 0.0F, false);

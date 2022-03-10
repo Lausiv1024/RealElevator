@@ -26,24 +26,24 @@ import org.lwjgl.opengl.GL11;
 
 public class FlControllerRenderer<T extends FloorControllerTE> extends ElevatorPartRender<T>{
     private static final double floorDispHeight = 0.75;
-    private static final RenderType[] ARROW_UP = {getTexture("textures/blocks/floor_display/","up0"), getTexture("textures/blocks/floor_display/","up1"),
-            getTexture("textures/blocks/floor_display/","up2"), getTexture("textures/blocks/floor_display/","up3"), getTexture("textures/blocks/floor_display/","up4"), getTexture("textures/blocks/floor_display/","up5"), getTexture("textures/blocks/floor_display/","up6"),
-            getTexture("textures/blocks/floor_display/","up7")};
-    private static final RenderType[] ARROW_DOWN = {getTexture("textures/blocks/floor_display/","down0"),
-            getTexture("textures/blocks/floor_display/","down1"), getTexture("textures/blocks/floor_display/","down2"), getTexture("textures/blocks/floor_display/","down3"), getTexture("textures/blocks/floor_display/","down4"),
-            getTexture("textures/blocks/floor_display/","down5"), getTexture("textures/blocks/floor_display/","down6"),getTexture("textures/blocks/floor_display/","down7")};
+    private static final RenderType[] ARROW_UP = {getTexture("textures/blocks/floor_display/up0"), getTexture("textures/blocks/floor_display/up1"),
+            getTexture("textures/blocks/floor_display/up2"), getTexture("textures/blocks/floor_display/up3"),
+            getTexture("textures/blocks/floor_display/up4"), getTexture("textures/blocks/floor_display/up5"),
+            getTexture("textures/blocks/floor_display/up6"),
+            getTexture("textures/blocks/floor_display/up7")};
+    private static final RenderType[] ARROW_DOWN = {getTexture("textures/blocks/floor_display/down0"),
+            getTexture("textures/blocks/floor_display/down1"), getTexture("textures/blocks/floor_display/down2"), getTexture("textures/blocks/floor_display/down3"), getTexture("textures/blocks/floor_display/down4"),
+            getTexture("textures/blocks/floor_display/down5"), getTexture("textures/blocks/floor_display/down6"),getTexture("textures/blocks/floor_display/down7")};
 
-    private static final RenderType LIGHT_YELLOW = getTexture("textures/blocks/hole_lantern/","hole_lantern_light_yellow");
-    private static final RenderType LIGHT_WHITE = getTexture("textures/blocks/hole_lantern/","hole_lantern_light_white");
+    private static final RenderType LIGHT_YELLOW = getTexture("textures/blocks/hole_lantern/hole_lantern_light_yellow");
+    private static final RenderType LIGHT_WHITE = getTexture("textures/blocks/hole_lantern/hole_lantern_light_white");
 
     private static final float[] VER1 = {0.08f, 0.65f,-0.48f};
     private static final float[] VER2 = {-0.08f, 0.65f, -0.48f};
     private static final float[] VER3 = {-0.08f, 0.48f, -0.48f};
     private static final float[] VER4 = {0.08f, 0.48f, -0.48f};
 
-
-    //TODO : とりあえずこうしたが、別にディレクトリ名とファイル名を分ける必要がないので後でどうにかする予定
-    private static RenderType getTexture(final String dir ,final String name){
+    private static RenderType getTexture(final String path){
         RenderType.State state = RenderType.State.builder().setTransparencyState(new RenderState.TransparencyState("translucent_transparency", () -> {
             RenderSystem.enableBlend();
             RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
@@ -51,8 +51,8 @@ public class FlControllerRenderer<T extends FloorControllerTE> extends ElevatorP
         }, () -> {
             RenderSystem.disableBlend();
             RenderSystem.disableAlphaTest();
-        })).setTextureState(new RenderState.TextureState(new ResourceLocation(RealElevator.ID, dir + name + ".png"), false, false)).createCompositeState(false);
-        return RenderType.create("realelevator_texture_" + name, DefaultVertexFormats.POSITION_TEX, GL11.GL_QUADS, 256, false, true, state);
+        })).setTextureState(new RenderState.TextureState(new ResourceLocation(RealElevator.ID, path + ".png"), false, false)).createCompositeState(false);
+        return RenderType.create("realelevator_texture_" + path, DefaultVertexFormats.POSITION_TEX, GL11.GL_QUADS, 256, false, true, state);
     }
 
     public FlControllerRenderer(TileEntityRendererDispatcher tileEntityRendererDispatcher) {

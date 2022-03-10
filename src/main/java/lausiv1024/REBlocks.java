@@ -15,7 +15,6 @@ import net.minecraftforge.registries.ForgeRegistries;
 public class REBlocks {
     private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, RealElevator.ID);
 
-    public static final RegistryObject<Block> ELEVATOR_BUTTON_SINGLE = BLOCKS.register("elevator_button_single", ElevatorButtonSingleBlock::new);
     public static final RegistryObject<Block> ELEVATOR_BUTTON = BLOCKS.register("elevator_button", ElevatorButtonBlock::new);
     public static final RegistryObject<Block> DOOR_THRESHOLD = BLOCKS.register("door_threshold", DoorRail::new);
     public static final RegistryObject<Block> HOLE_LANTERN = BLOCKS.register("hole_lantern", HoleLantern::new);

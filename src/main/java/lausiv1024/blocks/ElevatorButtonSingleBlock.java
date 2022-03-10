@@ -23,6 +23,8 @@ import net.minecraft.world.World;
 
 import javax.annotation.Nullable;
 
+//atodeKEsuけす(?)
+@Deprecated
 public class ElevatorButtonSingleBlock extends ElevatorPartBlock {
     public static final DirectionProperty FACING = HorizontalBlock.FACING;
 
@@ -54,7 +56,7 @@ public class ElevatorButtonSingleBlock extends ElevatorPartBlock {
         boolean a = calculatePressedButton(state, result.getLocation(), pos);
         if (a){
             world.playSound(null, pos, RESoundEvents.CALL_SOUND,SoundCategory.BLOCKS, 0.5f, 1f);
-            landingButtonBlockTE.down = true;
+            landingButtonBlockTE.dwA();
             return ActionResultType.SUCCESS;
         }
         return ActionResultType.PASS;
@@ -120,7 +122,7 @@ public class ElevatorButtonSingleBlock extends ElevatorPartBlock {
     @Nullable
     @Override
     public TileEntity createTileEntity(BlockState state, IBlockReader world) {
-        return new LandingButtonBlockTE(true);
+        return new LandingButtonBlockTE();
     }
 
     @Override

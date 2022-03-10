@@ -1,6 +1,8 @@
 package lausiv1024.blocks;
 
+import lausiv1024.RealElevator;
 import lausiv1024.tileentity.LandingButtonBlockTE;
+import lausiv1024.util.RotatableBoxShape;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalBlock;
@@ -27,51 +29,30 @@ public class ElevatorButtonBlock extends ElevatorPartBlock {
     public static final DirectionProperty FACING = HorizontalBlock.FACING;
     public static final BooleanProperty IS_SINGLE = BooleanProperty.create("is_single");
 
-    /*-------------------------------------------------NORTH---------------------------------------------------------------*/
-    private static final VoxelShape NORTH_BASE = Block.box(5,2,0,11,14,0.2);
-    private static final VoxelShape NORTH_BUTTON_UP = Block.box(7,9,0.2,9,11,1);
-    private static final VoxelShape NORTH_BUTTON_DOWN = Block.box(7,5,0.2,9,7,1);
-    private static final VoxelShape NORTH_ALL = VoxelShapes.or(NORTH_BASE, NORTH_BUTTON_UP, NORTH_BUTTON_DOWN);
-    /*---------------------------------------------------------------------------------------------------------------------*/
-    /*-------------------------------------------------SOUTH---------------------------------------------------------------*/
-    private static final VoxelShape SOUTH_BASE  = Block.box(5,2,15.8,11, 14, 16);
-    private static final VoxelShape SOUTH_BUTTON_UP = box(7, 9, 15, 9, 11, 15.8);
-    private static final VoxelShape SOUTH_BUTTON_DOWN = box(7, 5, 15, 9, 7, 15.8);
-    private static final VoxelShape SOUTH_ALL = VoxelShapes.or(SOUTH_BASE, SOUTH_BUTTON_UP, SOUTH_BUTTON_DOWN);
-    /*---------------------------------------------------------------------------------------------------------------------*/
-    /*-------------------------------------------------EAST----------------------------------------------------------------*/
-    private static final VoxelShape EAST_BASE = box(15.8, 2, 5, 16, 14, 11);
-    private static final VoxelShape EAST_BUTTON_UP = box(15, 9, 7, 15.8, 11, 9);
-    private static final VoxelShape EAST_BUTTON_DOWN = box(15, 5, 7, 15.8, 7, 9);
-    private static final VoxelShape EAST_ALL = VoxelShapes.or(EAST_BASE, EAST_BUTTON_UP, EAST_BUTTON_DOWN);
-    /*---------------------------------------------------------------------------------------------------------------------*/
-    /*-------------------------------------------------West----------------------------------------------------------------*/
-    private static final VoxelShape WEST_BASE = box(0, 2, 5, 0.2, 14, 11);
-    private static final VoxelShape WEST_BUTTON_UP = box(0.2, 9, 7, 1, 11, 9);
-    private static final VoxelShape WEST_BUTTON_DOWN = box(0.2, 5, 7, 1, 7, 9);
-    private static final VoxelShape WEST_ALL = VoxelShapes.or(WEST_BASE, WEST_BUTTON_DOWN, WEST_BUTTON_UP);
-    /*---------------------------------------------------------------------------------------------------------------------*/
+    private static final RotatableBoxShape BASE = new RotatableBoxShape(5, 0, 0, 11, 12, 0.2);
+    private static final RotatableBoxShape UP_BUT = new RotatableBoxShape(7, 7, 0.2, 9, 9, 1);
+    private static final RotatableBoxShape DW_BUT = new RotatableBoxShape(7, 3, 0.2, 9, 5, 1);
+    private static final RotatableBoxShape SINGLE_BUT = new RotatableBoxShape(7, 5, 0.2, 9, 7, 1);
 
     public ElevatorButtonBlock(){
         super();
-        this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH));
+        this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH).setValue(IS_SINGLE, false));
     }
 
     @Override
     public VoxelShape getShape(BlockState state, IBlockReader reader, BlockPos pos, ISelectionContext context) {
-        switch (state.getValue(FACING)){
-            case NORTH:return NORTH_ALL;
-            case EAST:return EAST_ALL;
-            case WEST:return WEST_ALL;
-            case SOUTH:return SOUTH_ALL;
-        }
-        return NORTH_ALL;
+        Direction direction = state.getValue(FACING);
+        VoxelShape shape = BASE.rotateAndConvert(direction);
+        VoxelShape buttons = state.getValue(IS_SINGLE) ? SINGLE_BUT.rotateAndConvert(direction) :
+                VoxelShapes.or(UP_BUT.rotateAndConvert(direction), DW_BUT.rotateAndConvert(direction));
+        return VoxelShapes.or(shape, buttons);
     }
 
     @Override
     public ActionResultType use(BlockState state, World world, BlockPos pos, PlayerEntity playerEntity, Hand hand, BlockRayTraceResult result) {
         super.use(state, world, pos, playerEntity, hand, result);
         String aaa = result.getLocation().toString();
+        RealElevator.LOGGER.info("Clicked Location >> {}", aaa);
         double x = result.getLocation().x - pos.getX();
         double y = result.getLocation().y - pos.getY();
         double z = result.getLocation().z - pos.getZ();
@@ -83,9 +64,11 @@ public class ElevatorButtonBlock extends ElevatorPartBlock {
         if (a == 0) return ActionResultType.PASS;
         playerEntity.playSound(SoundEvents.STONE_BUTTON_CLICK_ON, 1, 1f);
         if (a == 1){
-            landingButtonBlockTE.up = true;
-        }else{
-            landingButtonBlockTE.down = true;
+            landingButtonBlockTE.upA();
+        }else if (a == 2){
+            landingButtonBlockTE.dwA();
+        }else if (a == 3){
+            landingButtonBlockTE.setCalled(true);
         }
         return ActionResultType.SUCCESS;
     }
@@ -125,11 +108,11 @@ public class ElevatorButtonBlock extends ElevatorPartBlock {
     @Nullable
     @Override
     public TileEntity createTileEntity(BlockState state, IBlockReader world) {
-        return new LandingButtonBlockTE(false);
+        return new LandingButtonBlockTE();
     }
 
     protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> p_206840_1_) {
-        p_206840_1_.add(FACING);
+        p_206840_1_.add(FACING, IS_SINGLE);
     }
     /*
     0 : no button pressed, 1 : up button, 2: down button
@@ -139,43 +122,49 @@ public class ElevatorButtonBlock extends ElevatorPartBlock {
         double y = vector3d.y - pos.getY();
         double z = vector3d.z - pos.getZ();
         int a = 0;
+        boolean b = state.getValue(IS_SINGLE);
 
         Direction facing = state.getValue(FACING);
         switch (facing){
             case WEST:
                 if (x > 0.015){
-                    if (y > 0.5){
+                    if (y > 0.3){
                         a = 1;
                     }else{
                         a = 2;
                     }
+
+                    if (b) a = 3;
                 }
                 break;
             case SOUTH:
                 if (z < 0.985){
-                    if (y > 0.5){
+                    if (y > 0.3){
                         a = 1;
                     }else{
                         a = 2;
                     }
+                    if (b) a = 3;
                 }
                 break;
             case NORTH:
                 if (z > 0.015){
-                    if (y > 0.5){
+                    if (y > 0.3){
                         a = 1;
                     }else{
                         a = 2;
                     }
+                    if (b) a = 3;
                 }
                 break;
             case EAST:
                 if (x < 0.985){
-                    if (y > 0.5){
+                    if (y > 0.3){
                         a = 1;
                     }else{
                         a = 2;
                     }
+                    if (b) a = 3;
                 }
                 break;
         }

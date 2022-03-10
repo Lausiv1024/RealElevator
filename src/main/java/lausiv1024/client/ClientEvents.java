@@ -17,6 +17,7 @@ import net.minecraft.client.renderer.RenderTypeLookup;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.model.ModelLoaderRegistry;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.client.registry.RenderingRegistry;
@@ -44,8 +45,6 @@ public class ClientEvents {
 
     private static void setBlockRenderType(){
         RenderType cutout = RenderType.cutout();
-        //RenderTypeLookup.setRenderLayer(REBlocks.GUIDE_RAILA.get(), cutout);
-        //RenderTypeLookup.setRenderLayer(REBlocks.GOMI.get(), cutout);
         RenderTypeLookup.setRenderLayer(REBlocks.EDNW.get(), cutout);
     }
 }

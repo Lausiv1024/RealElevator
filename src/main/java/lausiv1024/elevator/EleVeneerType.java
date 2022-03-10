@@ -1,5 +1,6 @@
 package lausiv1024.elevator;
 
+import mcp.MethodsReturnNonnullByDefault;
 import net.minecraft.util.IStringSerializable;
 
 import javax.annotation.Nullable;
@@ -32,7 +33,7 @@ public enum EleVeneerType implements IStringSerializable {
     BLACK(23),
     STAINLESS(24);
 
-    private int id;
+    private final int id;
     EleVeneerType(int id){
         this.id = id;
     }
@@ -48,12 +49,6 @@ public enum EleVeneerType implements IStringSerializable {
 
     @Nullable
     public static EleVeneerType getSurfaceFromId(int id){
-        if (id <= 24){
-            EleVeneerType[] v = EleVeneerType.values();
-            for (EleVeneerType s : v){
-                if (id == s.getId()) return s;
-            }
-        }
-        return null;
+        return values()[id];
     }
 }
