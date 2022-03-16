@@ -1,0 +1,12 @@
+{
+    "variants":{
+        "facing=north,mirror=false":{"model":"realelevator:block/door_header"},
+        "facing=east,mirror=false":{"model":"realelevator:block/door_header", "y":90},
+        "facing=south,mirror=false":{"model":"realelevator:block/door_header", "y":180},
+        "facing=west,mirror=false":{"model":"realelevator:block/door_header", "y":270},
+        "facing=north,mirror=true":{"model":"realelevator:block/door_header1"},
+        "facing=east,mirror=true":{"model":"realelevator:block/door_header1", "y":90},
+        "facing=south,mirror=true":{"model":"realelevator:block/door_header1", "y":180},
+        "facing=west,mirror=true":{"model":"realelevator:block/door_header1", "y":270}
+    }
+}

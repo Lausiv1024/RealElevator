@@ -78,6 +78,10 @@ public abstract class ElevatorPartEntity extends Entity {
         }
     }
 
+    public void setPos(Vector3d vec3){
+        setPos(vec3.x, vec3.y, vec3.z);
+    }
+
     private void tickLerp(){
         if (isControlledByLocalInstance()){
             this.lerpStep = 0;

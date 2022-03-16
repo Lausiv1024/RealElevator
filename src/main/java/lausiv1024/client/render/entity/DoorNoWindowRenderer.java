@@ -63,7 +63,7 @@ public class DoorNoWindowRenderer extends EntityRenderer<ElevatorDoorNoWindow> {
         stack.pushPose();
         //int a = elevatorDoorNoWindow.isMirror1() ? -1 : 1;
         stack.translate(0, 1.5, 0);
-        stack.mulPose(Vector3f.YP.rotationDegrees(180.0f - v));
+        //stack.mulPose(Vector3f.YP.rotationDegrees(180.0f - v));
         stack.mulPose(Vector3f.YP.rotationDegrees(90.0f * rotation));
         stack.scale(1.f, -1.f, -1.f);
 

@@ -1,6 +1,7 @@
 package lausiv1024.elevator;
 
 import net.minecraft.util.Direction;
+import net.minecraft.world.World;
 
 import java.util.UUID;
 
@@ -16,14 +17,16 @@ public abstract class AbstractElevator {
     protected boolean forceClosing = false;
     protected boolean hasAnnounce = false;
     protected ElevatorDirection direction;
-    protected ElevatorEntityHolder eleObj;
     protected Direction facingMain;
     protected int going = -1;
     protected EnumCallingState[] called;
     protected int[] floorYPos;
     protected boolean moving = false;
+    protected boolean initialized = false;
+    protected UUID cwtId;
+    protected UUID cageId;
 
-    public AbstractElevator(int index, UUID elevatorID){
+    public AbstractElevator(int index, UUID elevatorID, World worldObj){
         floorCount = index;
         displayName = new String[index];
         registered = new boolean[index];
@@ -34,6 +37,11 @@ public abstract class AbstractElevator {
     }
 
     public void elevatorTick(){
+        if (!initialized){
+            init();
+            return;
+        }
+
         doorMotion();
          if (doorState == 0){
             elevatorMainTick();
@@ -52,6 +60,11 @@ public abstract class AbstractElevator {
                 doorState = 4;
             }
         }
+    }
+
+    protected void init(){
+
+        initialized = true;
     }
 
     public void doorMotion(){

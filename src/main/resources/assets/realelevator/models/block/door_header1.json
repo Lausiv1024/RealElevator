@@ -1,0 +1,22 @@
+{
+	"credit": "Made with Blockbench",
+	"texture_size": [64, 64],
+	"textures": {
+		"0": "realelevator:blocks/door_header",
+		"particle": "realelevator:blocks/door_header"
+	},
+	"elements": [
+		{
+			"from": [0, 0, 0],
+			"to": [28, 10, 2],
+			"faces": {
+				"north": {"uv": [0, 0, 7, 2.5], "texture": "#0"},
+				"east": {"uv": [0, 6, 0.5, 8.5], "texture": "#0"},
+				"south": {"uv": [0, 2.5, 7, 5], "texture": "#0"},
+				"west": {"uv": [0.5, 6, 1, 8.5], "texture": "#0"},
+				"up": {"uv": [7, 5.5, 0, 5], "texture": "#0"},
+				"down": {"uv": [7, 5.5, 0, 6], "rotation": 180, "texture": "#0"}
+			}
+		}
+	]
+}

@@ -1,6 +1,7 @@
 package lausiv1024.entity;
 
 import lausiv1024.REEntities;
+import lausiv1024.REItems;
 import net.minecraft.entity.EntitySize;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.Pose;
@@ -24,6 +25,8 @@ public class EleButtonEntity extends ElevatorPartEntity {
     public static final DataParameter<String> DISP_FL = EntityDataManager.defineId(EleButtonEntity.class, DataSerializers.STRING);
     public static final DataParameter<Boolean> IS_ACTIVE = EntityDataManager.defineId(EleButtonEntity.class, DataSerializers.BOOLEAN);
     protected int floorIndex = 0;
+    protected int onTick = 0;
+    protected boolean isAltanative = false;
 
     public EleButtonEntity(EntityType<?> type, World world) {
         super(type, world);
@@ -41,6 +44,16 @@ public class EleButtonEntity extends ElevatorPartEntity {
 
     @Override
     public ActionResultType interact(PlayerEntity player, Hand hand) {
+        return onClick();
+    }
+
+    private ActionResultType onClick(){
+        if (isActive() && onTick > 0 && isAltanative){
+            setActive(false);
+            return ActionResultType.SUCCESS;
+        }
+        setActive(true);
+        onTick = 6;
         return ActionResultType.SUCCESS;
     }
 
@@ -64,6 +77,10 @@ public class EleButtonEntity extends ElevatorPartEntity {
     @Override
     public boolean hurt(DamageSource source, float f1a) {
         if (source.getEntity() instanceof PlayerEntity){
+            if (((PlayerEntity) source.getEntity()).getItemInHand(Hand.MAIN_HAND).getItem() != REItems.WRENCH.get()) {
+                onClick();
+                return false;
+            }
             if (isAlive() && !level.isClientSide){
                 remove();
             }
@@ -76,6 +93,7 @@ public class EleButtonEntity extends ElevatorPartEntity {
     protected void readAdditionalSaveData(CompoundNBT nbt) {
         super.readAdditionalSaveData(nbt);
         floorIndex = nbt.getInt("FloorIndex");
+        isAltanative = nbt.getBoolean("IsAltanative");
         setActive(nbt.getBoolean("Active"));
         putDisplayFloor(nbt.getString("DisplayStr"));
         putLightColor(nbt.getInt("LightColor"));
@@ -91,6 +109,7 @@ public class EleButtonEntity extends ElevatorPartEntity {
         super.addAdditionalSaveData(nbt);
         nbt.putBoolean("Active", isActive());
         nbt.putInt("FloorIndex", floorIndex);
+        nbt.putBoolean("IsAltanative", isAltanative);
         nbt.putString("Direction", getButDirection().name());
         nbt.putString("DisplayStr", getDisplayFloor());
         nbt.putInt("LightColor", getLightColor());
@@ -131,6 +150,13 @@ public class EleButtonEntity extends ElevatorPartEntity {
     @Override
     public void tick() {
         super.tick();
+        if (level.isClientSide) return;
+        if (isActive() && onTick > 0)
+            onTick--;
+        if (isAltanative) return;
+        if (onTick < 1){
+            setActive(false);
+        }
     }
 
     @Override

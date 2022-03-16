@@ -52,11 +52,11 @@ public class CageRenderer extends EntityRenderer<CageEntity> {
         //RealElevator.LOGGER.info("combinedColor : {}", color);
         int d = cageEntity.getRotation();
         renderPart(cageEntity, v, v1, stack, buffer, color,
-                ws, new ResourceLocation(RealElevator.ID, "textures/entities/cage/wall_standard_sample1.png"), d);
+                ws, new ResourceLocation(RealElevator.ID, "textures/entities/cage/wall_standard_teswood.png"), d);
         renderPart(cageEntity, v, v1, stack, buffer, color,
                 rs, new ResourceLocation(RealElevator.ID, "textures/entities/cage/roof_standard_1.png"), d);
         renderPart(cageEntity, v, v1, stack, buffer, color,
-                fs, new ResourceLocation(RealElevator.ID, "textures/entities/cage/floor_standard_sample1.png"), d);
+                fs, new ResourceLocation(RealElevator.ID, "textures/entities/cage/floor_standard_tesbrick.png"), d);
         renderFont(cageEntity, v, v1, stack, buffer, color);
         renderArrow(cageEntity, v, v1, stack, buffer, color);
     }
@@ -69,7 +69,7 @@ public class CageRenderer extends EntityRenderer<CageEntity> {
     private void renderPart(CageEntity entity, float v, float v1, MatrixStack stack, IRenderTypeBuffer buffer, int ctr, EntityModel model, ResourceLocation location, int rotation){
         stack.pushPose();
         stack.translate(0, 1.5, 0);
-        stack.mulPose(Vector3f.YP.rotationDegrees(180.0f - v));
+        //stack.mulPose(Vector3f.YP.rotationDegrees(180.0f - v));
         stack.mulPose(Vector3f.YP.rotationDegrees(90.0f * rotation));
 
         stack.scale(1.f, -1.f, -1.f);
@@ -85,8 +85,8 @@ public class CageRenderer extends EntityRenderer<CageEntity> {
         stack.pushPose();
         Matrix4f matrix4f = stack.last().pose();
         FontRenderer fontRenderer = getFont();
-        stack.translate(.0, 2.27, .0);
-        stack.mulPose(Vector3f.YP.rotationDegrees(180.0f - v));
+        stack.translate(.0, 2.3, .0);
+        //stack.mulPose(Vector3f.YP.rotationDegrees(180.0f - v));
         stack.mulPose(Vector3f.YP.rotationDegrees(90.f * entity.getRotation()));
         stack.translate(-1.06, 0, 1.55);
         stack.scale(-0.018F, -0.018F, 0.018F);
@@ -101,15 +101,16 @@ public class CageRenderer extends EntityRenderer<CageEntity> {
         RenderType[] types = i == 1 ? ARROW_UP : i == 2 ? ARROW_DOWN : null;
         if (types == null) return;
         stack.pushPose();
-        stack.translate(.0, 2.3, 0);
+        stack.translate(.0, 2.64, 0);
+        stack.mulPose(Vector3f.YP.rotationDegrees(180.0f - v));
         stack.mulPose(Vector3f.YP.rotationDegrees(90.0f * entity.getRotation()));
-//        stack.translate(-1.06f, 0, 1.55);
+        stack.translate(1.06f, 0, -1.55);
 
         drawQuad(types[entity.getArrowFrame()], stack, buffer,
-                new float[]{0.1f, -0.1f, 0.1f},
-                new float[]{-0.1f, -0.1f, 0.1f},
-                new float[]{-0.1f, 0.1f, 0.1f},
-                new float[]{0.1f, 0.1f, 0.1f});
+                new float[]{0.08f, 0.08f, 0},
+                new float[]{-0.08f, 0.08f, 0},
+                new float[]{-0.08f, -0.08f, 0},
+                new float[]{0.08f, -0.08f, 0});
 
         stack.popPose();
     }

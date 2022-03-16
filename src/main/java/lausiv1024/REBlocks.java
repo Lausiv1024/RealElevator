@@ -36,6 +36,7 @@ public class REBlocks {
     public static final RegistryObject<Block> JAMB_ROOF = BLOCKS.register("jamb_roof", JambRoof::new);
     public static final RegistryObject<Block> MOTOR = BLOCKS.register("motor", Motor::new);
     public static final RegistryObject<Block> BOUNDING_BLOCK = BLOCKS.register("bounding_block", () -> new BoundingBlock(AbstractBlock.Properties.of(Material.METAL)));
+    public static final RegistryObject<Block> DOOR_HEADER = BLOCKS.register("door_header", DoorHeader::new);
 //
 //    public static final RegistryObject<Block> GOMI = BLOCKS.register("elevatordoor_no_window31", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));
 //    public static final RegistryObject<Block> GOMI2 = BLOCKS.register("elevatordoor_no_window32", () -> new Block(AbstractBlock.Properties.of(Material.WOOL)));

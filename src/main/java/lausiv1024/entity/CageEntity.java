@@ -1,17 +1,21 @@
 package lausiv1024.entity;
 
 import lausiv1024.REEntities;
+import lausiv1024.REItems;
 import lausiv1024.elevator.ElevatorDirection;
 import lausiv1024.util.CageUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntitySize;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.Pose;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.network.IPacket;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
+import net.minecraft.util.DamageSource;
+import net.minecraft.util.Hand;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.world.World;
@@ -71,6 +75,9 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
     }
 
     private void arrowTick(){
+        //アニメーション処理はサーバーの言いなりになるんだよ！！クライアントで勝手に処理したらずれるにきまってんだよ！
+        if (level.isClientSide) return;
+        //ちな実際にクライアントに送るデータは矢印の向きとフレーム数のみをおくっている(負荷軽減?)
         if (getCurDirection() == ElevatorDirection.NONE || arrowSpeed == 0){
             if (getArrowFrame() == 0){
                 arrowTick = 0;
@@ -87,9 +94,8 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         setRenderDirection(getCurDirection());
         arrowTick++;
 
-        //Core-i7 なんちゃって(は？)
-        int i7 = arrowSpeed > 1 ? 4 : 8;
-        if (arrowTick % i7 == 0){
+        int i = arrowSpeed == 1 ? 4 : arrowSpeed == 2 ? 8 : 0;
+        if (arrowTick % i == 0){
             updateArrowFrame();
         }
     }
@@ -116,6 +122,8 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         setArrowFrame(nbt.getInt("ArrowFrame"));
         setRenderDirection(ElevatorDirection.getElevatorDirectionFromIndex(nbt.getInt("RenderDirection")));
         setCurDirection(ElevatorDirection.getElevatorDirectionFromIndex(nbt.getInt("CurDirection")));
+        arrowTick = nbt.getInt("ArrowTick");
+        arrowSpeed = nbt.getInt("ArrowSpeed");
     }
 
     @Override
@@ -126,6 +134,8 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         nbt.putString("Floor", getCurFloor());
         nbt.putInt("ArrowFrame", getArrowFrame());
         nbt.putInt("RenderDirection", getRenderDirection().nbt_index);
+        nbt.putInt("ArrowTick", arrowTick);
+        nbt.putInt("ArrowSpeed", arrowSpeed);
     }
 
     public Vector3d getPrevPos(){
@@ -137,7 +147,17 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         return new AxisAlignedBB(getX() - 2, getY() - 1.8, getZ() - 2, getX() + 2, getY() + 5, getZ() + 2);
     }
 
-    //データ参照ようにピックできるようにした。完成したら消去しろ(未来の自分に対して)
+    @Override
+    public boolean hurt(DamageSource src, float p_70097_2_) {
+        if (src.getEntity() instanceof PlayerEntity){
+             if (((PlayerEntity) src.getEntity()).getItemInHand(Hand.MAIN_HAND).getItem() == REItems.WRENCH.get()){
+                 remove();
+                 return true;
+             }
+        }
+        return false;
+    }
+
     @Override
     public boolean isPickable() {
         return true;
