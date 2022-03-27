@@ -1,48 +1,67 @@
 package lausiv1024.elevator;
 
+import com.google.common.collect.Maps;
+import lausiv1024.RealElevator;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.ListNBT;
+import net.minecraft.nbt.NBTUtil;
 import net.minecraft.util.Direction;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import java.util.Map;
 import java.util.UUID;
 
 public abstract class AbstractElevator {
-    public final UUID elevatorID;
+    //エレベーターの参照データ Map < elevatorId, offsetPos>
+    private static final Map<UUID, BlockPos> ELEVATOROFFS = Maps.newHashMap();
+
+    private static final Logger LOGGER = LogManager.getLogger("ElevatorClass");
+
+
+    public UUID elevatorID;
     protected String[] displayName;
     protected boolean[] registered;
     protected int floorCount;
     protected int curFloor = 0;
-    protected int doorState = 0;
+    protected byte doorState = 0;
     protected int doorCloseTick = 60;
     protected int openTime = 0;
     protected boolean forceClosing = false;
     protected boolean hasAnnounce = false;
     protected ElevatorDirection direction;
-    protected Direction facingMain;
+    protected Direction facingMain = Direction.NORTH;
     protected int going = -1;
     protected EnumCallingState[] called;
     protected int[] floorYPos;
     protected boolean moving = false;
     protected boolean initialized = false;
-    protected UUID cwtId;
-    protected UUID cageId;
+    protected ElevatorObjectReference ref;
+    protected DoorManager doorMgr;
+    protected BlockPos offSet;
 
-    public AbstractElevator(int index, UUID elevatorID, World worldObj){
+    public AbstractElevator(int index, UUID elevatorID, BlockPos offSet, String[] dispName, int[] yPoses){
         floorCount = index;
-        displayName = new String[index];
+        displayName = dispName;
         registered = new boolean[index];
         called = new EnumCallingState[index];
-        floorYPos = new int[index];
+        floorYPos = yPoses;
         direction = ElevatorDirection.NONE;
         this.elevatorID = elevatorID;
+        this.offSet = offSet;
+        ref = new ElevatorObjectReference();
+        ELEVATOROFFS.put(elevatorID, offSet);
     }
 
-    public void elevatorTick(){
+    public void elevatorTick(World world){
         if (!initialized){
             init();
             return;
         }
 
-        doorMotion();
          if (doorState == 0){
             elevatorMainTick();
             forceClosing = false;
@@ -51,7 +70,7 @@ public abstract class AbstractElevator {
         }else if (doorState == 2){
             if (!checkSafety(true)) resetDoorCloseTick(false);
             if (!forceClosing)
-                openTime++;
+                //openTime++;
             if (openTime == 600)
                 forceClosing = true;
         }else if (doorState == 3){
@@ -60,6 +79,8 @@ public abstract class AbstractElevator {
                 doorState = 4;
             }
         }
+
+        //doorMgr.doorTick(this);
     }
 
     protected void init(){
@@ -67,14 +88,6 @@ public abstract class AbstractElevator {
         initialized = true;
     }
 
-    public void doorMotion(){
-        if (doorState == 2){
-            doorCloseTick++;
-            if (doorCloseTick == 0){
-                doorState = 3;
-            }
-        }
-    }
 
     private boolean checkSafety(boolean b){
         return false;
@@ -214,7 +227,7 @@ public abstract class AbstractElevator {
         return doorState;
     }
 
-    public void setDoorState(int doorState) {
+    public void setDoorState(byte doorState) {
         if (doorState < 5)
             this.doorState = doorState;
     }
@@ -234,5 +247,124 @@ public abstract class AbstractElevator {
     public void updateFloor(int index, String[] displayName, int[] floorAnnounceId){
         this.displayName = displayName;
         this.floorCount = index;
+    }
+
+    public ElevatorObjectReference getRef() {
+        return ref;
+    }
+
+    private int getTopPos(){
+        if (floorYPos.length < 2){
+            RealElevator.LOGGER.warn("Invalid Index!!");
+            //1.18に対応させることを考えて
+            return -65;
+        }
+        return floorYPos[floorYPos.length - 1] + 3;
+    }
+
+    public Direction getFacingMain() {
+        return facingMain;
+    }
+
+    public void setFacingMain(Direction facingMain) {
+        this.facingMain = facingMain;
+    }
+
+    private int getBottomPos(){
+        return floorYPos[0] - 2;
+    }
+
+    public CompoundNBT saveToNbt(){
+        CompoundNBT parent = new CompoundNBT();
+        //Write ElevatorID, Cage UUID, CWT UUID
+        //CWT is Counterweight
+        if (elevatorID != null) parent.putUUID("ElevatorID", elevatorID);
+//        ObjHelper.checkNullAndExec(ref.cage, () -> parent.putUUID("CageId", ref.cage));
+//        ObjHelper.checkNullAndExec(ref.cwt, () -> parent.putUUID("CwtId", ref.cwt));
+        if (ref != null){
+            if (ref.cage != null) parent.putUUID("CageId", ref.cage);
+            if (ref.cwt != null) parent.putUUID("CwtId", ref.cwt);
+        }
+
+
+        ListNBT flInfoList = new ListNBT();
+        for (int i = 0; i < floorCount; i++){
+            //final int i2 = i;
+            CompoundNBT fData = new CompoundNBT();
+            fData.putInt("Ypos", floorYPos[i]);
+            fData.putString("DispName", displayName[i]);
+            fData.putBoolean("Registered", registered[i]);
+            //ObjHelper.checkNullAndExec(called[i2], () -> fData.putString("CallState", called[i2].name()));
+            if (called[i] != null) fData.putString("CallState", called[i].name());
+            flInfoList.add(fData);
+        }
+        parent.put("FloorInfo", flInfoList);
+        parent.putInt("CurrentFloor", curFloor);
+        parent.putByte("DoorState", doorState);
+        parent.putInt("DoorCloseTick", doorCloseTick);
+        //強制戸閉機能どうしよう
+//        parent.putInt("OpenTime", openTime);
+//        parent.putBoolean("ForceClosing", forceClosing);
+        parent.putString("ElevatorDirection", direction.name());
+        parent.putString("Facing", facingMain.name());
+
+        parent.putInt("GoingFloor", going);
+        parent.putBoolean("Moving", moving);
+
+        if (offSet != null)
+            parent.put("Offset", NBTUtil.writeBlockPos(offSet));
+
+        return parent;
+    }
+
+    public static Elevator fromNBT(CompoundNBT nbt){
+        final UUID elevatorId = nbt.getUUID("ElevatorID");
+
+        final ListNBT floorInfo = nbt.getList("FloorInfo", 10);
+        int length = floorInfo.size();
+        int[] yPos = new int[length];
+        String[] dispName = new String[length];
+        boolean[] registered = new boolean[length];
+        EnumCallingState[] callState = new EnumCallingState[length];
+        for (int i = 0; i < length; i++){
+            CompoundNBT nbt1 = floorInfo.getCompound(i);
+            yPos[i] = nbt1.getInt("Ypos");
+            dispName[i] = nbt1.getString("DispName");
+            registered[i] = nbt1.getBoolean("Registered");
+            try {
+                callState[i] = EnumCallingState.valueOf(nbt1.getString("CallState"));
+            }catch (IllegalArgumentException e){
+                callState[i] = EnumCallingState.NONE;
+            }
+        }
+
+        BlockPos offs = NBTUtil.readBlockPos(nbt.getCompound("Offset"));
+
+        Elevator elevator = new Elevator(length, elevatorId, offs, dispName, yPos);
+
+        ElevatorObjectReference reference = new ElevatorObjectReference();
+        reference.cage = nbt.getUUID("CageId");
+        reference.cwt = nbt.getUUID("CwtId");
+        elevator.ref = reference;
+
+        elevator.registered = registered;
+        elevator.called = callState;
+        elevator.curFloor = nbt.getInt("CurrentFloor");
+        elevator.doorState = nbt.getByte("DoorState");
+        elevator.doorCloseTick = nbt.getInt("DoorCloseTick");
+        elevator.going = nbt.getInt("GoingFloor");
+        elevator.moving = nbt.getBoolean("Moving");
+
+        try {
+            elevator.direction = ElevatorDirection.valueOf(nbt.getString("ElevatorDirection"));
+            elevator.facingMain = Direction.valueOf(nbt.getString("Facing"));
+        }catch (IllegalArgumentException e){
+            LOGGER.info("Direction or ElevatorFacing is empty");
+        }
+
+        return elevator;
+    }
+    public static BlockPos getElevatorOff(UUID elevatorID){
+        return ELEVATOROFFS.get(elevatorID);
     }
 }

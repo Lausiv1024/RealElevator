@@ -40,6 +40,14 @@ public class EleButtonEntity extends ElevatorPartEntity {
     public EleButtonEntity(World world, Direction direction) {
         super(REEntities.ELEVATOR_BUTTON.get(), world);
         updateBoundingBox();
+        putButDirection(direction);
+    }
+
+    public EleButtonEntity(World world, Direction direction, boolean alt) {
+        super(REEntities.ELEVATOR_BUTTON.get(), world);
+        updateBoundingBox();
+        putButDirection(direction);
+        isAltanative = alt;
     }
 
     @Override
@@ -115,6 +123,14 @@ public class EleButtonEntity extends ElevatorPartEntity {
         nbt.putInt("LightColor", getLightColor());
     }
 
+    public void setFloorIndex(int floorIndex) {
+        this.floorIndex = floorIndex;
+    }
+
+    public int getFloorIndex() {
+        return floorIndex;
+    }
+
     public int getLightColor(){
         return entityData.get(LIGHT_COLOR);
     }
@@ -157,6 +173,10 @@ public class EleButtonEntity extends ElevatorPartEntity {
         if (onTick < 1){
             setActive(false);
         }
+    }
+
+    public boolean isAltanative() {
+        return isAltanative;
     }
 
     @Override

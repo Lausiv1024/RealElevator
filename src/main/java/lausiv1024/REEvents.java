@@ -19,8 +19,8 @@ public class REEvents {
 //            event.setCanceled(true);
 //        }
 //    }
-
-    public static void en(PlayerInteractEvent.EntityInteract event){
-        //event.getTarget().setDeltaMovement(event.getTarget().getDeltaMovement().add(0.0, 0.4, 0.0));
+    @SubscribeEvent
+    public static void en(PlayerInteractEvent.EntityInteract encon){
+        RealElevator.LOGGER.info("Entity ID : {}", encon.getTarget().getId());
     }
 }

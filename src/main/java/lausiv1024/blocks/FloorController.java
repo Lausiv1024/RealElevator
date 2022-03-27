@@ -44,7 +44,7 @@ public class FloorController extends ElevatorPartBlock implements IHasBounding {
     public ActionResultType use(BlockState state, World world, BlockPos pos, PlayerEntity playerEntity, Hand hand, BlockRayTraceResult result) {
         test(pos, result);
         FloorControllerTE tile = getTe(world, pos);
-        if (tile == null) return ActionResultType.FAIL;
+        if (tile == null) return ActionResultType.PASS;
         int a = calculatePressedButton(state, result.getLocation(), pos);
         if (a > 0){
             if (a == 1) {
@@ -62,7 +62,7 @@ public class FloorController extends ElevatorPartBlock implements IHasBounding {
             }
             return ActionResultType.SUCCESS;
         }
-        return ActionResultType.FAIL;
+        return ActionResultType.PASS;
     }
 
     private void test(BlockPos pos, BlockRayTraceResult result){

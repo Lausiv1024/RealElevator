@@ -2,7 +2,6 @@ package lausiv1024.entity.doors;
 
 import lausiv1024.REItems;
 import lausiv1024.entity.ElevatorPartEntity;
-import lausiv1024.items.REBaseItem;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntitySize;
 import net.minecraft.entity.EntityType;
@@ -14,18 +13,19 @@ import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.DamageSource;
+import net.minecraft.util.Direction;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.network.NetworkHooks;
 
-public abstract class AbstractElevatorDoorEntity extends ElevatorPartEntity {
-    public static final DataParameter<Integer> ROTATION = EntityDataManager.defineId(AbstractElevatorDoorEntity.class, DataSerializers.INT);
-    public static final DataParameter<Boolean> MIRROR = EntityDataManager.defineId(AbstractElevatorDoorEntity.class, DataSerializers.BOOLEAN);
-    public static final DataParameter<Integer> VENEER_ID = EntityDataManager.defineId(AbstractElevatorDoorEntity.class, DataSerializers.INT);
-    public static final DataParameter<Boolean> ISLANDING = EntityDataManager.defineId(AbstractElevatorDoorEntity.class, DataSerializers.BOOLEAN);
+public abstract class AbstractDoorEntity extends ElevatorPartEntity {
+    public static final DataParameter<Direction> DIRECTION = EntityDataManager.defineId(AbstractDoorEntity.class, DataSerializers.DIRECTION);
+    public static final DataParameter<Boolean> MIRROR = EntityDataManager.defineId(AbstractDoorEntity.class, DataSerializers.BOOLEAN);
+    public static final DataParameter<Integer> VENEER_ID = EntityDataManager.defineId(AbstractDoorEntity.class, DataSerializers.INT);
+    public static final DataParameter<Boolean> ISLANDING = EntityDataManager.defineId(AbstractDoorEntity.class, DataSerializers.BOOLEAN);
 
-    public AbstractElevatorDoorEntity(EntityType<? extends Entity> type, World world) {
+    public AbstractDoorEntity(EntityType<? extends Entity> type, World world) {
         super(type, world);
     }
 
@@ -59,7 +59,7 @@ public abstract class AbstractElevatorDoorEntity extends ElevatorPartEntity {
     public AxisAlignedBB getBoundingBox() {
         double sx = getX(), sy = getY(), sz = getZ();
         double ex = getX(), ey = getY() + 3, ez= getZ();
-        if (getRotation1() == 1 || getRotation1() == 3){
+        if (Math.abs(getDirection1().getStepX()) == 1){
             sz -= 0.375;
             ez += 0.375;
             sx -= 0.0625;
@@ -70,6 +70,7 @@ public abstract class AbstractElevatorDoorEntity extends ElevatorPartEntity {
             sz -= 0.0625;
             ez += 0.0625;
         }
+
         return new AxisAlignedBB(sx, sy, sz, ex, ey, ez);
     }
 
@@ -86,7 +87,7 @@ public abstract class AbstractElevatorDoorEntity extends ElevatorPartEntity {
 
     @Override
     protected void defineSynchedData() {
-        getEntityData().define(ROTATION, 0);
+        getEntityData().define(DIRECTION, Direction.NORTH);
         getEntityData().define(MIRROR, false);
         getEntityData().define(VENEER_ID, 0);
         getEntityData().define(ISLANDING, false);
@@ -95,7 +96,13 @@ public abstract class AbstractElevatorDoorEntity extends ElevatorPartEntity {
     @Override
     protected void readAdditionalSaveData(CompoundNBT nbt) {
         setMirror1(nbt.getBoolean("Mirror"));
-        setRotation1(nbt.getInt("Rotation"));
+        String d = nbt.getString("Direction");
+        try {
+            setDirection1(Direction.valueOf(d));
+        }catch(IllegalArgumentException e) {
+            LOGGER.info("Invalid direction ID!! provided => {}", d);
+            setDirection1(Direction.NORTH);
+        }
         setVeneerId(nbt.getInt("VeneerID"));
         setLand( nbt.getBoolean("IsLanding"));
         super.readAdditionalSaveData(nbt);
@@ -106,7 +113,7 @@ public abstract class AbstractElevatorDoorEntity extends ElevatorPartEntity {
         super.addAdditionalSaveData(nbt);
         nbt.putBoolean("Mirror", isMirror1());
         nbt.putBoolean("IsLanding", getLand());
-        nbt.putInt("Rotation", getRotation1());
+        nbt.putString("Direction", getDirection1().name());
         nbt.putInt("VeneerID", getVeneerId());
     }
 
@@ -119,8 +126,8 @@ public abstract class AbstractElevatorDoorEntity extends ElevatorPartEntity {
         getEntityData().set(MIRROR, b);
     }
 
-    public void setRotation1(int rotation){
-        getEntityData().set(ROTATION, rotation);
+    public void setDirection1(Direction direction){
+        getEntityData().set(DIRECTION, direction);
     }
 
     public void setVeneerId(int veneerId){
@@ -128,8 +135,8 @@ public abstract class AbstractElevatorDoorEntity extends ElevatorPartEntity {
     }
 
     //getrotationがすでにEntityで定義されてるのでこうなった
-    public int getRotation1(){
-        return getEntityData().get(ROTATION);
+    public Direction getDirection1(){
+        return getEntityData().get(DIRECTION);
     }
 
     public int getVeneerId(){

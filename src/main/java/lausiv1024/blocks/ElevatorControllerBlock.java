@@ -1,5 +1,7 @@
 package lausiv1024.blocks;
 
+import lausiv1024.elevator.Elevator;
+import lausiv1024.tileentity.ElevatorControllerTE;
 import lausiv1024.util.ModelRotationHelper;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -7,6 +9,7 @@ import net.minecraft.block.HorizontalBlock;
 import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.state.DirectionProperty;
 import net.minecraft.state.StateContainer;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Direction;
 import net.minecraft.util.Mirror;
 import net.minecraft.util.Rotation;
@@ -62,5 +65,16 @@ public class ElevatorControllerBlock extends ElevatorPartBlock {
     @Override
     protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> builder) {
         builder.add(FACING);
+    }
+
+    @Override
+    public boolean hasTileEntity(BlockState state) {
+        return true;
+    }
+
+    @Nullable
+    @Override
+    public TileEntity createTileEntity(BlockState state, IBlockReader world) {
+        return new ElevatorControllerTE();
     }
 }

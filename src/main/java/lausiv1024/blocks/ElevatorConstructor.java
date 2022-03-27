@@ -1,12 +1,13 @@
 package lausiv1024.blocks;
 
 import lausiv1024.REBlocks;
-import lausiv1024.RealElevator;
+import lausiv1024.elevator.Elevator;
 import lausiv1024.entity.CageEntity;
+import lausiv1024.entity.CwtEntity;
+import lausiv1024.entity.EleButtonEntity;
 import lausiv1024.entity.doors.ElevatorDoorNoWindow;
+import lausiv1024.tileentity.ElevatorControllerTE;
 import net.minecraft.block.*;
-import net.minecraft.command.impl.FillCommand;
-import net.minecraft.entity.passive.PandaEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.state.DirectionProperty;
@@ -17,14 +18,13 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockRayTraceResult;
 import net.minecraft.util.math.MutableBoundingBox;
 import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.math.vector.Vector3f;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 
 import javax.annotation.Nullable;
 import java.util.Iterator;
-import java.util.Vector;
+import java.util.UUID;
 
 public class ElevatorConstructor extends ContainerBlock {
     private static final DirectionProperty FACING = HorizontalBlock.FACING;
@@ -44,15 +44,17 @@ public class ElevatorConstructor extends ContainerBlock {
         int yPos = pos.getY();
         int[] floorHeights = {yPos, yPos + 5, yPos + 10};
         String[] floorName = {"1", "2", "3"};
-        int floorEndIndex = floorHeights.length - 1;
+        int floorTopIndex = floorHeights.length - 1;
         BlockPos off = pos.offset(new BlockPos(0, 0, -2));
+        Elevator elevator = new Elevator(3, UUID.randomUUID(), off, floorName, floorHeights);
         BlockPos flConLocal = new BlockPos(4, 0, 2);
         Vector3d localCagePos = new Vector3d(3.0, 0, -3.0);
         CageEntity cage = new CageEntity(world);
+        elevator.getRef().cage = cage.getUUID();
         Vector3d cagePosG = localCagePos.add(pos.getX(), pos.getY(), pos.getZ());
         cage.setPos(cagePosG.x, cagePosG.y, cagePosG.z);
         world.addFreshEntity(cage);
-        createCageDoor(direction, off, world);
+        createCageDoor(direction, off, world, elevator);
 
         digPit(direction, pos, world);
         for (int i = 0; i < floorHeights.length; i++){
@@ -63,6 +65,15 @@ public class ElevatorConstructor extends ContainerBlock {
             createController(direction, off, world, floorHeights[i], isSingleBut);
             createFloorDoor(direction, off, world, floorHeights[i]);
         }
+
+
+        createCageGuideRail(direction, off, world, floorHeights[floorTopIndex]);
+        createCwtGuideRail(direction, off, world, floorHeights[floorTopIndex]);
+        elevator.getRef().cwt = summonCwt(direction, off, world, floorHeights[floorTopIndex]).getUUID();
+        createMotor(direction, off, world, floorHeights[floorTopIndex]);
+        createController(direction, off, world, floorHeights[floorTopIndex], elevator);
+        createFloorRegButton(direction, off, world, floorName);
+        createOpenCloseBut(direction, off, world);
     }
 
     private void createThreshould(Direction direction, BlockPos off, World world, int yPos){
@@ -71,6 +82,18 @@ public class ElevatorConstructor extends ContainerBlock {
             BlockPos willPlace = new BlockPos(off.getX() + i, yPos - 1, off.getZ());
             LOGGER.info("WillPlace ->{}", willPlace);
             world.setBlockAndUpdate(willPlace, REBlocks.DOOR_THRESHOLD.get().defaultBlockState().setValue(FACING, direction.getOpposite()));
+        }
+    }
+
+    private void createController(Direction direction, BlockPos off, World world, int yPos, Elevator elevator){
+        BlockPos gl = new BlockPos(off.getX(), yPos + 1, off.getZ() - 1);
+
+
+        world.setBlockAndUpdate(gl, REBlocks.ELEVATOR_CONTROLLER.get().defaultBlockState().setValue(FACING, direction.getCounterClockWise()));
+        TileEntity tile = world.getBlockEntity(gl);
+        if (tile instanceof ElevatorControllerTE){
+            ElevatorControllerTE controllerTE = (ElevatorControllerTE) tile;
+            controllerTE.setElevator(elevator);
         }
     }
 
@@ -92,7 +115,7 @@ public class ElevatorConstructor extends ContainerBlock {
         }
     }
 
-    private void createCageDoor(Direction direction, BlockPos pos, World world){
+    private void createCageDoor(Direction direction, BlockPos pos, World world, Elevator elevator){
         Vector3d of1 = new Vector3d(pos.getX() + 2.625, pos.getY() , pos.getZ() + 0.75);
         Vector3d of2 = of1.add(0.75, 0, 0);
         ElevatorDoorNoWindow door1 = new ElevatorDoorNoWindow(world, direction.getOpposite());
@@ -101,6 +124,7 @@ public class ElevatorConstructor extends ContainerBlock {
         door2.setPos(of2);
         world.addFreshEntity(door1);
         world.addFreshEntity(door2);
+//        elevator.setDoorMgr(new DoorManager(new AbstractElevatorDoorEntity[]{door1, door2}));
     }
 
     private void createController(Direction direction, BlockPos pos, World world, int yPos, boolean isSingleBut){
@@ -109,21 +133,87 @@ public class ElevatorConstructor extends ContainerBlock {
                 .setValue(FloorController.IS_SINGLE, isSingleBut));
     }
 
+    private void createFloorRegButton(Direction direction, BlockPos pos, World world, String[] floorNames){
+        for (int i = 0; i < floorNames.length; i++){
+            double butH = pos.getY() + 1.0 + 0.12 * i;
+            Vector3d willPlace = new Vector3d(pos.getX() + 1.95, butH, pos.getZ() + 0.55);
+            EleButtonEntity but = new EleButtonEntity(world, direction.getOpposite(), true);
+            but.setPos(willPlace);
+            but.setFloorIndex(i);
+            but.putDisplayFloor(floorNames[i]);
+            world.addFreshEntity(but);
+        }
+    }
+
+    private void createOpenCloseBut(Direction direction, BlockPos pos, World world){
+        Vector3d opPos = new Vector3d(pos.getX() + 2.05, pos.getY() + 0.75, pos.getZ() + 0.55);
+        Vector3d clPos = new Vector3d(pos.getX() + 1.85, pos.getY() + 0.75, pos.getZ() + 0.55);
+        EleButtonEntity open = new EleButtonEntity(world, direction.getOpposite());
+        EleButtonEntity close = new EleButtonEntity(world, direction.getOpposite());
+        open.putDisplayFloor("<|>");
+        close.putDisplayFloor(">|<");
+        open.setPos(opPos);
+        close.setPos(clPos);
+        //ひらく とじる　開延長　などの特殊ボタンはインデックスを負の値にする
+        open.setFloorIndex(-1);
+        close.setFloorIndex(-2);
+        world.addFreshEntity(open);
+        world.addFreshEntity(close);
+    }
+
+    private CwtEntity summonCwt(Direction direction, BlockPos pos, World world, int yPos){
+        Vector3d vec3 = new Vector3d(pos.getX() + 0.51, yPos + 1, pos.getZ() - 1.96);
+        CwtEntity cwt = new CwtEntity(world);
+        cwt.setPos(vec3);
+        int axVal = direction.getStepX() == 0? 1:0;
+        cwt.putAxis(direction.getStepX());
+        cwt.putAxis(axVal);
+        world.addFreshEntity(cwt);
+        return cwt;
+    }
+
     private void createFloorDoor(Direction direction, BlockPos pos, World world, int yPos){
         Vector3d of1 = new Vector3d(pos.getX() + 2.625, yPos, pos.getZ() + 0.94);
         Vector3d of2 = new Vector3d(pos.getX() + 3.375, yPos, pos.getZ() + 0.94);
         ElevatorDoorNoWindow door = new ElevatorDoorNoWindow(world, direction);
         ElevatorDoorNoWindow door2 = new ElevatorDoorNoWindow(world, direction);
         door.setPos(of1);
+        door.setLand(true);
         door2.setPos(of2);
+        door2.setLand(true);
         world.addFreshEntity(door);
         world.addFreshEntity(door2);
+    }
+
+    private void createMotor(Direction direction, BlockPos pos, World world, int yPos){
+        BlockPos offs = new BlockPos(pos.getX(), yPos + 3, pos.getZ() - 2);
+        BlockState motor = REBlocks.MOTOR.get().defaultBlockState().setValue(FACING, direction.getCounterClockWise());
+        world.setBlockAndUpdate(offs, motor);
     }
 
     private void digPit(Direction direction, BlockPos pos, World world){
         BlockPos st = new BlockPos(pos.getX(), pos.getY() - 2, pos.getZ() - 2);
         BlockPos end = st.offset(5, 1, -4);
         blockFill(st, end, world, Blocks.AIR.defaultBlockState());
+    }
+
+    private void createCageGuideRail(Direction direction, BlockPos pos, World world, int height){
+        BlockPos st1 = new BlockPos(pos.getX() + 1, pos.getY() - 2, pos.getZ() - 1);
+        BlockPos en1 = new BlockPos(st1.getX(), height + 3, st1.getZ());
+        BlockPos st2 = st1.offset(3, 0, 0);
+        BlockPos en2 = en1.offset(3, 0, 0);
+        blockFill(st1, en1, world, REBlocks.GUIDE_RAIL_CAGE.get().defaultBlockState().setValue(FACING, direction.getCounterClockWise()));
+        blockFill(st2, en2, world, REBlocks.GUIDE_RAIL_CAGE.get().defaultBlockState().setValue(FACING, direction.getClockWise()));
+    }
+
+    private void createCwtGuideRail(Direction direction, BlockPos pos, World world, int height){
+        BlockPos st1 = new BlockPos(pos.getX(), pos.getY() - 2, pos.getZ() - 2);
+        BlockPos en1 = new BlockPos(st1.getX(), height + 2, st1.getZ());
+        BlockPos st2 = st1.offset(0, 0, -1);
+        BlockPos en2 = en1.offset(0, 0, -1);
+        blockFill(st1, en1, world, REBlocks.GUIDE_RAIL_COUNTER_WEIGHT.get().defaultBlockState().setValue(FACING, direction.getCounterClockWise()));
+        blockFill(st2, en2, world, REBlocks.GUIDE_RAIL_COUNTER_WEIGHT.get().defaultBlockState().setValue(FACING, direction.getCounterClockWise())
+                .setValue(GuideRailBlockCounterWeight.PART, 1));
     }
 
     private void blockFill(BlockPos start, BlockPos end, World world, BlockState state){

@@ -34,10 +34,10 @@ public abstract class ElevatorPartTE extends TileEntity {
         registered = true;
     }
 
-    @Override
-    public void onDataPacket(NetworkManager net, SUpdateTileEntityPacket pkt) {
-        this.handleUpdateTag(getLevel().getBlockState(this.worldPosition), pkt.getTag());
-    }
+//    @Override
+//    public void onDataPacket(NetworkManager net, SUpdateTileEntityPacket pkt) {
+//        this.handleUpdateTag(getLevel().getBlockState(this.worldPosition), pkt.getTag());
+//    }
 
     @Override
     public void load(BlockState state, CompoundNBT nbt) {
@@ -46,7 +46,6 @@ public abstract class ElevatorPartTE extends TileEntity {
             elevatorID = nbt.getUUID("ElevatorId");
         if (nbt.contains("ControllerPos")){
             NBTUtil.readBlockPos(nbt.getCompound("ControllerPos"));
-            //controllerPos = nbt.
         }
     }
 
@@ -78,5 +77,9 @@ public abstract class ElevatorPartTE extends TileEntity {
 
     public CompoundNBT getUpdateTag() {
         return this.save(new CompoundNBT());
+    }
+
+    public boolean isController() {
+        return isController;
     }
 }

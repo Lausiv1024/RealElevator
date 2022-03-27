@@ -2,7 +2,9 @@ package lausiv1024.entity;
 
 import lausiv1024.REEntities;
 import lausiv1024.REItems;
+import lausiv1024.elevator.DoorManager;
 import lausiv1024.elevator.ElevatorDirection;
+import lausiv1024.entity.doors.AbstractDoorEntity;
 import lausiv1024.util.CageUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntitySize;
@@ -15,6 +17,7 @@ import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.DamageSource;
+import net.minecraft.util.Direction;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.vector.Vector3d;
@@ -34,6 +37,8 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
     private boolean initialized = false;
     private int arrowTick;
     private int arrowSpeed;
+
+    public DoorManager doorMgr;
 
     public CageEntity(EntityType<?> p_i48580_1_, World p_i48580_2_) {
         super(p_i48580_1_, p_i48580_2_);
@@ -64,6 +69,9 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         xo = getX();
         yo = getY();
         zo = getZ();
+        if (doorMgr != null){
+            doorMgr.doorTick(elevator, level);
+        }
     }
 
     private void applyCollisionToPassenger(){
@@ -160,7 +168,33 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
 
     @Override
     public boolean isPickable() {
-        return true;
+        return false;
+    }
+
+    //All : 0, Door : 1, Button : 2
+    private ElevatorPartEntity[] getCageParts(byte mode){
+        List<ElevatorPartEntity> partEntities = level.getEntitiesOfClass(ElevatorPartEntity.class, getBoundingBox(), entity -> {
+            if (entity instanceof AbstractDoorEntity){
+                //乗り場側のドアは含めない
+                return !((AbstractDoorEntity) entity).getLand();
+            }
+            return true;
+        });
+        switch (mode){
+            case 1:
+                List<AbstractDoorEntity> doors = new ArrayList<>();
+                partEntities.forEach(part ->{
+                    if (part instanceof AbstractDoorEntity) doors.add((AbstractDoorEntity) part);
+                });
+                return doors.toArray(new AbstractDoorEntity[0]);
+            case 2:
+                List<EleButtonEntity> buttons = new ArrayList<>();
+                partEntities.forEach(part ->{
+                    if (part instanceof EleButtonEntity) buttons.add((EleButtonEntity) part);
+                });
+                return buttons.toArray(new EleButtonEntity[0]);
+        }
+        return partEntities.toArray(new ElevatorPartEntity[0]);
     }
 
     @Override
