@@ -20,12 +20,14 @@ public class ElevatorControllerTE extends ElevatorPartTE implements ITickableTil
 
     public ElevatorControllerTE(){
         super(RETileEntities.ELEVATOR_CONTROLLER.get());
+        RealElevator.LOGGER.info("Construct");
         //elevator = new Elevator();
         isController = true;
     }
 
     public ElevatorControllerTE(Elevator elevator){
         super(RETileEntities.ELEVATOR_CONTROLLER.get());
+        RealElevator.LOGGER.info("Construct");
         this.elevator = elevator;
         isController = true;
     }
@@ -45,6 +47,13 @@ public class ElevatorControllerTE extends ElevatorPartTE implements ITickableTil
     }
 
     @Override
+    public void onChunkUnloaded() {
+        super.onChunkUnloaded();
+        RealElevator.LOGGER.info("ChunkUnloaded");
+        if (elevator != null) elevator.unLoad();
+    }
+
+    @Override
     public CompoundNBT save(CompoundNBT nbt) {
         super.save(nbt);
         RealElevator.LOGGER.info("Saving NBT...");
@@ -58,6 +67,7 @@ public class ElevatorControllerTE extends ElevatorPartTE implements ITickableTil
     public void load(BlockState state, CompoundNBT nbt) {
         super.load(state, nbt);
         RealElevator.LOGGER.info("Loading NBT...");
+
         elevator = Elevator.fromNBT(nbt.getCompound("Elevator"));
     }
 }

@@ -28,8 +28,8 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 public class EleButtonRenderer extends EntityRenderer<EleButtonEntity> {
     public static final EleButtonModel BUTTON_MODEL = new EleButtonModel();
     public static final ResourceLocation LOC_BUT = new ResourceLocation(RealElevator.ID, "textures/entities/cage_but_0.png");
-    public static final ResourceLocation ACT_Y = new ResourceLocation(RealElevator.ID, "textures/entities/cage_but_1.png");
-    public static final ResourceLocation ACT_W = new ResourceLocation(RealElevator.ID, "textures/entities/cage_but_2.png");
+    public static final ResourceLocation ACT_Y = new ResourceLocation(RealElevator.ID, "textures/entities/cage_but_1.png"); //Yellow Light
+    public static final ResourceLocation ACT_W = new ResourceLocation(RealElevator.ID, "textures/entities/cage_but_2.png"); //White Light
     public EleButtonRenderer(EntityRendererManager entityRendererManager) {
         super(entityRendererManager);
     }
@@ -42,7 +42,7 @@ public class EleButtonRenderer extends EntityRenderer<EleButtonEntity> {
         matrixStack.mulPose(Vector3f.YP.rotationDegrees(eleButtonEntity.getButDirection().toYRot()));
 
         ResourceLocation res = LOC_BUT;
-        if (eleButtonEntity.isActive()){
+        if (eleButtonEntity.isActive() && eleButtonEntity.is_Enabled()){
             res = eleButtonEntity.getLightColor() == 0 ? ACT_Y : ACT_W;
         }
 

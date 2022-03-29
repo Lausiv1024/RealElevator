@@ -16,6 +16,8 @@ public class RESoundEvents {
     public static final SoundEvent CALL_SOUND = register("call", new ResourceLocation(RealElevator.ID, "call"));
     public static final SoundEvent UP_SOUND = register("up", new ResourceLocation(RealElevator.ID, "up"));
     public static final SoundEvent DOWN_SOUND = register("down", new ResourceLocation(RealElevator.ID, "down"));
+    public static final SoundEvent TEST_OPEN = register("tes_open", new ResourceLocation(RealElevator.ID, "tes_open"));
+    public static final SoundEvent TEST_CLOSE = register("tes_close", new ResourceLocation(RealElevator.ID, "tes_close"));
 
     private static SoundEvent register(String registryName, ResourceLocation location){
         SoundEvent soundEvent = new SoundEvent(location).setRegistryName(registryName);

@@ -2,7 +2,9 @@ package lausiv1024.entity;
 
 import lausiv1024.REEntities;
 import lausiv1024.REItems;
+import lausiv1024.elevator.AbstractElevator;
 import lausiv1024.elevator.DoorManager;
+import lausiv1024.elevator.Elevator;
 import lausiv1024.elevator.ElevatorDirection;
 import lausiv1024.entity.doors.AbstractDoorEntity;
 import lausiv1024.util.CageUtil;
@@ -17,7 +19,6 @@ import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.DamageSource;
-import net.minecraft.util.Direction;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.vector.Vector3d;
@@ -48,6 +49,10 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         super(REEntities.CAGE.get(), world);
     }
 
+    public CageEntity(World world, Elevator elevator){
+        super(REEntities.CAGE.get(), world, elevator);
+    }
+
     @Override
     protected void defineSynchedData() {
         getEntityData().define(ROTATION_DATA, 0);
@@ -60,10 +65,13 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
     @Override
     public void tick() {
         super.tick();
-        if (!initialized) initCage();
+        if (!initialized) {
+            initCage();
+        }
         //if (elevator == null) initialized = false;
 
         applyCollisionToPassenger();
+        if (!initialized) return;
         arrowTick();
 
         xo = getX();
@@ -73,6 +81,23 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
             doorMgr.doorTick(elevator, level);
         }
     }
+
+//    private void checkButtonInput(){
+//        EleButtonEntity[] buttons = getButtons();
+//        for (EleButtonEntity button : buttons){
+//            if (button.getFloorIndex() < 0){
+//                switch (button.getFloorIndex()){
+//                    case -1:
+//                        elevator.setDoorOpen();
+//                    case -2:
+//                        elevator.setDoorClose();
+//                }
+//            }else{
+//                if (elevator.getFloorCount() < button.getFloorIndex()) return;
+//                elevator.getRegistered()[button.getFloorIndex()] = button.isActive();
+//            }
+//        }
+//    }
 
     private void applyCollisionToPassenger(){
         List<Entity> entities = level.getEntitiesOfClass(Entity.class, getBoundingBox().inflate(2),
@@ -118,6 +143,14 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
 
     private void initCage(){
         setCurDirection(ElevatorDirection.UP);
+        if (elevator == null){
+            initialized = false;
+            elevator = AbstractElevator.getElevatorFromUUID(elevatorId, level);
+            return;
+        }
+
+        doorMgr = new DoorManager(this);
+
 
         initialized = true;
     }
@@ -171,30 +204,14 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         return false;
     }
 
-    //All : 0, Door : 1, Button : 2
-    private ElevatorPartEntity[] getCageParts(byte mode){
-        List<ElevatorPartEntity> partEntities = level.getEntitiesOfClass(ElevatorPartEntity.class, getBoundingBox(), entity -> {
-            if (entity instanceof AbstractDoorEntity){
-                //乗り場側のドアは含めない
-                return !((AbstractDoorEntity) entity).getLand();
-            }
-            return true;
-        });
-        switch (mode){
-            case 1:
-                List<AbstractDoorEntity> doors = new ArrayList<>();
-                partEntities.forEach(part ->{
-                    if (part instanceof AbstractDoorEntity) doors.add((AbstractDoorEntity) part);
-                });
-                return doors.toArray(new AbstractDoorEntity[0]);
-            case 2:
-                List<EleButtonEntity> buttons = new ArrayList<>();
-                partEntities.forEach(part ->{
-                    if (part instanceof EleButtonEntity) buttons.add((EleButtonEntity) part);
-                });
-                return buttons.toArray(new EleButtonEntity[0]);
-        }
-        return partEntities.toArray(new ElevatorPartEntity[0]);
+    public EleButtonEntity[] getButtons(){
+        List<EleButtonEntity> parts = level.getEntitiesOfClass(EleButtonEntity.class, getBoundingBox(), ent -> true);
+        return parts.toArray(new EleButtonEntity[0]);
+    }
+
+    public AbstractDoorEntity[] getDoors(){
+        List<AbstractDoorEntity> doors = level.getEntitiesOfClass(AbstractDoorEntity.class, getBoundingBox(), ent -> !ent.getLand());
+        return doors.toArray(new AbstractDoorEntity[0]);
     }
 
     @Override

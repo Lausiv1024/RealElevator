@@ -7,6 +7,7 @@ import lausiv1024.entity.CwtEntity;
 import lausiv1024.entity.EleButtonEntity;
 import lausiv1024.entity.doors.ElevatorDoorNoWindow;
 import lausiv1024.tileentity.ElevatorControllerTE;
+import lausiv1024.tileentity.FloorControllerTE;
 import net.minecraft.block.*;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.BlockItemUseContext;
@@ -46,15 +47,17 @@ public class ElevatorConstructor extends ContainerBlock {
         String[] floorName = {"1", "2", "3"};
         int floorTopIndex = floorHeights.length - 1;
         BlockPos off = pos.offset(new BlockPos(0, 0, -2));
-        Elevator elevator = new Elevator(3, UUID.randomUUID(), off, floorName, floorHeights);
+        UUID eleID = UUID.randomUUID();
+        Elevator elevator = new Elevator(3, eleID, off, floorName, floorHeights);
         BlockPos flConLocal = new BlockPos(4, 0, 2);
         Vector3d localCagePos = new Vector3d(3.0, 0, -3.0);
         CageEntity cage = new CageEntity(world);
         elevator.getRef().cage = cage.getUUID();
         Vector3d cagePosG = localCagePos.add(pos.getX(), pos.getY(), pos.getZ());
         cage.setPos(cagePosG.x, cagePosG.y, cagePosG.z);
+        cage.setElevatorId(eleID);
         world.addFreshEntity(cage);
-        createCageDoor(direction, off, world, elevator);
+        createCageDoor(direction, off, world);
 
         digPit(direction, pos, world);
         for (int i = 0; i < floorHeights.length; i++){
@@ -62,7 +65,7 @@ public class ElevatorConstructor extends ContainerBlock {
             createThreshould(direction, off, world, floorHeights[i]);
             createDoorHeader(direction, off, world, floorHeights[i]);
             createJamb(direction, off, world, floorHeights[i]);
-            createController(direction, off, world, floorHeights[i], isSingleBut);
+            createController(direction, off, world, floorHeights[i], isSingleBut, eleID);
             createFloorDoor(direction, off, world, floorHeights[i]);
         }
 
@@ -72,8 +75,8 @@ public class ElevatorConstructor extends ContainerBlock {
         elevator.getRef().cwt = summonCwt(direction, off, world, floorHeights[floorTopIndex]).getUUID();
         createMotor(direction, off, world, floorHeights[floorTopIndex]);
         createController(direction, off, world, floorHeights[floorTopIndex], elevator);
-        createFloorRegButton(direction, off, world, floorName);
-        createOpenCloseBut(direction, off, world);
+        createFloorRegButton(direction, off, world, floorName, eleID);
+        createOpenCloseBut(direction, off, world, eleID);
     }
 
     private void createThreshould(Direction direction, BlockPos off, World world, int yPos){
@@ -115,7 +118,7 @@ public class ElevatorConstructor extends ContainerBlock {
         }
     }
 
-    private void createCageDoor(Direction direction, BlockPos pos, World world, Elevator elevator){
+    private void createCageDoor(Direction direction, BlockPos pos, World world){
         Vector3d of1 = new Vector3d(pos.getX() + 2.625, pos.getY() , pos.getZ() + 0.75);
         Vector3d of2 = of1.add(0.75, 0, 0);
         ElevatorDoorNoWindow door1 = new ElevatorDoorNoWindow(world, direction.getOpposite());
@@ -124,28 +127,29 @@ public class ElevatorConstructor extends ContainerBlock {
         door2.setPos(of2);
         world.addFreshEntity(door1);
         world.addFreshEntity(door2);
-//        elevator.setDoorMgr(new DoorManager(new AbstractElevatorDoorEntity[]{door1, door2}));
     }
 
-    private void createController(Direction direction, BlockPos pos, World world, int yPos, boolean isSingleBut){
+    private void createController(Direction direction, BlockPos pos, World world, int yPos, boolean isSingleBut, UUID eleID){
         BlockPos of = new BlockPos(pos.getX() + 4, yPos + 1, pos.getZ() + 2);
         world.setBlockAndUpdate(of, REBlocks.FLOOR_CONTROLLER.get().defaultBlockState().setValue(FACING, direction)
                 .setValue(FloorController.IS_SINGLE, isSingleBut));
+        ((FloorControllerTE) world.getBlockEntity(of)).setElevatorID(eleID);
     }
 
-    private void createFloorRegButton(Direction direction, BlockPos pos, World world, String[] floorNames){
+    private void createFloorRegButton(Direction direction, BlockPos pos, World world, String[] floorNames, UUID eleID){
         for (int i = 0; i < floorNames.length; i++){
             double butH = pos.getY() + 1.0 + 0.12 * i;
             Vector3d willPlace = new Vector3d(pos.getX() + 1.95, butH, pos.getZ() + 0.55);
             EleButtonEntity but = new EleButtonEntity(world, direction.getOpposite(), true);
             but.setPos(willPlace);
             but.setFloorIndex(i);
+            but.setElevatorId(eleID);
             but.putDisplayFloor(floorNames[i]);
             world.addFreshEntity(but);
         }
     }
 
-    private void createOpenCloseBut(Direction direction, BlockPos pos, World world){
+    private void createOpenCloseBut(Direction direction, BlockPos pos, World world, UUID eleID){
         Vector3d opPos = new Vector3d(pos.getX() + 2.05, pos.getY() + 0.75, pos.getZ() + 0.55);
         Vector3d clPos = new Vector3d(pos.getX() + 1.85, pos.getY() + 0.75, pos.getZ() + 0.55);
         EleButtonEntity open = new EleButtonEntity(world, direction.getOpposite());
@@ -156,7 +160,9 @@ public class ElevatorConstructor extends ContainerBlock {
         close.setPos(clPos);
         //ひらく とじる　開延長　などの特殊ボタンはインデックスを負の値にする
         open.setFloorIndex(-1);
+        open.setElevatorId(eleID);
         close.setFloorIndex(-2);
+        close.setElevatorId(eleID);
         world.addFreshEntity(open);
         world.addFreshEntity(close);
     }

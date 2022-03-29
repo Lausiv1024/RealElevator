@@ -2,16 +2,21 @@ package lausiv1024.elevator;
 
 import com.google.common.collect.Maps;
 import lausiv1024.RealElevator;
-import net.minecraft.entity.LivingEntity;
+import lausiv1024.entity.EleButtonEntity;
+import lausiv1024.entity.ElevatorPartEntity;
+import lausiv1024.tileentity.ElevatorControllerTE;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.nbt.NBTUtil;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Direction;
+import net.minecraft.util.NonNullList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.UUID;
 
@@ -25,9 +30,10 @@ public abstract class AbstractElevator {
     public UUID elevatorID;
     protected String[] displayName;
     protected boolean[] registered;
+    protected NonNullList<Boolean> isEnabled;//falseで不停止設定
     protected int floorCount;
     protected int curFloor = 0;
-    protected byte doorState = 0;
+    protected byte doorState = 0; //0:Closed  1:Opening  2:Opened  3:Closing  4:Inverting
     protected int doorCloseTick = 60;
     protected int openTime = 0;
     protected boolean forceClosing = false;
@@ -43,17 +49,27 @@ public abstract class AbstractElevator {
     protected DoorManager doorMgr;
     protected BlockPos offSet;
 
+
     public AbstractElevator(int index, UUID elevatorID, BlockPos offSet, String[] dispName, int[] yPoses){
         floorCount = index;
         displayName = dispName;
         registered = new boolean[index];
+        isEnabled = NonNullList.withSize(index, true);
         called = new EnumCallingState[index];
         floorYPos = yPoses;
         direction = ElevatorDirection.NONE;
         this.elevatorID = elevatorID;
         this.offSet = offSet;
         ref = new ElevatorObjectReference();
-        ELEVATOROFFS.put(elevatorID, offSet);
+        ELEVATOROFFS.put(elevatorID, getControllerPos(offSet));
+    }
+
+    private BlockPos getControllerPos(BlockPos eleOffset){
+        return new BlockPos(eleOffset.getX(), getTopPos() - 2, eleOffset.getZ() - 1);
+    }
+
+    public void unLoad(){
+        ELEVATOROFFS.remove(elevatorID);
     }
 
     public void elevatorTick(World world){
@@ -68,15 +84,22 @@ public abstract class AbstractElevator {
             openTime = 0;
             resetDoorCloseTick(true);
         }else if (doorState == 2){
-            if (!checkSafety(true)) resetDoorCloseTick(false);
-            if (!forceClosing)
-                //openTime++;
-            if (openTime == 600)
-                forceClosing = true;
-        }else if (doorState == 3){
-            if (!checkSafety(true)) {
+
+            if (!checkSafety()) {
                 resetDoorCloseTick(false);
-                doorState = 4;
+            }else doorCloseTick--;
+//            if (!forceClosing)
+//                openTime++;
+//            if (openTime == 600)
+//                forceClosing = true;
+
+             if (doorCloseTick == 0){
+                 setDoorClose();
+             }
+        }else if (doorState == 3){
+            if (!checkSafety()) {
+                resetDoorCloseTick(false);
+                doorState = 2;
             }
         }
 
@@ -89,8 +112,10 @@ public abstract class AbstractElevator {
     }
 
 
-    private boolean checkSafety(boolean b){
-        return false;
+    private boolean checkSafety(){
+        //ドアの間にエンティティがいないか確認
+        //強制戸閉の場合、ドアにエンティティが接触するまでtrueを返し続ける
+        return true;
     }
 
     public void openButtonPressed(){
@@ -223,13 +248,44 @@ public abstract class AbstractElevator {
         return curFloor;
     }
 
-    public int getDoorState() {
-        return doorState;
+    public boolean onButtonclicked(EleButtonEntity sender, boolean regVal){
+        int index = sender.getFloorIndex();
+        if (sender.level.isClientSide) return false;
+        LOGGER.info("Clicked!!");
+        if (index < 0){
+            switch (index){
+                case -1:
+                    setDoorOpen();
+                    break;
+                case -2:
+                    setDoorClose();
+        }
+        return !moving;
+    }else{
+        if (curFloor == index) return false;
+        if (floorCount < sender.getFloorIndex()) return false;
+            registered[index] = regVal;
+        }
+        return true;
     }
 
-    public void setDoorState(byte doorState) {
-        if (doorState < 5)
-            this.doorState = doorState;
+    public void setDoorOpen(){
+        LOGGER.info("Open DoorState : {}", doorState);
+        resetDoorCloseTick(false);
+        if (doorState == 1 || doorState == 2) {
+            return;
+        }
+
+        doorState = 1;
+    }
+
+    public void setDoorClose(){
+        if (!checkSafety()) return;
+        if (doorState != 2) return;
+        doorState = 3;
+
+
+        resetDoorCloseTick(false);
     }
 
     public ElevatorDirection getDirection() {
@@ -253,6 +309,10 @@ public abstract class AbstractElevator {
         return ref;
     }
 
+    public NonNullList<Boolean> getIsEnabled() {
+        return isEnabled;
+    }
+
     private int getTopPos(){
         if (floorYPos.length < 2){
             RealElevator.LOGGER.warn("Invalid Index!!");
@@ -272,6 +332,10 @@ public abstract class AbstractElevator {
 
     private int getBottomPos(){
         return floorYPos[0] - 2;
+    }
+
+    public boolean[] getRegistered() {
+        return registered;
     }
 
     public CompoundNBT saveToNbt(){
@@ -294,6 +358,7 @@ public abstract class AbstractElevator {
             fData.putInt("Ypos", floorYPos[i]);
             fData.putString("DispName", displayName[i]);
             fData.putBoolean("Registered", registered[i]);
+            fData.putBoolean("IsEnabled", isEnabled.get(i));
             //ObjHelper.checkNullAndExec(called[i2], () -> fData.putString("CallState", called[i2].name()));
             if (called[i] != null) fData.putString("CallState", called[i].name());
             flInfoList.add(fData);
@@ -326,11 +391,13 @@ public abstract class AbstractElevator {
         String[] dispName = new String[length];
         boolean[] registered = new boolean[length];
         EnumCallingState[] callState = new EnumCallingState[length];
+        NonNullList<Boolean> isEnabled = NonNullList.withSize(length, true);
         for (int i = 0; i < length; i++){
             CompoundNBT nbt1 = floorInfo.getCompound(i);
             yPos[i] = nbt1.getInt("Ypos");
             dispName[i] = nbt1.getString("DispName");
             registered[i] = nbt1.getBoolean("Registered");
+            isEnabled.set(i, nbt1.getBoolean("IsEnabled"));
             try {
                 callState[i] = EnumCallingState.valueOf(nbt1.getString("CallState"));
             }catch (IllegalArgumentException e){
@@ -354,6 +421,7 @@ public abstract class AbstractElevator {
         elevator.doorCloseTick = nbt.getInt("DoorCloseTick");
         elevator.going = nbt.getInt("GoingFloor");
         elevator.moving = nbt.getBoolean("Moving");
+        elevator.isEnabled = isEnabled;
 
         try {
             elevator.direction = ElevatorDirection.valueOf(nbt.getString("ElevatorDirection"));
@@ -366,5 +434,13 @@ public abstract class AbstractElevator {
     }
     public static BlockPos getElevatorOff(UUID elevatorID){
         return ELEVATOROFFS.get(elevatorID);
+    }
+
+    @Nullable
+    public static AbstractElevator getElevatorFromUUID(UUID elevatorID, World world){
+        if (!ELEVATOROFFS.containsKey(elevatorID)) return null;
+        TileEntity te = world.getBlockEntity(ELEVATOROFFS.get(elevatorID));
+        if (te instanceof ElevatorControllerTE) return ((ElevatorControllerTE) te).getElevator();
+        return null;
     }
 }

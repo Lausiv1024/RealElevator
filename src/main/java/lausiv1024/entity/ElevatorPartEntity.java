@@ -7,6 +7,8 @@ import lausiv1024.tileentity.ElevatorPartTE;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.NBTUtil;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
@@ -37,11 +39,16 @@ public abstract class ElevatorPartEntity extends Entity {
     protected double lerpZ;
     protected int lerpStep;
     protected AbstractElevator elevator;
+    protected BlockPos controllerPos;
 
     public ElevatorPartEntity(EntityType<? extends Entity> type, World world) {
         super(type, world);
         elevator = null;
+    }
 
+    public ElevatorPartEntity(EntityType<? extends Entity> type, World world, Elevator elevator){
+        super(type, world);
+        this.elevator = elevator;
     }
 
     public void setElevatorId(UUID elevatorId) {
@@ -52,20 +59,18 @@ public abstract class ElevatorPartEntity extends Entity {
         return elevatorId;
     }
 
-    protected boolean moving = false;
-
     @Override
     protected void defineSynchedData() {
     }
 
     @Override
     protected void readAdditionalSaveData(CompoundNBT nbt) {
-        if (nbt.contains("ElevatorID"))
+        if (nbt.hasUUID("ElevatorID"))
             elevatorId = nbt.getUUID("ElevatorID");
         else {
             elevatorId = UUID.fromString("C4FBA282-1EBF-4747-A805-5F32B948A8FD");
         }
-        moving = nbt.getBoolean("Moving");
+        controllerPos = NBTUtil.readBlockPos(nbt.getCompound("ControllerPos"));
     }
 
     @Override
@@ -80,7 +85,7 @@ public abstract class ElevatorPartEntity extends Entity {
     @Override
     public void tick() {
         super.tick();
-        if (moving) doMotion();
+        doMotion();
     }
 
     public Vector3d getPrevPos(){
@@ -133,6 +138,23 @@ public abstract class ElevatorPartEntity extends Entity {
     protected void addAdditionalSaveData(CompoundNBT nbt) {
         if (elevatorId != null)
             nbt.putUUID("ElevatorID", elevatorId);
-        nbt.putBoolean("Moving", moving);
+        if (controllerPos != null)
+            nbt.put("ControllerPos", NBTUtil.writeBlockPos(controllerPos));
+    }
+
+    public AbstractElevator getElevator() {
+        return elevator;
+    }
+
+    public void setElevator(AbstractElevator elevator) {
+        this.elevator = elevator;
+    }
+
+    public BlockPos getControllerPos() {
+        return controllerPos;
+    }
+
+    public void setControllerPos(BlockPos controllerPos) {
+        this.controllerPos = controllerPos;
     }
 }

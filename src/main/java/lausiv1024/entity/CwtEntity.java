@@ -69,7 +69,6 @@ public class CwtEntity extends ElevatorPartEntity{
     @Override
     public ActionResultType interact(PlayerEntity playerEntity, Hand hand) {
         LOGGER.info("Interact");
-        moving = true;
         tes1 = true;
         //setDeltaMovement(getDeltaMovement().add(new Vector3d(0.0, 0.01, 0.0)));
         return ActionResultType.SUCCESS;

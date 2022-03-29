@@ -19,8 +19,4 @@ public class REEvents {
 //            event.setCanceled(true);
 //        }
 //    }
-    @SubscribeEvent
-    public static void en(PlayerInteractEvent.EntityInteract encon){
-        RealElevator.LOGGER.info("Entity ID : {}", encon.getTarget().getId());
-    }
 }
