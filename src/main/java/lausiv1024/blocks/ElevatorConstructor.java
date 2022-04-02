@@ -65,7 +65,7 @@ public class ElevatorConstructor extends ContainerBlock {
             createThreshould(direction, off, world, floorHeights[i]);
             createDoorHeader(direction, off, world, floorHeights[i]);
             createJamb(direction, off, world, floorHeights[i]);
-            createController(direction, off, world, floorHeights[i], isSingleBut, eleID);
+            createController(direction, off, world, floorHeights[i], isSingleBut, eleID, i);
             createFloorDoor(direction, off, world, floorHeights[i]);
         }
 
@@ -129,11 +129,12 @@ public class ElevatorConstructor extends ContainerBlock {
         world.addFreshEntity(door2);
     }
 
-    private void createController(Direction direction, BlockPos pos, World world, int yPos, boolean isSingleBut, UUID eleID){
+    private void createController(Direction direction, BlockPos pos, World world, int yPos, boolean isSingleBut, UUID eleID, int index){
         BlockPos of = new BlockPos(pos.getX() + 4, yPos + 1, pos.getZ() + 2);
         world.setBlockAndUpdate(of, REBlocks.FLOOR_CONTROLLER.get().defaultBlockState().setValue(FACING, direction)
                 .setValue(FloorController.IS_SINGLE, isSingleBut));
         ((FloorControllerTE) world.getBlockEntity(of)).setElevatorID(eleID);
+        ((FloorControllerTE) world.getBlockEntity(of)).setFloorIndex((byte) index);
     }
 
     private void createFloorRegButton(Direction direction, BlockPos pos, World world, String[] floorNames, UUID eleID){

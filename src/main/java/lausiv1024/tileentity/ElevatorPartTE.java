@@ -9,6 +9,9 @@ import net.minecraft.network.play.server.SUpdateTileEntityPacket;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.SectionPos;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraftforge.fml.network.PacketDistributor;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
@@ -81,5 +84,14 @@ public abstract class ElevatorPartTE extends TileEntity {
 
     public boolean isController() {
         return isController;
+    }
+
+    public PacketDistributor.PacketTarget target(){
+        return PacketDistributor.TRACKING_CHUNK.with(this::containedChunk);
+    }
+
+    public Chunk containedChunk(){
+        SectionPos pos = SectionPos.of(worldPosition);
+        return level.getChunk(pos.x(), pos.z());
     }
 }

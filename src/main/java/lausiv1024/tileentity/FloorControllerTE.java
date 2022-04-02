@@ -2,14 +2,16 @@ package lausiv1024.tileentity;
 
 import lausiv1024.RETileEntities;
 import lausiv1024.elevator.ElevatorDirection;
+import lausiv1024.networking.REPackets;
 import net.minecraft.block.BlockState;
+import net.minecraft.command.impl.data.DataCommand;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.tileentity.ITickableTileEntity;
 import net.minecraft.tileentity.TileEntityType;
 
 import java.util.UUID;
 
-public class FloorControllerTE extends LandingButtonBlockTE implements ITickableTileEntity {
+public class FloorControllerTE extends LandingButtonBlockTE {
     private String curFlName = "1";
     private ElevatorDirection direction = ElevatorDirection.NONE;
     private int arrowTick = 0;
@@ -133,5 +135,11 @@ public class FloorControllerTE extends LandingButtonBlockTE implements ITickable
             arrowFrame = 0;
         }else arrowFrame++;
         moveTimes++;
+    }
+
+    public void clientUpdate(String floorName, int direction, boolean isBlink){
+        curFlName = floorName;
+        this.direction = ElevatorDirection.getElevatorDirectionFromIndex(direction);
+        blinking = isBlink;
     }
 }

@@ -31,6 +31,21 @@ public class ModelRotationHelper {
         }
     }
 
+    public static AxisAlignedBB rotateToAABB(double startX, double startY, double startZ, double endX, double endY, double endZ, Direction facing){
+        switch (facing){
+            case NORTH:
+                return new AxisAlignedBB(startX, startY, startZ, endX, endY, endZ);
+            case SOUTH:
+                return new AxisAlignedBB(16 - startX, startY, 16- startZ, 16 - endX, endY, 16 - endZ);
+            case EAST:
+                return new AxisAlignedBB(16 - startZ, startY, startX, 16 - endZ, endY, endX);
+            case WEST:
+                return new AxisAlignedBB(startZ, startY,16 - startX, endZ, endY,16 - endX);
+            default:
+                throw new IllegalArgumentException("Invalid Direction  : Up or Down");
+        }
+    }
+
     public static Rotation toRotation(Direction direction){
         switch (direction){
             case NORTH:

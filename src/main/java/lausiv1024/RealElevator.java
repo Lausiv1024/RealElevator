@@ -1,6 +1,7 @@
 package lausiv1024;
 
 import lausiv1024.devItem.REDevItems;
+import lausiv1024.networking.REPackets;
 import lausiv1024.networking.Vec3Serializer;
 import net.minecraft.item.ItemGroup;
 import net.minecraft.item.ItemStack;
@@ -47,7 +48,7 @@ public class RealElevator {
     }
 
     private void commonSetup(FMLCommonSetupEvent event){
-
+        REPackets.registerPackets();
     }
 
     @SubscribeEvent

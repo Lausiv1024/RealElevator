@@ -55,6 +55,7 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
 
     @Override
     protected void defineSynchedData() {
+        super.defineSynchedData();
         getEntityData().define(ROTATION_DATA, 0);
         getEntityData().define(CURRENT_FLOOR_DATA, "1");
         getEntityData().define(ARROW_FRAME, 0);
@@ -142,7 +143,6 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
     }
 
     private void initCage(){
-        setCurDirection(ElevatorDirection.UP);
         if (elevator == null){
             initialized = false;
             elevator = AbstractElevator.getElevatorFromUUID(elevatorId, level);
@@ -209,8 +209,12 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         return parts.toArray(new EleButtonEntity[0]);
     }
 
-    public AbstractDoorEntity[] getDoors(){
-        List<AbstractDoorEntity> doors = level.getEntitiesOfClass(AbstractDoorEntity.class, getBoundingBox(), ent -> !ent.getLand());
+    public AbstractDoorEntity[] getDoors(boolean containLandDoor){
+        List<AbstractDoorEntity> doors;
+        if (containLandDoor)
+            doors = level.getEntitiesOfClass(AbstractDoorEntity.class, getBoundingBox(), ent -> true);
+        else
+            doors = level.getEntitiesOfClass(AbstractDoorEntity.class, getBoundingBox(), ent -> !ent.getLand());
         return doors.toArray(new AbstractDoorEntity[0]);
     }
 

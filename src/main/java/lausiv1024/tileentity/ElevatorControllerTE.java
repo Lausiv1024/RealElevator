@@ -42,7 +42,7 @@ public class ElevatorControllerTE extends ElevatorPartTE implements ITickableTil
 
     @Override
     public void tick() {
-        if (elevator != null)
+        if (elevator != null && !level.isClientSide)
             elevator.elevatorTick(level);
     }
 

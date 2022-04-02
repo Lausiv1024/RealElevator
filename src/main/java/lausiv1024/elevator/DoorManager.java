@@ -46,8 +46,9 @@ public class DoorManager {
                             break;
                         case 1:
                             if (posO > 1.10){
-                                parent.doorState = 2;
-                                doorSequence = 0;
+                                doorSequence = 2;
+                                doorTick = 0;
+                                setDoorMotion(0);
                                 break;
                             }
 
@@ -56,9 +57,20 @@ public class DoorManager {
                             }
 
                             posO = setDoorMotion(0.1 / 20.0);
+                            break;
+                        case 2:
+                            doorTick++;
+                            RealElevator.LOGGER.info("doorTick > {}", doorTick);
+
+                            if (doorTick == 11){
+                                parent.doorState = 2;
+                                doorSequence = 0;
+                                doorTick = 0;
+                                break;
+                            }
+                            break;
                     }
                 }
-                doorTick++;
                 break;
             case 3:
                 if (doorType == DoorType.CO){
@@ -103,7 +115,7 @@ public class DoorManager {
     //ドア位置確認用の数値を返す
     private double setDoorMotion(double speed){
         double abd = 0;
-        for (AbstractDoorEntity door : parentCage.getDoors()){
+        for (AbstractDoorEntity door : parentCage.getDoors(false)){
             //かごから見たドアの座標
 
             Vector3d local = getLocalDoorPos(parentCage.position(), door.position());
@@ -135,19 +147,19 @@ public class DoorManager {
 
             Vector3d idou = vector3d.multiply(d.getStepX(), 0, d.getStepZ());
             Vector3d motion = Vector3d.ZERO;
-            if (d.getAxis() == Direction.Axis.X) motion = new Vector3d(0, 0, speed * a);
-            else if (d.getAxis() == Direction.Axis.Z) motion = new Vector3d(speed * a, 0, 0);
+            if (d.getAxis() == Direction.Axis.X) motion = new Vector3d(0, door.getDeltaMovement().y /*念の為*/, speed * a);
+            else if (d.getAxis() == Direction.Axis.Z) motion = new Vector3d(speed * a, door.getDeltaMovement().y, 0);
 
             AxisAlignedBB moved = bb.move(idou).inflate(-0.005);//隣のドアを拾わないよう少し小さくする
             List<AbstractDoorEntity> doorEntities = level.getEntitiesOfClass(AbstractDoorEntity.class, moved, AbstractDoorEntity::getLand);
-            final Vector3d finalMotion = motion;
+            final Vector3d finalMotion = motion.multiply(1, 0, 1);
             doorEntities.forEach(dd -> dd.setDeltaMovement(finalMotion));
         }
         return abd;
     }
 
     private void setDoorPos(double pos1){
-        for (AbstractDoorEntity door : parentCage.getDoors()){
+        for (AbstractDoorEntity door : parentCage.getDoors(false)){
             //かごから見た相対座標
             Vector3d local = getLocalDoorPos(parentCage.position(), door.position());
             Direction.Axis doorAxis = door.getDirection1().getAxis();

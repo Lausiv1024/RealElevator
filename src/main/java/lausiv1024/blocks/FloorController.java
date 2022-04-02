@@ -1,6 +1,5 @@
 package lausiv1024.blocks;
 
-import lausiv1024.RESoundEvents;
 import lausiv1024.blocks.interfaces.IHasBounding;
 import lausiv1024.elevator.ElevatorDirection;
 import lausiv1024.tileentity.FloorControllerTE;
@@ -46,23 +45,25 @@ public class FloorController extends ElevatorPartBlock implements IHasBounding {
         FloorControllerTE tile = getTe(world, pos);
         if (tile == null) return ActionResultType.PASS;
         int a = calculatePressedButton(state, result.getLocation(), pos);
-        if (a > 0){
-            if (a == 1) {
-                //playerEntity.playSound(RESoundEvents.UP_SOUND, 1, 1);
-                tile.setDirection(ElevatorDirection.UP);
-                tile.upA();
+        if (!world.isClientSide) {
+            if (a > 0) {
+                if (a == 1) {
+                    //playerEntity.playSound(RESoundEvents.UP_SOUND, 1, 1);
+                    tile.setDirection(ElevatorDirection.UP);
+                    tile.upA();
+                }
+                if (a == 2) {
+                    //playerEntity.playSound(RESoundEvents.DOWN_SOUND, 1, 1);
+                    tile.setDirection(ElevatorDirection.DOWN);
+                    tile.dwA();
+                }
+                if (a == 3) {
+                    tile.setCalled();
+                }
+                return ActionResultType.CONSUME;
             }
-            if (a == 2) {
-                //playerEntity.playSound(RESoundEvents.DOWN_SOUND, 1, 1);
-                tile.setDirection(ElevatorDirection.DOWN);
-                tile.dwA();
-            }
-            if (a == 3){
-                tile.setCalled(true);
-            }
-            return ActionResultType.SUCCESS;
         }
-        return ActionResultType.PASS;
+        return ActionResultType.CONSUME;
     }
 
     private void test(BlockPos pos, BlockRayTraceResult result){

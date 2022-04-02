@@ -1,7 +1,6 @@
 package lausiv1024.entity;
 
 import lausiv1024.REEntities;
-import lausiv1024.REItems;
 import lausiv1024.elevator.AbstractElevator;
 import net.minecraft.entity.EntitySize;
 import net.minecraft.entity.EntityType;
@@ -13,7 +12,6 @@ import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.ActionResultType;
-import net.minecraft.util.DamageSource;
 import net.minecraft.util.Direction;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.AxisAlignedBB;
@@ -65,12 +63,12 @@ public class EleButtonEntity extends ElevatorPartEntity {
         if (isActive() && onTick > 0 && isAltanative){
             setActive(false);
             clicked = false;
-            if (elevator != null) elevator.onButtonclicked(this, false);
+            if (elevator != null) elevator.onEleButtonclicked(this, false);
             return ActionResultType.SUCCESS;
         }
         clicked = true;
         onTick = 6;
-        if (elevator != null) setActive(elevator.onButtonclicked(this, true));
+        if (elevator != null) setActive(elevator.onEleButtonclicked(this, true));
         return ActionResultType.SUCCESS;
     }
 

@@ -182,4 +182,10 @@ public class FloorDisplayTile extends ElevatorPartTE implements ITickableTileEnt
     public void tick() {
         updateArrow();
     }
+
+    public void clientUpdate(String dispFloor, int direction, boolean isBlink){
+        curFloorName = dispFloor;
+        curDirection = ElevatorDirection.getElevatorDirectionFromIndex(direction);
+        this.blinking = isBlink;
+    }
 }
