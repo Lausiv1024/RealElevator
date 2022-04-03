@@ -4,6 +4,7 @@ import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.vertex.IVertexBuilder;
 import lausiv1024.RealElevator;
 import lausiv1024.client.entitymodel.DoorNoWindow3;
+import lausiv1024.client.entitymodel.DoorWideWindow3;
 import lausiv1024.entity.doors.ElevatorDoorNoWindow;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.*;
@@ -22,6 +23,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 @OnlyIn(Dist.CLIENT)
 public class DoorNoWindowRenderer extends EntityRenderer<ElevatorDoorNoWindow> {
     DoorNoWindow3 model = new DoorNoWindow3();
+    DoorWideWindow3 model_w = new DoorWideWindow3();
     Minecraft mc = Minecraft.getInstance();
 
     public DoorNoWindowRenderer(EntityRendererManager p_i46179_1_) {
@@ -37,7 +39,7 @@ public class DoorNoWindowRenderer extends EntityRenderer<ElevatorDoorNoWindow> {
     public void render(ElevatorDoorNoWindow elevatorDoorNoWindow, float v, float v1, MatrixStack matrixStack, IRenderTypeBuffer buffer, int lightLevel) {
         super.render(elevatorDoorNoWindow, v, v1, matrixStack, buffer, lightLevel);
         renderDoor(elevatorDoorNoWindow, v, v1, matrixStack, buffer,lightLevel,
-                model, new ResourceLocation(RealElevator.ID, "textures/entities/door/door_normal_no_window_dark_oak.png"), elevatorDoorNoWindow.getDirection1());
+                model_w, new ResourceLocation(RealElevator.ID, "textures/entities/door/door_normal_wide_window_dark_oak.png"), elevatorDoorNoWindow.getDirection1());
         mc.getModelManager().getModel(new ResourceLocation(""));
 
     }

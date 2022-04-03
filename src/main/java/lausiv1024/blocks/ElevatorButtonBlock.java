@@ -58,7 +58,7 @@ public class ElevatorButtonBlock extends ElevatorPartBlock {
         double z = result.getLocation().z - pos.getZ();
         LandingButtonBlockTE landingButtonBlockTE = getTE(world, pos);
         if (landingButtonBlockTE == null) return ActionResultType.PASS;
-        if (world.isClientSide) return ActionResultType.CONSUME;
+        if (world.isClientSide) return ActionResultType.SUCCESS;
 
         int a = 0;
         a = calculatePressedButton(state, result.getLocation(), pos);
@@ -72,7 +72,7 @@ public class ElevatorButtonBlock extends ElevatorPartBlock {
         }else if (a == 3){
             landingButtonBlockTE.setCalled();
         }
-        return ActionResultType.CONSUME;
+        return ActionResultType.SUCCESS;
     }
 
     @Nullable

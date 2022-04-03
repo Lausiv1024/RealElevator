@@ -48,22 +48,20 @@ public class FloorController extends ElevatorPartBlock implements IHasBounding {
         if (!world.isClientSide) {
             if (a > 0) {
                 if (a == 1) {
-                    //playerEntity.playSound(RESoundEvents.UP_SOUND, 1, 1);
                     tile.setDirection(ElevatorDirection.UP);
                     tile.upA();
                 }
                 if (a == 2) {
-                    //playerEntity.playSound(RESoundEvents.DOWN_SOUND, 1, 1);
                     tile.setDirection(ElevatorDirection.DOWN);
                     tile.dwA();
                 }
                 if (a == 3) {
                     tile.setCalled();
                 }
-                return ActionResultType.CONSUME;
+                return ActionResultType.SUCCESS;
             }
         }
-        return ActionResultType.CONSUME;
+        return ActionResultType.SUCCESS;
     }
 
     private void test(BlockPos pos, BlockRayTraceResult result){
