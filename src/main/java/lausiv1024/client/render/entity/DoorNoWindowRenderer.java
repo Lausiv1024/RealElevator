@@ -24,7 +24,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 public class DoorNoWindowRenderer extends EntityRenderer<ElevatorDoorNoWindow> {
     DoorNoWindow3 model = new DoorNoWindow3();
     DoorWideWindow3 model_w = new DoorWideWindow3();
-    Minecraft mc = Minecraft.getInstance();
+    Minecraft mc = Minecraft.getInstance(); 
 
     public DoorNoWindowRenderer(EntityRendererManager p_i46179_1_) {
         super(p_i46179_1_);

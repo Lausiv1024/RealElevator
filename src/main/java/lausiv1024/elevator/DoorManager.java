@@ -2,23 +2,21 @@ package lausiv1024.elevator;
 
 import lausiv1024.RealElevator;
 import lausiv1024.entity.CageEntity;
-import lausiv1024.entity.ElevatorPartEntity;
 import lausiv1024.entity.doors.AbstractDoorEntity;
-import lausiv1024.util.ObjHelper;
-import lausiv1024.util.REMath;
-import net.minecraft.client.renderer.entity.ItemFrameRenderer;
-import net.minecraft.entity.item.ItemFrameEntity;
+import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.util.Direction;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.util.math.vector.Vector3f;
 import net.minecraft.world.World;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 
 public class DoorManager {
+    private static final Logger LOGGER = LogManager.getLogger("DoorManager");
+
+
     private int doorTick;
     private int doorSequence = 0;
     DoorType doorType = DoorType.CO;
@@ -37,6 +35,7 @@ public class DoorManager {
                 if (doorType == DoorType.CO){
                     switch (doorSequence){
                         case 0:
+                            doorTick = 0;
                             if (posO > 1.05){
                                 doorSequence = 1;
                                 break;
@@ -62,7 +61,7 @@ public class DoorManager {
                             doorTick++;
                             RealElevator.LOGGER.info("doorTick > {}", doorTick);
 
-                            if (doorTick == 11){
+                            if (doorTick >= 11){
                                 parent.doorState = 2;
                                 doorSequence = 0;
                                 doorTick = 0;
@@ -75,6 +74,7 @@ public class DoorManager {
             case 3:
                 if (doorType == DoorType.CO){
                     if (doorSequence == 0){
+                        doorTick = 0;
                         posO = setDoorMotion(0);
                         if (posO < 0.475){
                             doorSequence = 1;
@@ -88,11 +88,19 @@ public class DoorManager {
                             setDoorMotion(0);
                             setDoorPos(0.375);
 
-                            parent.doorState = 0;
-                            doorSequence = 0;
+                            //parent.doorState = 0;
+                            doorTick = 0;
+                            doorSequence = 2;
                             return;
                         }
                         posO = setDoorMotion(-0.1 / 20.0);
+                    }else if (doorSequence == 2){
+                        if (doorTick >= 21){
+                            doorTick = 0;
+                            parent.doorState = 0;
+                            return;
+                        }
+                        doorTick++;
                     }
                 }
                 break;
@@ -128,12 +136,12 @@ public class DoorManager {
             switch (doorAxis){
                 case X:
                     a = local.z < 0 ? -1 : 1;
-                    mot = new Vector3d(0, 0, speed * a);
+                    mot = new Vector3d(0, door.getDeltaMovement().y, speed * a);
                     abd = getLocalDoorPos(parentCage.position(), door.position()).z;
                     break;
                 case Z:
                     a = local.x < 0 ? -1 : 1;
-                    mot = new Vector3d(speed * a, 0, 0);
+                    mot = new Vector3d(speed * a, door.getDeltaMovement().y, 0);
                     abd = getLocalDoorPos(parentCage.position(), door.position()).x;
             }
             door.setDeltaMovement(mot);
@@ -211,6 +219,26 @@ public class DoorManager {
 
     public void setParentCage(CageEntity parentCage) {
         this.parentCage = parentCage;
+    }
+
+    public CompoundNBT save(){
+        CompoundNBT nbt = new CompoundNBT();
+        nbt.putInt("DoorTick", doorTick);
+        nbt.putInt("DoorSequence", doorSequence);
+        nbt.putString("DoorType", doorType.name());
+        return nbt;
+    }
+
+    public static DoorManager fromNBT(CompoundNBT nbt, CageEntity parent){
+        DoorManager mgr = new DoorManager(parent);
+        mgr.doorTick = nbt.getInt("DoorTick");
+        mgr.doorSequence = nbt.getInt("DoorSequence");
+        try {
+            mgr.doorType = DoorType.valueOf(nbt.getString("DoorType"));
+        }catch (IllegalArgumentException e){
+            mgr.doorType = DoorType.CO;
+        }
+        return mgr;
     }
 
     public enum DoorType{

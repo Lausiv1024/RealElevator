@@ -66,14 +66,6 @@ public class CwtEntity extends ElevatorPartEntity{
         return this.entityData.get(AXIS_VALUE);
     }
 
-    @Override
-    public ActionResultType interact(PlayerEntity playerEntity, Hand hand) {
-        LOGGER.info("Interact");
-        tes1 = true;
-        //setDeltaMovement(getDeltaMovement().add(new Vector3d(0.0, 0.01, 0.0)));
-        return ActionResultType.SUCCESS;
-    }
-
     public void putAxis(int axis) {
         if (axis > 1) {
             LOGGER.warn("Invalid Axis Id. Correct:( 0 : x  z : 1) provided  {}", axis);

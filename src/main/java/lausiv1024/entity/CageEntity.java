@@ -27,6 +27,7 @@ import net.minecraftforge.fml.network.NetworkHooks;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Vector;
 
 public class CageEntity extends ElevatorPartEntity implements IHasCollision{
     public static final DataParameter<Integer> ROTATION_DATA = EntityDataManager.defineId(CageEntity.class, DataSerializers.INT);
@@ -69,6 +70,7 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         if (!initialized) {
             initCage();
         }
+        applyMotionToComponents();
         //if (elevator == null) initialized = false;
 
         applyCollisionToPassenger();
@@ -82,23 +84,6 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
             doorMgr.doorTick(elevator, level);
         }
     }
-
-//    private void checkButtonInput(){
-//        EleButtonEntity[] buttons = getButtons();
-//        for (EleButtonEntity button : buttons){
-//            if (button.getFloorIndex() < 0){
-//                switch (button.getFloorIndex()){
-//                    case -1:
-//                        elevator.setDoorOpen();
-//                    case -2:
-//                        elevator.setDoorClose();
-//                }
-//            }else{
-//                if (elevator.getFloorCount() < button.getFloorIndex()) return;
-//                elevator.getRegistered()[button.getFloorIndex()] = button.isActive();
-//            }
-//        }
-//    }
 
     private void applyCollisionToPassenger(){
         List<Entity> entities = level.getEntitiesOfClass(Entity.class, getBoundingBox().inflate(2),
@@ -165,6 +150,7 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         setCurDirection(ElevatorDirection.getElevatorDirectionFromIndex(nbt.getInt("CurDirection")));
         arrowTick = nbt.getInt("ArrowTick");
         arrowSpeed = nbt.getInt("ArrowSpeed");
+        doorMgr = DoorManager.fromNBT(nbt.getCompound("DoorMgr"), this);
     }
 
     @Override
@@ -177,6 +163,7 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         nbt.putInt("RenderDirection", getRenderDirection().nbt_index);
         nbt.putInt("ArrowTick", arrowTick);
         nbt.putInt("ArrowSpeed", arrowSpeed);
+        if (doorMgr != null) nbt.put("DoorMgr", doorMgr.save());
     }
 
     public Vector3d getPrevPos(){
@@ -216,6 +203,21 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
         else
             doors = level.getEntitiesOfClass(AbstractDoorEntity.class, getBoundingBox(), ent -> !ent.getLand());
         return doors.toArray(new AbstractDoorEntity[0]);
+    }
+
+    private void applyMotionToComponents(){
+        for (EleButtonEntity button : getButtons()){
+            applyYMotion(button);
+        }
+        for (AbstractDoorEntity door : getDoors(false)){
+            applyYMotion(door);
+        }
+    }
+
+    private void applyYMotion(ElevatorPartEntity entity){
+        Vector3d tmp = entity.getDeltaMovement();
+        Vector3d applied = new Vector3d(tmp.x, getDeltaMovement().y, tmp.z);
+        entity.setDeltaMovement(applied);
     }
 
     @Override
@@ -283,6 +285,20 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
 
     public void setCurDirection(ElevatorDirection direction){
         getEntityData().set(CUR_DIRECTION, direction.nbt_index);
+    }
+
+    public void setPosWithComponents(Vector3d pos){
+        Vector3d cagePos = position();
+        for (AbstractDoorEntity door : getDoors(false)){
+            door.setPos(new Vector3d(door.position().x, pos.y, door.position().z));
+        }
+
+        for (EleButtonEntity button : getButtons()){
+            double sa = button.position().y - cagePos.y;
+            Vector3d result = new Vector3d(button.position().x, pos.y + sa, button.position().z);
+            button.setPos(result);
+        }
+        setPos(pos);
     }
 
     @Override

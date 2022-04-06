@@ -1,11 +1,19 @@
 package lausiv1024.util;
 
 public class REMath {
+    public static double toPerTick(double perSec){
+        return toPerTick(perSec, 20);
+    }
 
-    public static int getMinSide(double d1, double d2){
-        double minVal = Math.min(d1, d2);
-        if (d1 == minVal) return 0;
-        if (d2 == minVal) return 1;
-        return 0;
+    public static double toPerTick(double perSec, int tickCount){
+        return perSec /(double) tickCount;
+    }
+
+    public static double toPerSec(double perSec){
+        return toPerSec(perSec, 20);
+    }
+
+    public static double toPerSec(double perSec, int tickCount){
+        return perSec * (double) tickCount;
     }
 }

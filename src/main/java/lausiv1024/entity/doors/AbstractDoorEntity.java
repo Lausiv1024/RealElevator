@@ -29,6 +29,10 @@ public abstract class AbstractDoorEntity extends ElevatorPartEntity {
         super(type, world);
     }
 
+    @Override
+    public void setPos(double p_70107_1_, double p_70107_3_, double p_70107_5_) {
+        super.setPos(p_70107_1_, p_70107_3_, p_70107_5_);
+    }
 
     @Override
     protected float getEyeHeight(Pose pose, EntitySize entitySize) {
@@ -38,11 +42,6 @@ public abstract class AbstractDoorEntity extends ElevatorPartEntity {
     @Override
     protected boolean repositionEntityAfterLoad() {
         return false;
-    }
-
-    @Override
-    public void setPos(double p_70107_1_, double p_70107_3_, double p_70107_5_) {
-        super.setPos(p_70107_1_, p_70107_3_, p_70107_5_);
     }
 
     @Override
