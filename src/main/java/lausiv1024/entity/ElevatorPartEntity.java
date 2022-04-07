@@ -86,6 +86,9 @@ public abstract class ElevatorPartEntity extends Entity {
     public void tick() {
         super.tick();
         doMotion();
+        xo = getX();
+        yo = getY();
+        zo = getZ();
     }
 
     public Vector3d getPrevPos(){

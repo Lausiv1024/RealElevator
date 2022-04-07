@@ -106,6 +106,7 @@ public class LandingButtonBlockTE extends ElevatorPartTE  implements ITickableTi
         color = nbt.getInt("Color");
         called = nbt.getBoolean("Called");
         floorIndex = nbt.getByte("FloorIndex");
+        DistExecutor.unsafeRunWhenOn(Dist.DEDICATED_SERVER, () -> () -> REPackets.CHANNEL.send(target(), new LandingButtonUpdateMsg(this, up, down, called)));
     }
 
     @Override

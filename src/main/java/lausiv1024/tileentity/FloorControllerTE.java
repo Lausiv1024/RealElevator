@@ -1,12 +1,12 @@
 package lausiv1024.tileentity;
 
 import lausiv1024.RETileEntities;
+import lausiv1024.RealElevator;
 import lausiv1024.elevator.ElevatorDirection;
+import lausiv1024.networking.LandingDispUpdateMsg;
 import lausiv1024.networking.REPackets;
 import net.minecraft.block.BlockState;
-import net.minecraft.command.impl.data.DataCommand;
 import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.tileentity.ITickableTileEntity;
 import net.minecraft.tileentity.TileEntityType;
 
 import java.util.UUID;
@@ -33,18 +33,6 @@ public class FloorControllerTE extends LandingButtonBlockTE {
     public FloorControllerTE(int color){
         super(RETileEntities.FLOOR_CONTROLLER_TE.get());
         this.color = color;
-    }
-
-    public String getCurFlName() {
-        return curFlName;
-    }
-
-    public void setCurFlName(String curFlName) {
-        this.curFlName = curFlName;
-    }
-
-    public ElevatorDirection getDirection() {
-        return direction;
     }
 
     @Override
@@ -85,10 +73,16 @@ public class FloorControllerTE extends LandingButtonBlockTE {
             arrowFrame = 0;
             //21tickより上で消灯
             if (arrowTick >= 21){
-                renderingDirection = ElevatorDirection.NONE;
+                if (renderingDirection != ElevatorDirection.NONE) {
+                    renderingDirection = ElevatorDirection.NONE;
+                    sendDispUpdatePacket();
+                }
             }else{
                 //現在の状態で点灯
-                renderingDirection = direction;
+                if (renderingDirection != direction) {
+                    renderingDirection = direction;
+                    sendDispUpdatePacket();
+                }
             }
             //リセット
             if (arrowTick == 26) arrowTick = 0;
@@ -100,7 +94,10 @@ public class FloorControllerTE extends LandingButtonBlockTE {
             if (arrowFrame == 0){
                 arrowTick = 0;
                 moveTimes = 0;
-                renderingDirection = direction;
+                if (renderingDirection != direction) {
+                    renderingDirection = direction;
+                    sendDispUpdatePacket();
+                }
             }else{
                 arrowTick++;
                 if (arrowTick % 4 == 0){
@@ -110,11 +107,18 @@ public class FloorControllerTE extends LandingButtonBlockTE {
             return;
         }
         //シンプルに動かす
-        renderingDirection = direction;
+        if (renderingDirection != direction) {
+            renderingDirection = direction;
+            sendDispUpdatePacket();
+        }
         arrowTick++;
         if (arrowTick % 4 == 0){
             updateArrowFrame();
         }
+    }
+
+    private void sendDispUpdatePacket(){//毎tick呼ぶと多分死ぬ
+        REPackets.CHANNEL.send(target(), new LandingDispUpdateMsg(this, curFlName, (byte) renderingDirection.nbt_index, (byte) arrowFrame, blinking));
     }
 
     public ElevatorDirection getRenderingDirection() {
@@ -126,7 +130,33 @@ public class FloorControllerTE extends LandingButtonBlockTE {
     }
 
     public void setDirection(ElevatorDirection direction) {
+        if (this.direction == direction) return;
         this.direction = direction;
+        sendDispUpdatePacket();
+    }
+
+    public String getCurFlName() {
+        return curFlName;
+    }
+
+    public void setCurFlName(String curFlName) {
+        if (curFlName.equals(this.curFlName)) return;
+        this.curFlName = curFlName;
+        sendDispUpdatePacket();
+    }
+
+    public ElevatorDirection getDirection() {
+        return direction;
+    }
+
+    public boolean isBlinking() {
+        return blinking;
+    }
+
+    public void setBlinking(boolean blinking) {
+        if (this.blinking == blinking) return;
+        this.blinking = blinking;
+        sendDispUpdatePacket();
     }
 
     //矢印の状態を変更
@@ -135,11 +165,13 @@ public class FloorControllerTE extends LandingButtonBlockTE {
             arrowFrame = 0;
         }else arrowFrame++;
         moveTimes++;
+        sendDispUpdatePacket();
     }
 
-    public void clientUpdate(String floorName, int direction, boolean isBlink){
+    public void clientUpdate(String floorName, byte direction,byte arrowFrame, boolean isBlink){
         curFlName = floorName;
-        this.direction = ElevatorDirection.getElevatorDirectionFromIndex(direction);
+        this.renderingDirection = ElevatorDirection.getElevatorDirectionFromIndex(direction);
         blinking = isBlink;
+        this.arrowFrame = arrowFrame;
     }
 }

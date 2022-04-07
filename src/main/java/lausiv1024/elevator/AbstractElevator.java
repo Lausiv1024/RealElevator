@@ -196,6 +196,7 @@ public abstract class AbstractElevator {
             CageEntity cage = (CageEntity) ElevatorPartEntity.getEntityFromUUID(ref.cage, world);
             CwtEntity cwt = (CwtEntity) ElevatorPartEntity.getEntityFromUUID(ref.cwt, world);
             if (cage == null || cwt == null) return;
+            cage.setArrowSpeed(1);
             updateCurFloor(cage);
             Vector3d cageMotion = cage.getDeltaMovement();
             Vector3d cwtMotion = cwt.getDeltaMovement();
@@ -204,6 +205,7 @@ public abstract class AbstractElevator {
                 if (cageMotion.y <= 0){
                     setAndFixCage(cage, cwt);
                     setEleDirection();
+                    cage.setArrowSpeed(0);
                 }else {
                     cage.setDeltaMovement(cageMotion.add(0, REMath.toPerTick(-accel) * dirStep, 0));
                     cwt.setDeltaMovement(cwtMotion.add(0, REMath.toPerTick(-accel) * -dirStep, 0));
@@ -212,6 +214,7 @@ public abstract class AbstractElevator {
                 if (cageMotion.y >= 0){
                     setAndFixCage(cage, cwt);
                     setEleDirection();
+                    cage.setArrowSpeed(0);
                 }else {
                     cage.setDeltaMovement(cageMotion.add(0, REMath.toPerTick(-accel) * dirStep, 0));
                     cwt.setDeltaMovement(cwtMotion.add(0, REMath.toPerTick(-accel) * -dirStep, 0));
@@ -256,7 +259,7 @@ public abstract class AbstractElevator {
             aida = nextPos + aida;
         }
         if (Math.abs(nextPos - curFloorPos) > 10){
-            //階層の間に大きな間がある場合、途中をハイフン表示にする
+            //階の間に大きな間がある場合、途中をハイフン表示にする
             return;
         }
         if (cageY > aida && direction == ElevatorDirection.UP){
@@ -274,7 +277,7 @@ public abstract class AbstractElevator {
 
     private void fixCwtandCagePos(double pos, CageEntity cage){
         Vector3d vec = new Vector3d(cage.position().x, pos, cage.position().z);
-        cage.setPosWithComponents(vec);
+        cage.setPosWithComponents(vec);//どうやらカウンターウェイトは位置補正しなくても大丈夫らしい
     }
 
     public String[] getDisplayName() {
@@ -390,12 +393,20 @@ public abstract class AbstractElevator {
             }
             if (!flag){
                 direction = ElevatorDirection.NONE;
+            }else{
+                if (curFloor == floorYPos.length - 1){
+                    direction = ElevatorDirection.DOWN;
+                }else if (curFloor == 0){
+                    direction = ElevatorDirection.UP;
+                }
+
             }
         }
         LOGGER.info("Set : {}", direction);
     }
 
     private void updateDispDirection(World world){
+        if (moving) return;
         ElevatorPartEntity part = ElevatorPartEntity.getEntityFromUUID(ref.cage, world);
         if (!(part instanceof CageEntity)) return;
         CageEntity cage = (CageEntity) part;
@@ -439,7 +450,6 @@ public abstract class AbstractElevator {
                 setDoorOpen();
             }
         }else flag = true;
-
         if (flag){
             if (index == 0) state = EnumCallingState.UP;
             else if (index == called.size() - 1){
@@ -467,20 +477,20 @@ public abstract class AbstractElevator {
         World world = sender.level;
         if (sender.level.isClientSide) return false;
         LOGGER.info("Clicked!!");
-        if (moving) return false;
         if (index < 0){
+            if (moving) return false;
             switch (index){
                 case -1:
                     setDoorOpen();
                     break;
                 case -2:
                     setDoorClose(world);
-        }
+            }
         return true;
-    }else{
-        if (curFloor == index) return false;
-        if (floorCount < sender.getFloorIndex()) return false;
-            registered[index] = regVal;
+        }else{
+            if (curFloor == index) return false;
+            if (floorCount < sender.getFloorIndex()) return false;
+                registered[index] = regVal;
         }
         setEleDirection();
         updateDispDirection(world);

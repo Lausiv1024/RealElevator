@@ -7,36 +7,40 @@ import net.minecraft.network.PacketBuffer;
 
 public class LandingDispUpdateMsg extends TileEntityMsg<ElevatorPartTE> {
     protected String floorStr;
-    protected int arrowDirection;
+    protected byte renderarrowDirection;
+    protected byte arrowFrame;
     protected boolean isBlink;
 
     public LandingDispUpdateMsg(PacketBuffer buffer) {
         super(buffer);
         floorStr = buffer.readUtf();
-        arrowDirection = buffer.readInt();
+        renderarrowDirection = buffer.readByte();
+        arrowFrame = buffer.readByte();
         isBlink = buffer.readBoolean();
     }
 
-    public LandingDispUpdateMsg(ElevatorPartTE tile, String floorStr, int arrowDirection, boolean isBlink){
+    public LandingDispUpdateMsg(ElevatorPartTE tile, String floorStr, byte renderarrowDirection, byte arrowFrame, boolean isBlink){
         super(tile.getBlockPos());
         this.floorStr = floorStr;
-        this.arrowDirection = arrowDirection;
+        this.renderarrowDirection = renderarrowDirection;
+        this.arrowFrame = arrowFrame;
         this.isBlink = isBlink;
     }
 
     @Override
     protected void writeTeData(PacketBuffer buffer) {
         buffer.writeUtf(floorStr);
-        buffer.writeInt(arrowDirection);
+        buffer.writeByte(renderarrowDirection);
+        buffer.writeByte(arrowFrame);
         buffer.writeBoolean(isBlink);
     }
 
     @Override
     protected void handlePacket(ElevatorPartTE tile) {
         if (tile instanceof FloorControllerTE){
-            ((FloorControllerTE) tile).clientUpdate(floorStr, arrowDirection, isBlink);
+            ((FloorControllerTE) tile).clientUpdate(floorStr, renderarrowDirection, arrowFrame, isBlink);
         }else if (tile instanceof FloorDisplayTile){
-            ((FloorDisplayTile) tile).clientUpdate(floorStr, arrowDirection, isBlink);
+            ((FloorDisplayTile) tile).clientUpdate(floorStr, renderarrowDirection, arrowFrame, isBlink);
         }
     }
 }

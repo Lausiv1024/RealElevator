@@ -2,6 +2,8 @@ package lausiv1024.tileentity;
 
 import lausiv1024.RETileEntities;
 import lausiv1024.elevator.ElevatorDirection;
+import lausiv1024.networking.LandingDispUpdateMsg;
+import lausiv1024.networking.REPackets;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.tileentity.ITickableTileEntity;
@@ -139,9 +141,11 @@ public class FloorDisplayTile extends ElevatorPartTE implements ITickableTileEnt
             //21tickより上で消灯
             if (arrowTick >= 21){
                 renderingDirection = ElevatorDirection.NONE;
+                send();
             }else{
                 //現在の状態で点灯
                 renderingDirection = curDirection;
+                send();
             }
             //リセット
             if (arrowTick == 26) arrowTick = 0;
@@ -154,10 +158,12 @@ public class FloorDisplayTile extends ElevatorPartTE implements ITickableTileEnt
                 arrowTick = 0;
                 moveTimes = 0;
                 renderingDirection = curDirection;
+                send();
             }else{
                 arrowTick++;
                 if (arrowTick % 3 == 0){
                     updateArrowFrame();
+                    send();
                 }
             }
             return;
@@ -170,6 +176,10 @@ public class FloorDisplayTile extends ElevatorPartTE implements ITickableTileEnt
         }
     }
 
+    private void send(){
+        REPackets.CHANNEL.send(target(), new LandingDispUpdateMsg(this, curFloorName, (byte) renderingDirection.nbt_index, (byte) arrowFrame, blinking));
+    }
+
     //矢印の状態を変更
     private void updateArrowFrame(){
         if (arrowFrame == 7){
@@ -180,12 +190,17 @@ public class FloorDisplayTile extends ElevatorPartTE implements ITickableTileEnt
 
     @Override
     public void tick() {
-        updateArrow();
+        if (!level.isClientSide)
+            updateArrow();
     }
 
-    public void clientUpdate(String dispFloor, int direction, boolean isBlink){
+    public void clientUpdate(String dispFloor, int direction, byte arrowFrame, boolean isBlink){
+        if (dispFloor.equals(curFloorName) && direction == curDirection.nbt_index && this.arrowFrame == arrowFrame && this.blinking == isBlink){
+            return;
+        }
         curFloorName = dispFloor;
-        curDirection = ElevatorDirection.getElevatorDirectionFromIndex(direction);
+        renderingDirection = ElevatorDirection.getElevatorDirectionFromIndex(direction);
         this.blinking = isBlink;
+        this.arrowFrame = arrowFrame;
     }
 }
