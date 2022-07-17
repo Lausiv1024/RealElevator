@@ -63,6 +63,11 @@ public class HoleLanternTile extends ElevatorPartTE implements ITickableTileEnti
     }
 
     @Override
+    protected void serverTick() {
+        super.serverTick();
+    }
+
+    @Override
     public void tick() {
         if (lightMode > 0 && isBlinking){
             lightTick++;

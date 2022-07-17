@@ -10,7 +10,7 @@ import net.minecraft.tileentity.TileEntityType;
 
 import java.util.UUID;
 
-public class ElevatorControllerTE extends ElevatorPartTE implements ITickableTileEntity {
+public class ElevatorControllerTE extends ElevatorPartTE{
     Elevator elevator;
 
     public ElevatorControllerTE(TileEntityType<?> tileEntityType, UUID elevatorID) {
@@ -41,9 +41,8 @@ public class ElevatorControllerTE extends ElevatorPartTE implements ITickableTil
     }
 
     @Override
-    public void tick() {
-        if (elevator != null && !level.isClientSide)
-            elevator.elevatorTick(level);
+    protected void serverTick() {
+        if (elevator != null) elevator.elevatorTick(level);
     }
 
     @Override

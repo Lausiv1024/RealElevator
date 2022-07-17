@@ -1,11 +1,10 @@
 package lausiv1024.tileentity;
 
-import lausiv1024.elevator.Elevator;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.NBTUtil;
-import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SUpdateTileEntityPacket;
+import net.minecraft.tileentity.ITickableTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.math.BlockPos;
@@ -16,7 +15,7 @@ import net.minecraftforge.fml.network.PacketDistributor;
 import javax.annotation.Nullable;
 import java.util.UUID;
 
-public abstract class ElevatorPartTE extends TileEntity {
+public abstract class ElevatorPartTE extends TileEntity implements ITickableTileEntity {
     protected UUID elevatorID;
     boolean registered = false;
     protected boolean isController;
@@ -41,6 +40,21 @@ public abstract class ElevatorPartTE extends TileEntity {
 //    public void onDataPacket(NetworkManager net, SUpdateTileEntityPacket pkt) {
 //        this.handleUpdateTag(getLevel().getBlockState(this.worldPosition), pkt.getTag());
 //    }
+
+
+    @Override
+    public void tick() {
+        if (level.isClientSide()){
+            clientTick();
+        }else{
+            serverTick();
+        }
+    }
+
+    protected void clientTick(){
+    }
+
+    protected void serverTick(){}
 
     @Override
     public void load(BlockState state, CompoundNBT nbt) {

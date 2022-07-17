@@ -1,14 +1,19 @@
 package lausiv1024.blocks;
 
-import lausiv1024.util.ModelRotationHelper;
+import lausiv1024.elevator.EleVeneerType;
 import lausiv1024.util.RotatableBoxShape;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.HorizontalBlock;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.main.Main;
+import net.minecraft.command.arguments.BlockStateParser;
+import net.minecraft.data.BlockStateVariantBuilder;
 import net.minecraft.item.BlockItemUseContext;
-import net.minecraft.network.play.client.CPlayerTryUseItemOnBlockPacket;
+import net.minecraft.item.DebugStickItem;
 import net.minecraft.state.BooleanProperty;
 import net.minecraft.state.DirectionProperty;
+import net.minecraft.state.EnumProperty;
 import net.minecraft.state.StateContainer;
 import net.minecraft.util.Direction;
 import net.minecraft.util.Mirror;
@@ -19,15 +24,14 @@ import net.minecraft.util.math.shapes.VoxelShape;
 import net.minecraft.util.math.shapes.VoxelShapes;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.IWorld;
-import sun.security.mscapi.CPublicKey;
 
 import javax.annotation.Nullable;
-import javax.swing.*;
 
 public class Jamb extends ElevatorPartBlock{
     public static final DirectionProperty FACING = HorizontalBlock.FACING;
     public static final BooleanProperty HAS_ROOF = BooleanProperty.create("roof");
     public static final BooleanProperty IS_MIRROR = BooleanProperty.create("mirror");
+    public static final EnumProperty<EleVeneerType> VENEER = EnumProperty.create("veneer", EleVeneerType.class);
 
     public static final RotatableBoxShape BASE1 = new RotatableBoxShape(0, 0, 0, 1.2, 16, 8);
     public static final RotatableBoxShape BASE2 = new RotatableBoxShape(14.8, 0, 0, 16, 16, 8);
@@ -38,7 +42,8 @@ public class Jamb extends ElevatorPartBlock{
     public static final RotatableBoxShape ROOF = new RotatableBoxShape(0, 14, 0, 16, 16, 7.9);
 
     public Jamb(){
-        this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH).setValue(HAS_ROOF, false).setValue(IS_MIRROR, false));
+        this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH).setValue(HAS_ROOF, false)
+                .setValue(IS_MIRROR, false).setValue(VENEER, EleVeneerType.STAINLESS));
     }
     @Nullable
     @Override
@@ -65,10 +70,10 @@ public class Jamb extends ElevatorPartBlock{
         return a;
     }
 
-    protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> p_206840_1_) {
-        p_206840_1_.add(FACING);
-        p_206840_1_.add(HAS_ROOF);
-        p_206840_1_.add(IS_MIRROR);
+    protected void createBlockStateDefinition(StateContainer.Builder<Block, BlockState> list) {
+        list.add(FACING);
+        list.add(HAS_ROOF);
+        list.add(IS_MIRROR);
+        list.add(VENEER);
     }
-
 }

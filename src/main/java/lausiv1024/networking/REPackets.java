@@ -17,7 +17,8 @@ import java.util.function.Supplier;
 
 public enum REPackets {
     LANDING_UPDATE_BUT(LandingButtonUpdateMsg.class, LandingButtonUpdateMsg::new, PLAY_TO_CLIENT),
-    DISPLAY_UPDATE(LandingDispUpdateMsg.class, LandingDispUpdateMsg::new, PLAY_TO_CLIENT)
+    DISPLAY_UPDATE(LandingDispUpdateMsg.class, LandingDispUpdateMsg::new, PLAY_TO_CLIENT),
+    DISPLAY_RENDER_UPDATE(LandingDispRenderUpdate.class, LandingDispRenderUpdate::new, PLAY_TO_CLIENT)
     ;
 
     <T extends Packet> REPackets(Class<T> type, Function<PacketBuffer, T> factory, NetworkDirection direction){

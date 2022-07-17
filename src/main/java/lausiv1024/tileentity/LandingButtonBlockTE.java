@@ -1,9 +1,11 @@
 package lausiv1024.tileentity;
 
 import lausiv1024.RETileEntities;
+import lausiv1024.RealElevator;
 import lausiv1024.blocks.FloorController;
 import lausiv1024.elevator.AbstractElevator;
 import lausiv1024.networking.LandingButtonUpdateMsg;
+import lausiv1024.networking.LandingDispRenderUpdate;
 import lausiv1024.networking.REPackets;
 import net.minecraft.block.BlockState;
 import net.minecraft.command.impl.GiveCommand;
@@ -18,7 +20,7 @@ import net.minecraftforge.fml.network.PacketDistributor;
 
 import java.util.UUID;
 
-public class LandingButtonBlockTE extends ElevatorPartTE  implements ITickableTileEntity {
+public class LandingButtonBlockTE extends ElevatorPartTE{
     protected boolean up = false;
     protected boolean down = false;
     protected boolean called = false;
@@ -65,6 +67,12 @@ public class LandingButtonBlockTE extends ElevatorPartTE  implements ITickableTi
         REPackets.CHANNEL.send(target(), new LandingButtonUpdateMsg(this, up, down, called));
     }
 
+    public void setCalled(boolean called, boolean cync){
+        if (called == this.called) return;
+        this.called = called;
+        if (cync) REPackets.CHANNEL.send(target(), new LandingButtonUpdateMsg(this, up, down, called));
+    }
+
     public void upA(){
         boolean b = updateData();
         up = b;
@@ -84,9 +92,11 @@ public class LandingButtonBlockTE extends ElevatorPartTE  implements ITickableTi
         up = !upM;
         if (getBlockState().getValue(FloorController.IS_SINGLE)) return;
         if (!down && !up) called = false;
+        REPackets.CHANNEL.send(target(), new LandingButtonUpdateMsg(this, up, down, called));
     }
 
     public void clientUpdate(boolean up, boolean dw, boolean called){
+        RealElevator.LOGGER.info("ClientUpdate");
         this.up = up;
         this.down = dw;
         this.called = called;
@@ -124,10 +134,5 @@ public class LandingButtonBlockTE extends ElevatorPartTE  implements ITickableTi
 
     public void setFloorIndex(byte floorIndex) {
         this.floorIndex = floorIndex;
-    }
-
-    @Override
-    public void tick() {
-
     }
 }

@@ -2,25 +2,25 @@ package lausiv1024.elevator;
 
 import com.google.common.collect.Maps;
 import lausiv1024.RealElevator;
+import lausiv1024.blocks.FloorController;
 import lausiv1024.entity.CageEntity;
 import lausiv1024.entity.CwtEntity;
 import lausiv1024.entity.EleButtonEntity;
 import lausiv1024.entity.ElevatorPartEntity;
 import lausiv1024.entity.doors.AbstractDoorEntity;
 import lausiv1024.tileentity.ElevatorControllerTE;
+import lausiv1024.tileentity.FloorControllerTE;
 import lausiv1024.tileentity.LandingButtonBlockTE;
+import lausiv1024.util.ModelRotationHelper;
 import lausiv1024.util.REMath;
 import lausiv1024.util.RotatableBoxShape;
-import net.minecraft.block.RedstoneBlock;
-import net.minecraft.block.RedstoneDiodeBlock;
-import net.minecraft.block.RedstoneWireBlock;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.nbt.NBTUtil;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.Direction;
-import net.minecraft.util.NonNullList;
+import net.minecraft.util.*;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.vector.Vector3d;
@@ -29,10 +29,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class AbstractElevator {
@@ -64,9 +61,12 @@ public abstract class AbstractElevator {
     protected BlockPos offSet;
     protected byte accelerateCoolDown = 0;
     // b/sに統一    1 block/second
-    protected double ratedSpeed = 2;
+    protected double ratedSpeed = 2.;
     protected final double accel = 0.8;
     protected int openWait;
+    protected int accelTick = 0;
+    protected int oldCurFloor = 0;
+    protected boolean arriving = false;
 
     public AbstractElevator(int index, UUID elevatorID, BlockPos offSet, String[] dispName, int[] yPoses){
         floorCount = index;
@@ -98,7 +98,6 @@ public abstract class AbstractElevator {
 
          if (doorState == 0){
             elevatorMainTick(world);
-            updateDispDirection(world);
             forceClosing = false;
             openTime = 0;
             resetDoorCloseTick(true);
@@ -120,15 +119,11 @@ public abstract class AbstractElevator {
                 doorState = 1;
             }
         }
-
-        //doorMgr.doorTick(this);
     }
 
     protected void init(){
-
         initialized = true;
     }
-
 
     private boolean checkSafety(World level){
         //ドアの間にエンティティがいないか確認
@@ -143,7 +138,6 @@ public abstract class AbstractElevator {
                 bbs.add(door.getBoundingBox());
             }
         }
-
         //正直AtomicBooleanはよくわからん
         AtomicBoolean flag = new AtomicBoolean(true);
         bbs.forEach(bbb -> {
@@ -161,21 +155,21 @@ public abstract class AbstractElevator {
         return flag.get();
     }
 
-    public void openButtonPressed(){
-        if (doorState == 3){
-            doorState = 4;
-        }
-        resetDoorCloseTick(false);
-    }
-
-    public void closeButtonPressed(){
-        if (doorState == 2){
-            doorCloseTick = 0;
-            announce(AnnounceType.DOOR_CLOSE);
-            resetDoorCloseTick(false);
-            doorState = 3;
-        }
-    }
+//    public void openButtonPressed(){
+//        if (doorState == 3){
+//            doorState = 4;
+//        }
+//        resetDoorCloseTick(false);
+//    }
+//
+//    public void closeButtonPressed(){
+//        if (doorState == 2){
+//            doorCloseTick = 0;
+//            announce(AnnounceType.DOOR_CLOSE);
+//            resetDoorCloseTick(false);
+//            doorState = 3;
+//        }
+//    }
 
     private void elevatorMainTick(World world){
         if (openWait != 0){
@@ -189,14 +183,19 @@ public abstract class AbstractElevator {
         }
         if (!moving){
             decideGoingFloor();
-            if (going >= 0) moving = true;
+            updateDispDirection(world);
+            if (going >= 0) {
+                moving = true;
+                called.set(curFloor, EnumCallingState.NONE);
+                LOGGER.info("Start");
+            }
         }else{
-            //if (going < 0) moving = false;//この処理が必要かはわからんが
             int dirStep = direction == ElevatorDirection.DOWN ? -1 : direction == ElevatorDirection.UP ? 1 : 0;
             CageEntity cage = (CageEntity) ElevatorPartEntity.getEntityFromUUID(ref.cage, world);
             CwtEntity cwt = (CwtEntity) ElevatorPartEntity.getEntityFromUUID(ref.cwt, world);
             if (cage == null || cwt == null) return;
             cage.setArrowSpeed(1);
+            allFloorControllPaneUpdate(world, true);
             updateCurFloor(cage);
             Vector3d cageMotion = cage.getDeltaMovement();
             Vector3d cwtMotion = cwt.getDeltaMovement();
@@ -206,20 +205,31 @@ public abstract class AbstractElevator {
                     setAndFixCage(cage, cwt);
                     setEleDirection();
                     cage.setArrowSpeed(0);
+                    allFloorControllPaneUpdate(world, false);
                 }else {
+                    accelTick++;
+                    if (accelTick == 5){
                     cage.setDeltaMovement(cageMotion.add(0, REMath.toPerTick(-accel) * dirStep, 0));
                     cwt.setDeltaMovement(cwtMotion.add(0, REMath.toPerTick(-accel) * -dirStep, 0));
+                    accelTick = 0;
+                    }
                 }
+                LOGGER.info("Decele : YPos : {}", cagePos.y);
             }else if (cagePos.y <= getStartDecelerationPos(dirStep) && dirStep == -1){
                 if (cageMotion.y >= 0){
                     setAndFixCage(cage, cwt);
                     setEleDirection();
                     cage.setArrowSpeed(0);
+                    allFloorControllPaneUpdate(world, false);
                 }else {
+                    accelTick++;
+                    if (accelTick == 5){
                     cage.setDeltaMovement(cageMotion.add(0, REMath.toPerTick(-accel) * dirStep, 0));
                     cwt.setDeltaMovement(cwtMotion.add(0, REMath.toPerTick(-accel) * -dirStep, 0));
+                    accelTick = 0;
+                    }
                 }
-
+                LOGGER.info("Decele : YPos : {}", cagePos.y);
             }else if (Math.abs(REMath.toPerSec(cageMotion.y)) <= ratedSpeed){
                 //加速処理
                 cage.setDeltaMovement(cageMotion.add(0, REMath.toPerTick(accel) * dirStep, 0));
@@ -234,12 +244,20 @@ public abstract class AbstractElevator {
         cwt.setDeltaMovement(Vector3d.ZERO);
         moving = false;
         registered[going] = false;
+        remove(cage.level);
         fixCwtandCagePos(floorYPos[going], cage);
         for (EleButtonEntity button : cage.getButtons()){
             if (button.getFloorIndex() == going) button.setActive(false);
         }
         openWait = 1;
         going = -1;
+    }
+
+    private void remove(World level){
+        if (curFloor == 0 || curFloor == floorYPos.length - 1){
+            LandingButtonBlockTE button = getLandingControlPanel(curFloor, level);
+            button.setCalled(false, true);
+        }
     }
 
     private void updateCurFloor(CageEntity cage){
@@ -264,24 +282,42 @@ public abstract class AbstractElevator {
         }
         if (cageY > aida && direction == ElevatorDirection.UP){
             cage.putCurFloor(displayName[curFloor + 1]);
+            setFloorPanelDisplayFloor(cage.level, displayName[curFloor + 1]);
             curFloor++;
         }else if (cageY < aida && direction == ElevatorDirection.DOWN){
             cage.putCurFloor(displayName[curFloor - 1]);
+            setFloorPanelDisplayFloor(cage.level, displayName[curFloor - 1]);
             curFloor--;
+        }
+        oldCurFloor = curFloor;
+    }
+
+    private void setFloorPanelDisplayFloor(World world, String floorName){
+        for (int i = 0; i < floorCount; i++){
+            LandingButtonBlockTE te = getLandingControlPanel(i, world);
+            if (!(te instanceof FloorControllerTE)) return;
+            FloorControllerTE floorControllerTE = (FloorControllerTE) te;
+            floorControllerTE.setCurFlName(floorName);
         }
     }
 
     private double getStartDecelerationPos(int step){
-        return -(ratedSpeed * ratedSpeed) / (2 * accel) * step + (-0.02 * step) + floorYPos[going] + 1.8 * step;
+        return -(ratedSpeed * ratedSpeed) / (2 * accel) * step + (-0.02 * step) + floorYPos[going] + 1.47 * step;
     }
 
     private void fixCwtandCagePos(double pos, CageEntity cage){
         Vector3d vec = new Vector3d(cage.position().x, pos, cage.position().z);
-        cage.setPosWithComponents(vec);//どうやらカウンターウェイトは位置補正しなくても大丈夫らしい
+        cage.setPosWithComponents(vec);//どうやらカウンターウェイトは位置補正しなくても大丈夫らしい < 本当かなぁ？
     }
 
-    public String[] getDisplayName() {
-        return displayName;
+    private void allFloorControllPaneUpdate(World level, boolean anim){
+        for (int i = 0; i < floorCount; i++){
+            LandingButtonBlockTE te = getLandingControlPanel(i, level);
+            if (!(te instanceof FloorControllerTE)) return;
+            FloorControllerTE flController = (FloorControllerTE) te;
+            flController.setDirection(direction, false);
+            flController.setMoving(anim, true);
+        }
     }
 
     //decideGoingFloor is called on door closed and called
@@ -411,6 +447,13 @@ public abstract class AbstractElevator {
         if (!(part instanceof CageEntity)) return;
         CageEntity cage = (CageEntity) part;
         cage.setCurDirection(direction);
+        for (int i = 0; i < floorCount; i++){
+            LandingButtonBlockTE co = getLandingControlPanel(i, world);
+            if (co instanceof FloorControllerTE){
+                FloorControllerTE fl = (FloorControllerTE) co;
+                fl.setDirection(direction, true);
+            }
+        }
     }
 
     public boolean isMoving() {
@@ -429,19 +472,16 @@ public abstract class AbstractElevator {
 
     private void resetDoorCloseTick(boolean completelyReset){
         if (completelyReset){
-            doorCloseTick = 80;
+            doorCloseTick = 60;
         }else{
-            if (doorCloseTick >= 60){
-                doorCloseTick = 80;
-            }else{
-                doorCloseTick = 60;
-            }
+            doorCloseTick = 40;
         }
     }
 
     public boolean onLandingBlockClicked(byte index, LandingButtonBlockTE sender){
         LOGGER.info("LandingBlock");
         EnumCallingState state = EnumCallingState.NONE;
+        LOGGER.info(getLandingControlPanel(index, sender.getLevel()));
         boolean flag = false;
         if (index == curFloor && !moving){
             //エレベーターの向かってる方向と逆向きだったら普通に登録
@@ -466,6 +506,7 @@ public abstract class AbstractElevator {
             else direction = sender.isUp() ? ElevatorDirection.UP : sender.isDown() ? ElevatorDirection.DOWN : ElevatorDirection.NONE;
 
             updateDispDirection(sender.getLevel());
+            allFloorControllPaneUpdate(sender.getLevel(), false);
         }
         LOGGER.info("State >> {}", state);
 
@@ -494,7 +535,17 @@ public abstract class AbstractElevator {
         }
         setEleDirection();
         updateDispDirection(world);
+        allFloorControllPaneUpdate(world, false);
         return true;
+    }
+
+    private void playSound(World world, SoundEvent se, CageEntity parent, float vol, float pitch){
+        AxisAlignedBB bouds = parent.getBoundingBox();
+        if (doorState != 0) bouds.inflate(10, 2, 10);
+        List<PlayerEntity> players = world.getEntitiesOfClass(PlayerEntity.class,bouds , b -> true);
+        for (PlayerEntity player : players){
+            world.playSound(player, parent, se, SoundCategory.VOICE, vol, pitch);
+        }
     }
 
     public void setDoorOpen(){
@@ -510,19 +561,25 @@ public abstract class AbstractElevator {
     public void setDoorClose(World world){
         if (!checkSafety(world)) return;
         if (doorState != 2) return;
+//        CageEntity cage = (CageEntity) ElevatorPartEntity.getEntityFromUUID(ref.cage, world);
+//        if (cage == null)return;
         doorState = 3;
 
         resetDoorCloseTick(false);
     }
 
+    private LandingButtonBlockTE getLandingControlPanel(int index, World level){
+        BlockPos localPos = new BlockPos(4, floorYPos[index] + 1, 2).rotate(ModelRotationHelper.toRotation(facingMain));
+        BlockPos gl = new BlockPos(offSet.getX() + localPos.getX(), localPos.getY(), offSet.getZ() + localPos.getZ());
+        if (level.getBlockEntity(gl) instanceof LandingButtonBlockTE){
+            return (LandingButtonBlockTE) level.getBlockEntity(gl);
+        }
+        return null;
+    }
+
     public ElevatorDirection getDirection() {
         return direction;
     }
-
-//    public void updateFloor(int index, String[] displayName, int[] floorAnnounceId){
-//        this.displayName = displayName;
-//        this.floorCount = index;
-//    }
 
     public ElevatorObjectReference getRef() {
         return ref;
@@ -557,7 +614,13 @@ public abstract class AbstractElevator {
         return registered;
     }
 
+    public int getCurFloor() {
+        return curFloor;
+    }
 
+    public byte getDoorState() {
+        return doorState;
+    }
 
     public CompoundNBT saveToNbt(){
         CompoundNBT parent = new CompoundNBT();
@@ -598,6 +661,7 @@ public abstract class AbstractElevator {
         parent.putInt("GoingFloor", going);
         parent.putBoolean("Moving", moving);
         parent.putByte("AccelerateCoolDown", accelerateCoolDown);
+        parent.putInt("AccelTick", accelTick);
 
         if (offSet != null)
             parent.put("Offset", NBTUtil.writeBlockPos(offSet));
@@ -644,6 +708,7 @@ public abstract class AbstractElevator {
         elevator.doorCloseTick = nbt.getInt("DoorCloseTick");
         elevator.going = nbt.getInt("GoingFloor");
         elevator.moving = nbt.getBoolean("Moving");
+        elevator.accelTick = nbt.getInt("AccelTick");
         elevator.isEnabled = isEnabled;
 
         try {

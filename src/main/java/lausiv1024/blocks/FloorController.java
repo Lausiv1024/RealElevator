@@ -43,16 +43,17 @@ public class FloorController extends ElevatorPartBlock implements IHasBounding {
     public ActionResultType use(BlockState state, World world, BlockPos pos, PlayerEntity playerEntity, Hand hand, BlockRayTraceResult result) {
         test(pos, result);
         FloorControllerTE tile = getTe(world, pos);
+
         if (tile == null) return ActionResultType.PASS;
         int a = calculatePressedButton(state, result.getLocation(), pos);
         if (!world.isClientSide) {
             if (a > 0) {
                 if (a == 1) {
-                    tile.setDirection(ElevatorDirection.UP);
+                    tile.setDirection(ElevatorDirection.UP, true);
                     tile.upA();
                 }
                 if (a == 2) {
-                    tile.setDirection(ElevatorDirection.DOWN);
+                    tile.setDirection(ElevatorDirection.DOWN, true);
                     tile.dwA();
                 }
                 if (a == 3) {

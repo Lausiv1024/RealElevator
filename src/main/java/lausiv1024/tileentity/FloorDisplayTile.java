@@ -1,12 +1,14 @@
 package lausiv1024.tileentity;
 
 import lausiv1024.RETileEntities;
+import lausiv1024.RealElevator;
 import lausiv1024.elevator.ElevatorDirection;
 import lausiv1024.networking.LandingDispUpdateMsg;
 import lausiv1024.networking.REPackets;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.tileentity.ITickableTileEntity;
+import net.minecraft.util.Direction;
 
 import java.util.UUID;
 
@@ -177,7 +179,9 @@ public class FloorDisplayTile extends ElevatorPartTE implements ITickableTileEnt
     }
 
     private void send(){
-        REPackets.CHANNEL.send(target(), new LandingDispUpdateMsg(this, curFloorName, (byte) renderingDirection.nbt_index, (byte) arrowFrame, blinking));
+        RealElevator.LOGGER.info("Packet of DispUpdate");
+        REPackets.CHANNEL.send(target(), new LandingDispUpdateMsg(this, curFloorName, (byte) curDirection.nbt_index, (byte) arrowFrame, blinking));
+
     }
 
     //矢印の状態を変更
@@ -199,8 +203,13 @@ public class FloorDisplayTile extends ElevatorPartTE implements ITickableTileEnt
             return;
         }
         curFloorName = dispFloor;
-        renderingDirection = ElevatorDirection.getElevatorDirectionFromIndex(direction);
+        curDirection = ElevatorDirection.getElevatorDirectionFromIndex(direction);
         this.blinking = isBlink;
         this.arrowFrame = arrowFrame;
+    }
+
+    public void renderUpdate(ElevatorDirection renderDirection){
+        if (renderDirection == this.renderingDirection) return;
+        this.renderingDirection = renderDirection;
     }
 }
