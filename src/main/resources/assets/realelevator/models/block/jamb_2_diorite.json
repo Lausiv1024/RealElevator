@@ -1,0 +1,6 @@
+{
+    "parent":"realelevator:block/jamb_2_blockface",
+    "textures":{
+        "face":"minecraft:polished_diorite"
+    }
+}

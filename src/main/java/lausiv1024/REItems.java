@@ -44,7 +44,7 @@ public class REItems {
     public static final RegistryObject<Item> LANDING_PANEL_BUTTON = ITEMS.register("landing_panel_button", () ->
             new Item(new Item.Properties()));
     public static final RegistryObject<Item> JAMB_ITEM = ITEMS.register("jamb", () ->
-            new BlockItem(REBlocks.JAMB.get(), new Item.Properties().tab(RealElevator.REAL_ELEVATOR_GROUP)));
+            new BlockItem(REBlocks.JAMB_STAINLESS.get(), new Item.Properties().tab(RealElevator.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> JAMB_ROOF_ITEM = ITEMS.register("jamb_roof", () ->
             new BlockItem(REBlocks.JAMB_ROOF.get(), new Item.Properties().tab(RealElevator.REAL_ELEVATOR_GROUP)));
     public static final RegistryObject<Item> MOTOR_NORMAL = ITEMS.register("motor_normal", () ->

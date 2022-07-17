@@ -111,8 +111,8 @@ public class ElevatorConstructor extends ContainerBlock {
         for (int i = 0; i < 3; i++){
             BlockPos of1 = new BlockPos(offset.getX() + 2, yPos + i, offset.getZ() + 1);
             BlockPos of2 = new BlockPos(offset.getX() + 3, yPos + i, offset.getZ() + 1);
-            BlockState state = i == 2 ? REBlocks.JAMB.get().defaultBlockState().setValue(Jamb.HAS_ROOF, true).setValue(FACING, direction) :
-                    REBlocks.JAMB.get().defaultBlockState().setValue(FACING, direction);
+            BlockState state = i == 2 ? REBlocks.JAMB_STAINLESS.get().defaultBlockState().setValue(Jamb.HAS_ROOF, true).setValue(FACING, direction) :
+                    REBlocks.JAMB_STAINLESS.get().defaultBlockState().setValue(FACING, direction);
             world.setBlockAndUpdate(of1, state);
             world.setBlockAndUpdate(of2, state.setValue(Jamb.IS_MIRROR, true));
         }

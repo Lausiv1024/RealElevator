@@ -31,19 +31,17 @@ public class Jamb extends ElevatorPartBlock{
     public static final DirectionProperty FACING = HorizontalBlock.FACING;
     public static final BooleanProperty HAS_ROOF = BooleanProperty.create("roof");
     public static final BooleanProperty IS_MIRROR = BooleanProperty.create("mirror");
-    public static final EnumProperty<EleVeneerType> VENEER = EnumProperty.create("veneer", EleVeneerType.class);
-
     public static final RotatableBoxShape BASE1 = new RotatableBoxShape(0, 0, 0, 1.2, 16, 8);
     public static final RotatableBoxShape BASE2 = new RotatableBoxShape(14.8, 0, 0, 16, 16, 8);
-
     public static final RotatableBoxShape PART1 = new RotatableBoxShape(1, 0, 0, 3.9, 16, 1);
     public static final RotatableBoxShape PART2 = new RotatableBoxShape(12.1, 0, 0, 14, 16, 1);
-
     public static final RotatableBoxShape ROOF = new RotatableBoxShape(0, 14, 0, 16, 16, 7.9);
+    protected final EleVeneerType veneerType;
 
-    public Jamb(){
+    public Jamb(EleVeneerType veneerType){
         this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH).setValue(HAS_ROOF, false)
-                .setValue(IS_MIRROR, false).setValue(VENEER, EleVeneerType.STAINLESS));
+                .setValue(IS_MIRROR, false));
+        this.veneerType = veneerType;
     }
     @Nullable
     @Override
@@ -74,6 +72,9 @@ public class Jamb extends ElevatorPartBlock{
         list.add(FACING);
         list.add(HAS_ROOF);
         list.add(IS_MIRROR);
-        list.add(VENEER);
+    }
+
+    public EleVeneerType getVeneerType() {
+        return veneerType;
     }
 }

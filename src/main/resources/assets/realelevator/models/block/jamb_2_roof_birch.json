@@ -1,0 +1,6 @@
+{
+    "parent":"realelevator:block/jamb_2_roof_blockface",
+    "textures":{
+        "face":"minecraft:birch_planks"
+    }
+}

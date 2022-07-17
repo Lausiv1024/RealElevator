@@ -1,0 +1,6 @@
+{
+    "parent":"realelevator:block/$parent",
+    "textures":{
+        "face":"$face"
+    }
+}

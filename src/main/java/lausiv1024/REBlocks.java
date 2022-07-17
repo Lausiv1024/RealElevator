@@ -1,6 +1,7 @@
 package lausiv1024;
 
 import lausiv1024.blocks.*;
+import lausiv1024.elevator.EleVeneerType;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -32,7 +33,9 @@ public class REBlocks {
     public static final RegistryObject<Block> DOOR_RAIL_DOUBLE = BLOCKS.register("door_rail_double", DoorRailDouble::new);
     public static final RegistryObject<Block> ELEVATOR_CONTROLLER = BLOCKS.register("controller_module", ElevatorControllerBlock::new);
     public static final RegistryObject<Block> FLOOR_CONTROLLER = BLOCKS.register("floor_controller", FloorController::new);
-    public static final RegistryObject<Block> JAMB = BLOCKS.register("jamb", Jamb::new);
+    public static final RegistryObject<Block> JAMB_STAINLESS = BLOCKS.register("jamb_stainless", () -> new Jamb(EleVeneerType.STAINLESS));
+
+
     public static final RegistryObject<Block> JAMB_ROOF = BLOCKS.register("jamb_roof", JambRoof::new);
     public static final RegistryObject<Block> MOTOR = BLOCKS.register("motor", Motor::new);
     public static final RegistryObject<Block> BOUNDING_BLOCK = BLOCKS.register("bounding_block", () -> new BoundingBlock(AbstractBlock.Properties.of(Material.METAL)));

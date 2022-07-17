@@ -1,0 +1,6 @@
+{
+    "parent":"realelevator:block/jamb_2_blockface",
+    "textures":{
+        "face":"minecraft:dark_oak_planks"
+    }
+}
