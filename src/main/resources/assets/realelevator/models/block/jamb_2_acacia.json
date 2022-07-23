@@ -1,6 +1,6 @@
 {
     "parent":"realelevator:block/jamb_2_blockface",
     "textures":{
-        "face":"minecraft:acacia_planks"
+        "face":"minecraft:block/acacia_planks"
     }
 }

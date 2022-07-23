@@ -12,8 +12,12 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 public class REBlocks {
+    public static final Map<EleVeneerType, Block> JAMBS = new HashMap<>();
     private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, RealElevator.ID);
 
     public static final RegistryObject<Block> ELEVATOR_BUTTON = BLOCKS.register("elevator_button", ElevatorButtonBlock::new);
@@ -33,7 +37,9 @@ public class REBlocks {
     public static final RegistryObject<Block> DOOR_RAIL_DOUBLE = BLOCKS.register("door_rail_double", DoorRailDouble::new);
     public static final RegistryObject<Block> ELEVATOR_CONTROLLER = BLOCKS.register("controller_module", ElevatorControllerBlock::new);
     public static final RegistryObject<Block> FLOOR_CONTROLLER = BLOCKS.register("floor_controller", FloorController::new);
+
     public static final RegistryObject<Block> JAMB_STAINLESS = BLOCKS.register("jamb_stainless", () -> new Jamb(EleVeneerType.STAINLESS));
+    public static final RegistryObject<Block> JAMB_OAK = BLOCKS.register("jamb_oak", () -> new Jamb(EleVeneerType.OAK));
 
 
     public static final RegistryObject<Block> JAMB_ROOF = BLOCKS.register("jamb_roof", JambRoof::new);

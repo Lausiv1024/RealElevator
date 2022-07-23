@@ -188,7 +188,15 @@ public class CageEntity extends ElevatorPartEntity implements IHasCollision{
 
     @Override
     public boolean isPickable() {
-        return false;
+        AxisAlignedBB bb = getBoundingBox().inflate(1.2);
+        List<PlayerEntity> players = level.getEntitiesOfClass(PlayerEntity.class, bb);
+        int count = 0;
+        for (PlayerEntity player : players){
+            if (player.getItemInHand(Hand.MAIN_HAND).getItem() == REItems.WRENCH.get()){
+                count++;
+            }
+        }
+        return count != 0;
     }
 
     public EleButtonEntity[] getButtons(){

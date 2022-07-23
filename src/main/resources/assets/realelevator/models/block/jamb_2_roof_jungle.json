@@ -1,6 +1,6 @@
 {
     "parent":"realelevator:block/jamb_2_roof_blockface",
     "textures":{
-        "face":"minecraft:jungle_planks"
+        "face":"minecraft:block/jungle_planks"
     }
 }

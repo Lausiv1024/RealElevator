@@ -1,6 +1,6 @@
 {
     "parent":"realelevator:block/jamb_1_blockface",
     "textures":{
-        "face":"minecraft:lime_concrete"
+        "face":"minecraft:block/lime_concrete"
     }
 }

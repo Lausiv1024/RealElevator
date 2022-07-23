@@ -1,5 +1,6 @@
 package lausiv1024.blocks;
 
+import lausiv1024.REBlocks;
 import lausiv1024.elevator.EleVeneerType;
 import lausiv1024.util.RotatableBoxShape;
 import net.minecraft.block.Block;
@@ -42,6 +43,7 @@ public class Jamb extends ElevatorPartBlock{
         this.registerDefaultState(this.getStateDefinition().any().setValue(FACING, Direction.NORTH).setValue(HAS_ROOF, false)
                 .setValue(IS_MIRROR, false));
         this.veneerType = veneerType;
+        REBlocks.JAMBS.put(veneerType, this);
     }
     @Nullable
     @Override
