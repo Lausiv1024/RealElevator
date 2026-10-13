@@ -16,7 +16,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * 乗場の扉の仮の描画。かごの戸と同じテクスチャを使う。
+ * 乗場の扉と▲▼ボタンの仮の描画。戸はかごの戸と同じテクスチャを使う。
  */
 public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
     public LandingDoorRenderer(EntityRendererProvider.Context context) {
@@ -34,6 +34,7 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
         for (Box panel : CarShapes.doorPanels(door.model(), door.facing(), DoorGeometry.Side.LANDING, fraction)) {
             BoxRenderer.renderBox(pose, consumer, panel, sprite, packedLight);
         }
+        BoxRenderer.renderButtons(pose, consumer, door, door.facing().get2DDataValue(), packedLight);
         super.render(door, entityYaw, partialTick, poseStack, bufferSource, packedLight);
     }
 

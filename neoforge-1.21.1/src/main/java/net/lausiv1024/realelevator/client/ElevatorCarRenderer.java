@@ -49,6 +49,7 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
         for (Box panel : CarShapes.doorPanels(car.model(), car.facing(), DoorGeometry.Side.CAR, fraction)) {
             BoxRenderer.renderBox(pose, consumer, panel, door, packedLight);
         }
+        BoxRenderer.renderButtons(pose, consumer, car, car.facing().get2DDataValue(), packedLight);
         poseStack.popPose();
         super.render(car, entityYaw, partialTick, poseStack, bufferSource, packedLight);
     }

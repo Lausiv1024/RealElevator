@@ -10,12 +10,17 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.control.CallType;
+import net.lausiv1024.realelevator.core.control.CollectiveControl;
+import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
+import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.door.DoorController;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.door.DoorState;
 import net.lausiv1024.realelevator.core.door.DoorTiming;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.motion.Trip;
+import net.lausiv1024.realelevator.core.panel.ButtonLayout;
+import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -33,43 +38,37 @@ import net.minecraft.world.phys.AABB;
  * エレベーターのかご。
  *
  * <p>位置は発車情報（{@link Trip}）とゲーム時刻から、戸の開き具合は戸の状態とゲーム時刻から求め、
- * サーバーとクライアントで同じ計算をする。サーバーから送るのは機種・向き・発車情報・戸の状態だけで、
+ * サーバーとクライアントで同じ計算をする。サーバーから送るのは機種・向き・停止階・発車情報・戸の状態・登録中の呼びだけで、
  * 毎tickの位置や開き具合は同期しない。エンティティの位置はかご内の床面の中心。
  *
- * <p>戸が全閉になるまで発車せず、着床すると戸を開く。乗場の扉（{@link LandingDoorEntity}）は、
- * かごが着床している階のものだけが、かごの戸と同じ開き具合で動く。
+ * <p>運行は乗合全自動（{@link CollectiveControl}）で、戸が全閉になるまで発車せず、着床すると戸を開く。
+ * 乗場の扉（{@link LandingDoorEntity}）は、かごが着床している階のものだけが、かごの戸と同じ開き具合で動く。
  */
-public class ElevatorCarEntity extends Entity {
+public class ElevatorCarEntity extends Entity implements ButtonHost {
     private static final EntityDataAccessor<Byte> DATA_MODEL = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.BYTE);
     private static final EntityDataAccessor<Direction> DATA_FACING = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.DIRECTION);
+    private static final EntityDataAccessor<CompoundTag> DATA_FLOORS = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
     private static final EntityDataAccessor<CompoundTag> DATA_TRIP = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
     private static final EntityDataAccessor<CompoundTag> DATA_DOOR = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
+    private static final EntityDataAccessor<CompoundTag> DATA_CALLS = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
 
     /** セーフティシューの検知に使う、戸板のまわりのわずかな余裕。 */
     private static final double SAFETY_SHOE_MARGIN = 0.01;
 
-    public enum CallResult {
-        /** 受け付けた。戸が閉まりしだい発車する。 */
-        ACCEPTED,
-        /** かごがその階にいるので、戸を開いた。 */
-        OPENED,
-        /** 走行中、または別の呼びに応えている途中。 */
-        BUSY,
-        /** 存在しない階。 */
-        INVALID
-    }
-
-    /** 停止階の床面のY座標（下から順）。サーバーだけが持つ。 */
+    /** 停止階の床面のY座標（下から順）。 */
     private int[] floors = new int[0];
+    private List<Button> buttons = List.of();
+    /** 停止階が2つ以上あるときだけ作る。 */
+    @Nullable
+    private CollectiveControl control;
     private SpeedSpec speedSpec = SpeedSpec.NORMAL_LOW;
     @Nullable
     private Trip trip;
     private final DoorController door = new DoorController(DoorTiming.STANDARD);
-    /** 戸が閉まるのを待っている行先（停止階の番号）。なければ −1。サーバーだけが持つ。 */
-    private int pendingFloor = -1;
-    private CallType pendingCall = CallType.CAR;
-    /** 今の走行がどの呼びに応えたものか。着床したときの開放待機時間を決める。 */
-    private CallType tripCall = CallType.CAR;
+    /** 今いる階（走行中は最後に止まった階）。サーバーだけが使う。 */
+    private int currentFloor;
+    /** 走行中の行先の階。サーバーだけが使う。 */
+    private int targetFloor;
     /** 最後に位置を計算したゲーム時刻。描画の補間に使う。 */
     private long lastTick;
 
@@ -81,18 +80,32 @@ public class ElevatorCarEntity extends Entity {
     public void setup(CarModel model, Direction facing, int[] floors, SpeedSpec speedSpec) {
         this.entityData.set(DATA_MODEL, (byte) model.ordinal());
         this.entityData.set(DATA_FACING, facing);
-        this.floors = floors.clone();
-        Arrays.sort(this.floors);
+        int[] sorted = floors.clone();
+        Arrays.sort(sorted);
+        CompoundTag tag = new CompoundTag();
+        tag.putIntArray("Floors", sorted);
+        this.entityData.set(DATA_FLOORS, tag);
+        applyFloors(sorted);
         this.speedSpec = speedSpec;
+        this.currentFloor = nearestFloor(getY());
+        this.targetFloor = currentFloor;
         setBoundingBox(makeBoundingBox());
+    }
+
+    private void applyFloors(int[] floors) {
+        this.floors = floors;
+        this.control = floors.length >= 2 ? new CollectiveControl(floors.length) : null;
+        this.buttons = ButtonLayout.carPanel(model(), floors.length);
     }
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(DATA_MODEL, (byte) CarModel.P11.ordinal());
         builder.define(DATA_FACING, Direction.SOUTH);
+        builder.define(DATA_FLOORS, new CompoundTag());
         builder.define(DATA_TRIP, new CompoundTag());
         builder.define(DATA_DOOR, new CompoundTag());
+        builder.define(DATA_CALLS, new CompoundTag());
     }
 
     public CarModel model() {
@@ -114,6 +127,16 @@ public class ElevatorCarEntity extends Entity {
         return floors.clone();
     }
 
+    /** 床面のY座標が y の停止階の番号。停止階でなければ −1。 */
+    public int floorIndexAt(double y) {
+        for (int i = 0; i < floors.length; i++) {
+            if (floors[i] == y) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     public boolean isMoving() {
         return trip != null;
     }
@@ -122,26 +145,34 @@ public class ElevatorCarEntity extends Entity {
         return door.state();
     }
 
-    /**
-     * 停止階 floorIndex（0始まり、下から）への呼び。
-     *
-     * <p>フェーズ1では呼びを1つずつ処理する。かごがその階にいれば戸を開き、
-     * そうでなければ戸が全閉になってから発車し、着いたら戸を開く。
-     */
-    public CallResult call(int floorIndex, CallType callType) {
-        if (level().isClientSide || floorIndex < 0 || floorIndex >= floors.length) {
-            return CallResult.INVALID;
+    // ---- 呼びとボタン ----
+
+    /** かご呼び（行先ボタン）。かごがその階に止まっていれば戸を開く。 */
+    public PressResult pressCarCall(int floor) {
+        if (level().isClientSide || control == null) {
+            return PressResult.INVALID;
         }
-        if (trip != null || pendingFloor >= 0) {
-            return CallResult.BUSY;
+        PressResult result = control.pressCar(floor, currentFloor, trip == null);
+        handlePress(result, CallType.CAR);
+        return result;
+    }
+
+    /** 乗場呼び（▲▼ボタン）。かごがその階に止まっていて、その方向へ進めるなら戸を開く。 */
+    public PressResult pressHallCall(int floor, TravelDirection direction) {
+        if (level().isClientSide || control == null) {
+            return PressResult.INVALID;
         }
-        if (floors[floorIndex] == getY()) {
+        PressResult result = control.pressHall(floor, direction, currentFloor, trip == null);
+        handlePress(result, CallType.HALL);
+        return result;
+    }
+
+    private void handlePress(PressResult result, CallType callType) {
+        if (result == PressResult.SERVED_HERE) {
             openDoor(callType);
-            return CallResult.OPENED;
+        } else if (result == PressResult.REGISTERED) {
+            syncCalls();
         }
-        pendingFloor = floorIndex;
-        pendingCall = callType;
-        return CallResult.ACCEPTED;
     }
 
     /** 開ボタン。走行中は効かない。 */
@@ -164,6 +195,45 @@ public class ElevatorCarEntity extends Entity {
         return true;
     }
 
+    public boolean isCarCallLit(int floor) {
+        return control != null && floor >= 0 && floor < floors.length && control.hasCarCall(floor);
+    }
+
+    public boolean isHallCallLit(int floor, TravelDirection direction) {
+        return control != null && floor >= 0 && floor < floors.length && control.hasHallCall(floor, direction);
+    }
+
+    @Override
+    public List<Button> buttons() {
+        return buttons;
+    }
+
+    @Override
+    public AABB buttonBox(int index) {
+        Box box = buttons.get(index).box().rotateQuarterTurns(facing().get2DDataValue());
+        return CarShapes.toAabb(box, getX(), getY(), getZ());
+    }
+
+    @Override
+    public boolean isButtonLit(int index) {
+        Button button = buttons.get(index);
+        return button.kind() == ButtonLayout.Kind.CAR_CALL && isCarCallLit(button.floor());
+    }
+
+    @Override
+    public void pressButton(int index) {
+        Button button = buttons.get(index);
+        switch (button.kind()) {
+            case OPEN -> openDoor(CallType.CAR);
+            case CLOSE -> closeDoor();
+            case CAR_CALL -> pressCarCall(button.floor());
+            case HALL_UP, HALL_DOWN -> {
+            }
+        }
+    }
+
+    // ---- tick ----
+
     @Override
     public void tick() {
         super.tick();
@@ -181,8 +251,8 @@ public class ElevatorCarEntity extends Entity {
         // 到着したtickの最後の移動量も乗っているエンティティに加えられるよう、走行情報は1tick遅れて消す
         if (trip != null && trip.isArrivedAt(now - 1)) {
             setTrip(null);
-            door.open(now, door.timing().dwellTicks(tripCall));
-            syncDoor();
+            currentFloor = targetFloor;
+            serveCurrentFloor(now);
         }
 
         boolean doorChanged = door.tick(now);
@@ -194,11 +264,23 @@ public class ElevatorCarEntity extends Entity {
             syncDoor();
         }
 
-        if (trip == null && pendingFloor >= 0 && door.isClosed()) {
-            setTrip(new Trip(now, getY(), floors[pendingFloor], speedSpec));
-            tripCall = pendingCall;
-            pendingFloor = -1;
+        if (trip == null && door.isClosed() && control != null) {
+            int next = control.nextStop(currentFloor);
+            if (next == currentFloor) {
+                serveCurrentFloor(now);
+            } else if (next >= 0) {
+                targetFloor = next;
+                setTrip(new Trip(now, getY(), floors[next], speedSpec));
+            }
         }
+    }
+
+    /** 今いる階の呼びに応えて戸を開く。 */
+    private void serveCurrentFloor(long now) {
+        CallType served = control != null ? control.arrive(currentFloor) : CallType.CAR;
+        door.open(now, door.timing().dwellTicks(served));
+        syncDoor();
+        syncCalls();
     }
 
     /** セーフティシュー：閉まりかけの戸（かごと乗場の両方）に生き物が触れているかどうか。 */
@@ -214,6 +296,8 @@ public class ElevatorCarEntity extends Entity {
         return !level().getEntitiesOfClass(LivingEntity.class, search,
                 entity -> !entity.isSpectator() && panels.stream().anyMatch(entity.getBoundingBox()::intersects)).isEmpty();
     }
+
+    // ---- 位置と形状 ----
 
     /** ゲーム時刻 tick（partialTickを含めてよい）でのかごの床面のY座標。 */
     public double yAt(double tick) {
@@ -275,6 +359,18 @@ public class ElevatorCarEntity extends Entity {
                 && feet > exterior.minY() - 0.25 && feet < exterior.maxY() + 0.5;
     }
 
+    private int nearestFloor(double y) {
+        int nearest = 0;
+        for (int i = 1; i < floors.length; i++) {
+            if (Math.abs(floors[i] - y) < Math.abs(floors[nearest] - y)) {
+                nearest = i;
+            }
+        }
+        return nearest;
+    }
+
+    // ---- 同期 ----
+
     private void setTrip(@Nullable Trip trip) {
         this.trip = trip;
         this.entityData.set(DATA_TRIP, trip != null ? writeTrip(trip) : new CompoundTag());
@@ -284,20 +380,33 @@ public class ElevatorCarEntity extends Entity {
         this.entityData.set(DATA_DOOR, writeDoor(door));
     }
 
+    private void syncCalls() {
+        this.entityData.set(DATA_CALLS, control != null ? writeCalls(control) : new CompoundTag());
+    }
+
     @Override
     public void onSyncedDataUpdated(EntityDataAccessor<?> key) {
         super.onSyncedDataUpdated(key);
         if (DATA_MODEL.equals(key) || DATA_FACING.equals(key)) {
             setBoundingBox(makeBoundingBox());
-        } else if (DATA_TRIP.equals(key) && level().isClientSide) {
+        }
+        if (!level().isClientSide) {
+            return;
+        }
+        if (DATA_MODEL.equals(key) || DATA_FLOORS.equals(key)) {
+            applyFloors(this.entityData.get(DATA_FLOORS).getIntArray("Floors"));
+            readCalls(this.entityData.get(DATA_CALLS));
+        } else if (DATA_TRIP.equals(key)) {
             Trip previous = trip;
             trip = readTrip(this.entityData.get(DATA_TRIP));
             if (trip == null && previous != null) {
                 // 到着。クライアントの時刻が遅れていても、行先にぴったり着床させる
                 setPos(getX(), previous.to(), getZ());
             }
-        } else if (DATA_DOOR.equals(key) && level().isClientSide) {
+        } else if (DATA_DOOR.equals(key)) {
             readDoor(this.entityData.get(DATA_DOOR), door);
+        } else if (DATA_CALLS.equals(key)) {
+            readCalls(this.entityData.get(DATA_CALLS));
         }
     }
 
@@ -329,6 +438,8 @@ public class ElevatorCarEntity extends Entity {
         return false;
     }
 
+    // ---- 保存 ----
+
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         tag.putString("Model", model().name());
@@ -338,10 +449,12 @@ public class ElevatorCarEntity extends Entity {
         if (trip != null) {
             tag.put("Trip", writeTrip(trip));
         }
-        tag.putString("TripCall", tripCall.name());
         tag.put("Door", writeDoor(door));
-        tag.putInt("PendingFloor", pendingFloor);
-        tag.putString("PendingCall", pendingCall.name());
+        if (control != null) {
+            tag.put("Calls", writeCalls(control));
+        }
+        tag.putInt("CurrentFloor", currentFloor);
+        tag.putInt("TargetFloor", targetFloor);
     }
 
     @Override
@@ -354,11 +467,14 @@ public class ElevatorCarEntity extends Entity {
         setup(model, facing, tag.getIntArray("Floors"), parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW));
         // 保存時に走行中・開閉中だった場合は、ゲーム時刻に合わせてそのまま続きから動く
         setTrip(tag.contains("Trip") ? readTrip(tag.getCompound("Trip")) : null);
-        tripCall = parseEnum(CallType.class, tag.getString("TripCall"), CallType.CAR);
         readDoor(tag.getCompound("Door"), door);
         syncDoor();
-        pendingFloor = tag.contains("PendingFloor") && tag.getInt("PendingFloor") < floors.length ? tag.getInt("PendingFloor") : -1;
-        pendingCall = parseEnum(CallType.class, tag.getString("PendingCall"), CallType.CAR);
+        readCalls(tag.getCompound("Calls"));
+        syncCalls();
+        if (tag.contains("CurrentFloor")) {
+            currentFloor = Mth.clamp(tag.getInt("CurrentFloor"), 0, Math.max(0, floors.length - 1));
+            targetFloor = Mth.clamp(tag.getInt("TargetFloor"), 0, Math.max(0, floors.length - 1));
+        }
     }
 
     private static CompoundTag writeTrip(Trip trip) {
@@ -391,6 +507,23 @@ public class ElevatorCarEntity extends Entity {
     private static void readDoor(CompoundTag tag, DoorController door) {
         door.restore(parseEnum(DoorState.class, tag.getString("State"), DoorState.CLOSED),
                 tag.getLong("StartTick"), tag.getDouble("StartFraction"), tag.getInt("Dwell"));
+    }
+
+    private static CompoundTag writeCalls(CollectiveControl control) {
+        long[][] snapshot = control.snapshot();
+        CompoundTag tag = new CompoundTag();
+        tag.putLongArray("Car", snapshot[0]);
+        tag.putLongArray("Up", snapshot[1]);
+        tag.putLongArray("Down", snapshot[2]);
+        tag.putString("Direction", control.direction().name());
+        return tag;
+    }
+
+    private void readCalls(CompoundTag tag) {
+        if (control != null) {
+            control.restore(tag.getLongArray("Car"), tag.getLongArray("Up"), tag.getLongArray("Down"),
+                    parseEnum(TravelDirection.class, tag.getString("Direction"), TravelDirection.NONE));
+        }
     }
 
     private static <E extends Enum<E>> E parseEnum(Class<E> type, String name, E fallback) {

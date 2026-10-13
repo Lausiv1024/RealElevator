@@ -8,6 +8,9 @@ import javax.annotation.Nullable;
 
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.control.TravelDirection;
+import net.lausiv1024.realelevator.core.panel.ButtonLayout;
+import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -27,8 +30,10 @@ import net.minecraft.world.phys.AABB;
  * <p>位置（x, z）と向きはかごと同じで、y はその階の床面。座標はかごがこの階に着床したときのかごのローカル座標で表す。
  * 開き具合は自分では持たず、かごがこの階に着床しているときだけ、かごの戸と同じ開き具合で動く。
  * そのため、かごとの間で追加の同期はいらない。
+ *
+ * <p>乗場の▲▼ボタンもこのエンティティが持つ。応答灯はかごに登録された乗場呼びを表示する。
  */
-public class LandingDoorEntity extends Entity {
+public class LandingDoorEntity extends Entity implements ButtonHost {
     private static final EntityDataAccessor<Optional<UUID>> DATA_CAR = SynchedEntityData.defineId(LandingDoorEntity.class, EntityDataSerializers.OPTIONAL_UUID);
     private static final EntityDataAccessor<Byte> DATA_MODEL = SynchedEntityData.defineId(LandingDoorEntity.class, EntityDataSerializers.BYTE);
     private static final EntityDataAccessor<Direction> DATA_FACING = SynchedEntityData.defineId(LandingDoorEntity.class, EntityDataSerializers.DIRECTION);
@@ -102,6 +107,45 @@ public class LandingDoorEntity extends Entity {
                 .toList();
     }
 
+    /** この扉の階の番号。かごが読み込まれていないか、停止階でなければ −1。 */
+    public int floorIndex() {
+        ElevatorCarEntity car = car();
+        return car != null ? car.floorIndexAt(getY()) : -1;
+    }
+
+    @Override
+    public List<Button> buttons() {
+        ElevatorCarEntity car = car();
+        int floor = floorIndex();
+        return car != null && floor >= 0 ? ButtonLayout.hallButtons(model(), floor, car.floorCount()) : List.of();
+    }
+
+    @Override
+    public AABB buttonBox(int index) {
+        Box box = buttons().get(index).box().rotateQuarterTurns(facing().get2DDataValue());
+        return CarShapes.toAabb(box, getX(), getY(), getZ());
+    }
+
+    @Override
+    public boolean isButtonLit(int index) {
+        ElevatorCarEntity car = car();
+        Button button = buttons().get(index);
+        return car != null && car.isHallCallLit(button.floor(), direction(button));
+    }
+
+    @Override
+    public void pressButton(int index) {
+        ElevatorCarEntity car = car();
+        if (car != null) {
+            Button button = buttons().get(index);
+            car.pressHallCall(button.floor(), direction(button));
+        }
+    }
+
+    private static TravelDirection direction(Button button) {
+        return button.kind() == ButtonLayout.Kind.HALL_UP ? TravelDirection.UP : TravelDirection.DOWN;
+    }
+
     @Override
     public void onSyncedDataUpdated(EntityDataAccessor<?> key) {
         super.onSyncedDataUpdated(key);
@@ -114,8 +158,12 @@ public class LandingDoorEntity extends Entity {
 
     @Override
     protected AABB makeBoundingBox() {
-        Box bounds = CarShapes.doorTravelBounds(model(), facing(), DoorGeometry.Side.LANDING);
-        return CarShapes.toAabb(bounds, getX(), getY(), getZ());
+        // 描画のカリングに使うので、戸が動く範囲とボタン（中間階の▲▼）の両方を含める
+        AABB bounds = CarShapes.toAabb(CarShapes.doorTravelBounds(model(), facing(), DoorGeometry.Side.LANDING), getX(), getY(), getZ());
+        for (Button button : ButtonLayout.hallButtons(model(), 1, 3)) {
+            bounds = bounds.minmax(CarShapes.toAabb(button.box().rotateQuarterTurns(facing().get2DDataValue()), getX(), getY(), getZ()));
+        }
+        return bounds;
     }
 
     @Override

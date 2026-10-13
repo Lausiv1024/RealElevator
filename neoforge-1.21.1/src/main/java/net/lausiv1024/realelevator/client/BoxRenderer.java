@@ -4,6 +4,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.lausiv1024.realelevator.core.car.Box;
+import net.lausiv1024.realelevator.entity.ButtonHost;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
@@ -14,7 +16,25 @@ import net.minecraft.resources.ResourceLocation;
  * 箱を描く。ブロックのテクスチャを、各面に1ブロック単位で敷き詰める。
  */
 final class BoxRenderer {
+    private static final ResourceLocation BUTTON = ResourceLocation.withDefaultNamespace("block/polished_deepslate");
+    private static final ResourceLocation BUTTON_LIT = ResourceLocation.withDefaultNamespace("block/glowstone");
+
     private BoxRenderer() {
+    }
+
+    /**
+     * ボタンを描く。応答灯がついているボタンは、まわりの明るさによらず光って見えるようにする。
+     *
+     * @param quarterTurns ボタンの座標（かごのローカル座標）を回す回数
+     */
+    static void renderButtons(PoseStack.Pose pose, VertexConsumer consumer, ButtonHost host, int quarterTurns, int light) {
+        TextureAtlasSprite unlit = blockSprite(BUTTON);
+        TextureAtlasSprite lit = blockSprite(BUTTON_LIT);
+        for (int i = 0; i < host.buttons().size(); i++) {
+            Box box = host.buttons().get(i).box().rotateQuarterTurns(quarterTurns);
+            boolean on = host.isButtonLit(i);
+            renderBox(pose, consumer, box, on ? lit : unlit, on ? LightTexture.FULL_BRIGHT : light);
+        }
     }
 
     static TextureAtlasSprite blockSprite(ResourceLocation location) {

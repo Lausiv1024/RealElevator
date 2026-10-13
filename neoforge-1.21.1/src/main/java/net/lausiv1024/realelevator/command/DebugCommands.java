@@ -14,6 +14,8 @@ import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.control.CallType;
+import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
+import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.ElevatorTracker;
@@ -36,7 +38,7 @@ import net.minecraft.world.phys.Vec3;
  * <pre>
  * /realelevator spawn &lt;下階の床面&gt; &lt;機種&gt; &lt;正面の向き&gt; &lt;上階の床面のY&gt; [速度]
  * /realelevator call &lt;階&gt;    かご呼び（行先ボタン）
- * /realelevator hall &lt;階&gt;    乗場呼び
+ * /realelevator hall &lt;階&gt; [up|down]   乗場呼び（省略時は最上階なら下り、それ以外は上り）
  * /realelevator open | close   開・閉ボタン
  * /realelevator remove         かごと乗場の扉を撤去
  * </pre>
@@ -77,10 +79,15 @@ public final class DebugCommands {
                                                                 .executes(c -> spawn(c, parse(SpeedSpec.class, StringArgumentType.getString(c, "speed"))))))))))
                 .then(Commands.literal("call")
                         .then(Commands.argument("floor", IntegerArgumentType.integer(1))
-                                .executes(c -> withNearestCar(c, (ctx, car) -> call(ctx, car, CallType.CAR)))))
+                                .executes(c -> withNearestCar(c, (ctx, car) -> call(ctx, car, null)))))
                 .then(Commands.literal("hall")
                         .then(Commands.argument("floor", IntegerArgumentType.integer(1))
-                                .executes(c -> withNearestCar(c, (ctx, car) -> call(ctx, car, CallType.HALL)))))
+                                .executes(c -> withNearestCar(c, (ctx, car) -> call(ctx, car,
+                                        IntegerArgumentType.getInteger(ctx, "floor") >= car.floorCount() ? TravelDirection.DOWN : TravelDirection.UP)))
+                                .then(Commands.argument("direction", StringArgumentType.word())
+                                        .suggests((c, b) -> SharedSuggestionProvider.suggest(new String[] {"up", "down"}, b))
+                                        .executes(c -> withNearestCar(c, (ctx, car) -> call(ctx, car,
+                                                parse(TravelDirection.class, StringArgumentType.getString(ctx, "direction"))))))))
                 .then(Commands.literal("open")
                         .executes(c -> withNearestCar(c, DebugCommands::open)))
                 .then(Commands.literal("close")
@@ -124,24 +131,23 @@ public final class DebugCommands {
         return 1;
     }
 
-    private static int call(CommandContext<CommandSourceStack> context, ElevatorCarEntity car, CallType callType)
+    /** direction が null ならかご呼び、そうでなければその方向の乗場呼び。 */
+    private static int call(CommandContext<CommandSourceStack> context, ElevatorCarEntity car, TravelDirection direction)
             throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
         int floor = IntegerArgumentType.getInteger(context, "floor");
-        return switch (car.call(floor - 1, callType)) {
-            case ACCEPTED -> {
-                source.sendSuccess(() -> Component.literal(floor + "階の呼びを受け付けました"), false);
+        PressResult result = direction == null ? car.pressCarCall(floor - 1) : car.pressHallCall(floor - 1, direction);
+        return switch (result) {
+            case REGISTERED, ALREADY_REGISTERED -> {
+                source.sendSuccess(() -> Component.literal(floor + "階の呼びを登録しました"), false);
                 yield 1;
             }
-            case OPENED -> {
+            case SERVED_HERE -> {
                 source.sendSuccess(() -> Component.literal(floor + "階で戸を開きます"), false);
                 yield 1;
             }
-            case BUSY -> {
-                source.sendFailure(Component.literal("ほかの呼びに応えている途中です"));
-                yield 0;
-            }
-            case INVALID -> throw UNKNOWN_VALUE.create(floor + "階（このかごは" + car.floorCount() + "階まで）");
+            case INVALID -> throw UNKNOWN_VALUE.create(floor + "階" + (direction != null ? "の" + direction.name().toLowerCase(Locale.ROOT) : "")
+                    + "（このかごは" + car.floorCount() + "階まで）");
         };
     }
 
