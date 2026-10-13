@@ -11,7 +11,8 @@ import java.util.BitSet;
  * <p>階は0始まりの番号（下から）で表す。かごの位置や走行は呼び出し側が管理し、
  * 停止中で戸が閉じたときに {@link #nextStop}、停止階に着いたときに {@link #arrive} を呼ぶ。
  *
- * <p>今のところ、走行を始めたあとで途中の階に呼びが登録されても、その走行では止まらない（運転曲線が停止から停止までのため）。
+ * <p>走行中に途中の階で呼びが登録されたときは、呼び出し側が {@link #isStopOnTheWay} で止まるべき階かを調べ、
+ * 減速が間に合えば行先をその階に変える。間に合わなければ通過し、呼びは残して後で応える。
  */
 public final class CollectiveControl {
     public enum PressResult {
@@ -129,6 +130,15 @@ public final class CollectiveControl {
             direction = TravelDirection.NONE;
         }
         return hall ? CallType.HALL : CallType.CAR;
+    }
+
+    /**
+     * 今の進行方向で走行中に、floor を通りかかったときに止まるべきかどうか。かご呼びか、進行方向と同じ向きの乗場呼びがあれば止まる。
+     * 止まれるか（減速が間に合うか）は呼び出し側が判断する。
+     */
+    public boolean isStopOnTheWay(int floor) {
+        return direction != TravelDirection.NONE && floor >= 0 && floor < floorCount
+                && (carCalls.get(floor) || hallCall(floor, direction));
     }
 
     public boolean hasCarCall(int floor) {

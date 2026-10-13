@@ -188,6 +188,50 @@ public class ElevatorCarGameTests {
         });
     }
 
+    /** 走行中に途中の階で呼ばれても、減速が間に合えばその階に止まる。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 1200)
+    public static void stopsOnTheWayWhenThereIsRoomToBrake(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, 4, 8).car();
+        car.pressCarCall(2);
+        helper.runAtTickTime(5, () -> {
+            helper.assertTrue(car.isMoving(), "should have departed");
+            helper.assertTrue(car.pressHallCall(1, TravelDirection.UP) == PressResult.REGISTERED, "not registered");
+        });
+        List<Integer> stops = recordStops(helper, car);
+        helper.succeedWhen(() -> helper.assertTrue(stops.equals(List.of(1, 2)), "stops so far: " + stops));
+    }
+
+    /** 減速が間に合わない位置で呼ばれたら通過し、あとで戻って応える。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 1200)
+    public static void passesAFloorWhenItIsTooLateToBrake(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, 4, 8).car();
+        double secondFloorY = car.floors()[1];
+        car.pressCarCall(2);
+        AtomicBoolean called = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            if (!called.get() && car.getY() >= secondFloorY - 0.5) {
+                called.set(true);
+                helper.assertTrue(car.pressHallCall(1, TravelDirection.UP) == PressResult.REGISTERED, "not registered");
+            }
+        });
+        List<Integer> stops = recordStops(helper, car);
+        helper.succeedWhen(() -> helper.assertTrue(stops.equals(List.of(2, 1)), "stops so far: " + stops));
+    }
+
+    /** 戸が開き始めるたびに、その階を記録する。 */
+    private static List<Integer> recordStops(GameTestHelper helper, ElevatorCarEntity car) {
+        List<Integer> stops = new ArrayList<>();
+        AtomicBoolean wasClosed = new AtomicBoolean(true);
+        helper.onEachTick(() -> {
+            boolean closed = car.doorState() == DoorState.CLOSED;
+            if (wasClosed.get() && !closed) {
+                stops.add(car.floorIndexAt(car.getY()));
+            }
+            wasClosed.set(closed);
+        });
+        return stops;
+    }
+
     /** 操作盤と乗場のボタンを押すと、呼びが登録されて応答灯がつく。開ボタンで戸が開く。 */
     @GameTest(template = TEMPLATE, timeoutTicks = 100)
     public static void buttonsRegisterCalls(GameTestHelper helper) {

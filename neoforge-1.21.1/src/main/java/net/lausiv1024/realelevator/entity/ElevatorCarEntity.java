@@ -253,6 +253,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             setTrip(null);
             currentFloor = targetFloor;
             serveCurrentFloor(now);
+        } else if (trip != null) {
+            stopOnTheWayIfPossible(now);
         }
 
         boolean doorChanged = door.tick(now);
@@ -271,6 +273,28 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             } else if (next >= 0) {
                 targetFloor = next;
                 setTrip(new Trip(now, getY(), floors[next], speedSpec));
+            }
+        }
+    }
+
+    /**
+     * 走行中、行先より手前に止まるべき階があれば、近い順に、減速が間に合う最初の階へ行先を変える。
+     * 間に合わない階は通過し、その呼びは残して後で応える。
+     */
+    private void stopOnTheWayIfPossible(long now) {
+        if (control == null || trip == null) {
+            return;
+        }
+        int step = trip.to() > trip.from() ? 1 : -1;
+        for (int floor = currentFloor + step; floor != targetFloor; floor += step) {
+            if (!control.isStopOnTheWay(floor)) {
+                continue;
+            }
+            Trip shorter = trip.retarget(now, floors[floor]);
+            if (shorter != null) {
+                targetFloor = floor;
+                setTrip(shorter);
+                return;
             }
         }
     }

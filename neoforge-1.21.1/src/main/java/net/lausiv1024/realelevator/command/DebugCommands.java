@@ -36,7 +36,7 @@ import net.minecraft.world.phys.Vec3;
  * フェーズ1の動作確認用コマンド。ウィザード設置とボタンができたら置き換える。
  *
  * <pre>
- * /realelevator spawn &lt;下階の床面&gt; &lt;機種&gt; &lt;正面の向き&gt; &lt;上階の床面のY&gt; [速度]
+ * /realelevator spawn &lt;かごを置く階の床面&gt; &lt;機種&gt; &lt;正面の向き&gt; &lt;速度&gt; &lt;ほかの停止階の床面のY…&gt;
  * /realelevator call &lt;階&gt;    かご呼び（行先ボタン）
  * /realelevator hall &lt;階&gt; [up|down]   乗場呼び（省略時は最上階なら下り、それ以外は上り）
  * /realelevator open | close   開・閉ボタン
@@ -50,8 +50,11 @@ public final class DebugCommands {
 
     private static final DynamicCommandExceptionType UNKNOWN_VALUE =
             new DynamicCommandExceptionType(value -> Component.literal("不明な値です: " + value));
-    private static final SimpleCommandExceptionType SAME_FLOOR =
-            new SimpleCommandExceptionType(Component.literal("上階は下階と別の高さにしてください"));
+    /** 停止階の間隔の最小値。かごの外形の高さ（約3.7ブロック）より広くする。 */
+    private static final int MIN_FLOOR_SPACING = 4;
+
+    private static final DynamicCommandExceptionType BAD_FLOORS =
+            new DynamicCommandExceptionType(message -> Component.literal(String.valueOf(message)));
     private static final SimpleCommandExceptionType NO_CAR =
             new SimpleCommandExceptionType(Component.literal("近くにかごがありません"));
 
@@ -72,11 +75,10 @@ public final class DebugCommands {
                                         .then(Commands.argument("facing", StringArgumentType.word())
                                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(
                                                         Direction.Plane.HORIZONTAL.stream().map(Direction::getSerializedName), b))
-                                                .then(Commands.argument("upperY", IntegerArgumentType.integer())
-                                                        .executes(c -> spawn(c, SpeedSpec.NORMAL_LOW))
-                                                        .then(Commands.argument("speed", StringArgumentType.word())
-                                                                .suggests((c, b) -> SharedSuggestionProvider.suggest(names(SpeedSpec.values()), b))
-                                                                .executes(c -> spawn(c, parse(SpeedSpec.class, StringArgumentType.getString(c, "speed"))))))))))
+                                                .then(Commands.argument("speed", StringArgumentType.word())
+                                                        .suggests((c, b) -> SharedSuggestionProvider.suggest(names(SpeedSpec.values()), b))
+                                                        .then(Commands.argument("floors", StringArgumentType.greedyString())
+                                                                .executes(DebugCommands::spawn)))))))
                 .then(Commands.literal("call")
                         .then(Commands.argument("floor", IntegerArgumentType.integer(1))
                                 .executes(c -> withNearestCar(c, (ctx, car) -> call(ctx, car, null)))))
@@ -96,7 +98,7 @@ public final class DebugCommands {
                         .executes(c -> withNearestCar(c, DebugCommands::remove))));
     }
 
-    private static int spawn(CommandContext<CommandSourceStack> context, SpeedSpec speed) throws CommandSyntaxException {
+    private static int spawn(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
         ServerLevel level = source.getLevel();
         BlockPos pos = BlockPosArgument.getLoadedBlockPos(context, "pos");
@@ -106,17 +108,15 @@ public final class DebugCommands {
         if (facing == null || facing.getAxis().isVertical()) {
             throw UNKNOWN_VALUE.create(facingName);
         }
-        int upperY = IntegerArgumentType.getInteger(context, "upperY");
-        if (upperY == pos.getY()) {
-            throw SAME_FLOOR.create();
-        }
+        SpeedSpec speed = parse(SpeedSpec.class, StringArgumentType.getString(context, "speed"));
+        int[] floors = parseFloors(pos.getY(), StringArgumentType.getString(context, "floors"));
 
         ElevatorCarEntity car = ModEntities.ELEVATOR_CAR.get().create(level);
         if (car == null) {
             return 0;
         }
         car.moveTo(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0, 0);
-        car.setup(model, facing, new int[] {pos.getY(), upperY}, speed);
+        car.setup(model, facing, floors, speed);
         level.addFreshEntity(car);
         for (int floorY : car.floors()) {
             LandingDoorEntity door = ModEntities.LANDING_DOOR.get().create(level);
@@ -127,11 +127,33 @@ public final class DebugCommands {
             }
         }
         source.sendSuccess(() -> Component.literal("かごを設置しました（" + model.name() + "、"
-                + facing.getSerializedName() + "向き、" + speed.name().toLowerCase(Locale.ROOT) + "）"), true);
+                + facing.getSerializedName() + "向き、" + speed.name().toLowerCase(Locale.ROOT) + "、"
+                + floors.length + "階床：Y=" + Arrays.toString(floors) + "）"), true);
         return 1;
     }
 
     /** direction が null ならかご呼び、そうでなければその方向の乗場呼び。 */
+    /** かごを置く階と、スペース区切りで並べたほかの停止階の床面のYから、停止階の一覧（下から順）を作る。 */
+    private static int[] parseFloors(int startY, String text) throws CommandSyntaxException {
+        String[] tokens = text.trim().split("\\s+");
+        int[] floors = new int[tokens.length + 1];
+        floors[0] = startY;
+        for (int i = 0; i < tokens.length; i++) {
+            try {
+                floors[i + 1] = Integer.parseInt(tokens[i]);
+            } catch (NumberFormatException e) {
+                throw UNKNOWN_VALUE.create(tokens[i]);
+            }
+        }
+        Arrays.sort(floors);
+        for (int i = 1; i < floors.length; i++) {
+            if (floors[i] - floors[i - 1] < MIN_FLOOR_SPACING) {
+                throw BAD_FLOORS.create("停止階の間隔は" + MIN_FLOOR_SPACING + "ブロック以上にしてください（Y=" + floors[i - 1] + "と" + floors[i] + "）");
+            }
+        }
+        return floors;
+    }
+
     private static int call(CommandContext<CommandSourceStack> context, ElevatorCarEntity car, TravelDirection direction)
             throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
