@@ -2,6 +2,7 @@ package net.lausiv1024.realelevator.registry;
 
 import net.lausiv1024.realelevator.RealElevator;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
+import net.lausiv1024.realelevator.entity.LandingDoorEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -20,6 +21,15 @@ public final class ModEntities {
                     .clientTrackingRange(10)
                     .updateInterval(20)
                     .build("elevator_car"));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<LandingDoorEntity>> LANDING_DOOR = ENTITY_TYPES.register("landing_door",
+            () -> EntityType.Builder.<LandingDoorEntity>of(LandingDoorEntity::new, MobCategory.MISC)
+                    .sized(1.0F, 2.0F)
+                    .noSummon()
+                    .fireImmune()
+                    .clientTrackingRange(10)
+                    .updateInterval(20)
+                    .build("landing_door"));
 
     private ModEntities() {
     }

@@ -1,3 +1,4 @@
 {
-  "entity.realelevator.elevator_car": "エレベーターのかご"
+  "entity.realelevator.elevator_car": "エレベーターのかご",
+  "entity.realelevator.landing_door": "乗場の扉"
 }

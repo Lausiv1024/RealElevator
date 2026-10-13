@@ -27,7 +27,7 @@ public final class CarTransport {
     @SubscribeEvent
     static void onEntityTickPre(EntityTickEvent.Pre event) {
         Entity entity = event.getEntity();
-        if (entity instanceof ElevatorCarEntity || entity.isSpectator() || entity.isPassenger()) {
+        if (ElevatorTracker.isElevatorPart(entity) || entity.isSpectator() || entity.isPassenger()) {
             return;
         }
         Level level = entity.level();
@@ -35,7 +35,7 @@ public final class CarTransport {
         if (!movedHere) {
             return;
         }
-        List<ElevatorCarEntity> cars = CarTracker.cars(level);
+        List<ElevatorCarEntity> cars = ElevatorTracker.cars(level);
         if (cars.isEmpty()) {
             return;
         }
@@ -63,7 +63,7 @@ public final class CarTransport {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-        for (ElevatorCarEntity car : CarTracker.cars(player.level())) {
+        for (ElevatorCarEntity car : ElevatorTracker.cars(player.level())) {
             if (!car.isRemoved() && car.carries(player, car.getY())) {
                 player.connection.aboveGroundTickCount = 0;
                 return;

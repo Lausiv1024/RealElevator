@@ -8,11 +8,12 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.minecraft.core.Direction;
 import net.minecraft.world.phys.AABB;
 
 /**
- * coreのかごの形状を、向きに合わせて回したものをキャッシュする。
+ * coreのかごと戸の形状を、向きに合わせて回す。動かない部分はキャッシュする。
  */
 public final class CarShapes {
     private static final Map<CarModel, List<List<Part>>> PARTS = new EnumMap<>(CarModel.class);
@@ -38,6 +39,17 @@ public final class CarShapes {
 
     public static Box exterior(CarModel model, Direction facing) {
         return EXTERIORS.get(model).get(facing.get2DDataValue());
+    }
+
+    /** 開き具合 fraction での戸板（かごの原点からの相対座標）。 */
+    public static List<Box> doorPanels(CarModel model, Direction facing, DoorGeometry.Side side, double fraction) {
+        return DoorGeometry.panels(model, side, fraction).stream()
+                .map(box -> box.rotateQuarterTurns(facing.get2DDataValue()))
+                .toList();
+    }
+
+    public static Box doorTravelBounds(CarModel model, Direction facing, DoorGeometry.Side side) {
+        return DoorGeometry.travelBounds(model, side).rotateQuarterTurns(facing.get2DDataValue());
     }
 
     public static AABB toAabb(Box box, double x, double y, double z) {

@@ -30,7 +30,7 @@ public final class CarGeometry {
 
     /**
      * かごを構成する部位。正面の袖壁は出入口の分を空け、左右の袖壁とトランサムに分ける。
-     * 出入口の左右で袖壁の幅が1px異なる場合は、+X 側を広くする。
+     * 出入口は正面の中央に置く。左右の袖壁の幅が1px異なる場合は、+X 側を広くする。
      */
     public static List<Part> parts(CarModel model) {
         int halfWidth = model.interiorWidthPx() / 2;
@@ -39,7 +39,7 @@ public final class CarGeometry {
         int outerX = halfWidth + WALL_PX;
         int outerZ = halfDepth + WALL_PX;
 
-        int entranceMinX = -halfWidth + (model.interiorWidthPx() - model.entranceWidthPx()) / 2;
+        int entranceMinX = entranceMinXPx(model);
         int entranceMaxX = entranceMinX + model.entranceWidthPx();
 
         return List.of(
@@ -55,6 +55,17 @@ public final class CarGeometry {
                 new Part(PartType.WALL, Box.ofPixels(entranceMaxX, 0, halfDepth, outerX, height, outerZ)),
                 new Part(PartType.WALL, Box.ofPixels(entranceMinX, CarModel.ENTRANCE_HEIGHT_PX, halfDepth,
                         entranceMaxX, height, outerZ)));
+    }
+
+    /** 出入口（正面の袖壁の開口部）。奥行は袖壁の厚みの分。 */
+    public static Box entrance(CarModel model) {
+        int halfDepth = model.interiorDepthPx() / 2;
+        int minX = entranceMinXPx(model);
+        return Box.ofPixels(minX, 0, halfDepth, minX + model.entranceWidthPx(), CarModel.ENTRANCE_HEIGHT_PX, halfDepth + WALL_PX);
+    }
+
+    private static int entranceMinXPx(CarModel model) {
+        return -model.interiorWidthPx() / 2 + (model.interiorWidthPx() - model.entranceWidthPx()) / 2;
     }
 
     /** かご内の空間。 */

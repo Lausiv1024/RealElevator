@@ -1,6 +1,7 @@
 package net.lausiv1024.realelevator;
 
 import net.lausiv1024.realelevator.client.ElevatorCarRenderer;
+import net.lausiv1024.realelevator.client.LandingDoorRenderer;
 import net.lausiv1024.realelevator.registry.ModEntities;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -17,5 +18,6 @@ public class RealElevatorClient {
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.ELEVATOR_CAR.get(), ElevatorCarRenderer::new);
+        event.registerEntityRenderer(ModEntities.LANDING_DOOR.get(), LandingDoorRenderer::new);
     }
 }
