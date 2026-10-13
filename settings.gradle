@@ -1,0 +1,16 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'RealElevator'
+
+// Minecraftに依存しない純粋なJavaのロジック
+include 'core'
+// Minecraft 1.21.1 / NeoForge 向けの層
+include 'neoforge-1.21.1'
