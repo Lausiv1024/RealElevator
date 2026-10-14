@@ -1,10 +1,15 @@
 package net.lausiv1024.realelevator.client;
 
+import java.util.List;
+import java.util.Set;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.lausiv1024.realelevator.core.car.Box;
+import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
+import net.lausiv1024.realelevator.core.display.HallLantern;
 import net.lausiv1024.realelevator.entity.ButtonHost;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
@@ -24,6 +29,8 @@ final class BoxRenderer {
     private static final int WHITE = 0xFFFFFF;
     /** 階床表示器のドットの色（アンバー）。 */
     private static final int AMBER = 0xFFAA00;
+    /** 消灯しているホールランタンの色（くすんだ乳白色）。 */
+    private static final int LANTERN_OFF = 0x6E6A60;
 
     private BoxRenderer() {
     }
@@ -53,6 +60,24 @@ final class BoxRenderer {
         TextureAtlasSprite dot = blockSprite(INDICATOR_DOT);
         for (Box box : frame.dots()) {
             renderBox(pose, consumer, box.rotateQuarterTurns(quarterTurns), dot, LightTexture.FULL_BRIGHT, AMBER);
+        }
+    }
+
+    /**
+     * ホールランタンを描く。点灯している段は、まわりの明るさによらず光って見えるようにする。
+     *
+     * @param quarterTurns ランタンの座標（かごのローカル座標）を回す回数
+     */
+    static void renderLantern(PoseStack.Pose pose, VertexConsumer consumer, List<HallLantern.Section> sections,
+                              Set<TravelDirection> lit, int quarterTurns, int light) {
+        TextureAtlasSprite lens = blockSprite(INDICATOR_DOT);
+        for (HallLantern.Section section : sections) {
+            Box box = section.box().rotateQuarterTurns(quarterTurns);
+            if (section.isLit(lit)) {
+                renderBox(pose, consumer, box, lens, LightTexture.FULL_BRIGHT, AMBER);
+            } else {
+                renderBox(pose, consumer, box, lens, light, LANTERN_OFF);
+            }
         }
     }
 

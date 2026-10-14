@@ -49,6 +49,7 @@ import net.minecraft.world.phys.Vec3;
  * /realelevator config car_indicator over_door|over_panel  かごの階床表示器を扉の上／操作盤の上に置く
  * /realelevator config left_indicator true|false           両側の操作盤のとき、左側にも表示器を付けるか
  * /realelevator config hall_indicator over_door|over_buttons  乗場の階床表示器を扉の上／ボタンの上に置く
+ * /realelevator config hall_lantern over_door|beside_door     ホールランタンを扉の上／扉の横に置く
  * </pre>
  *
  * call 以降は、半径32ブロック以内で最も近いかごに対して行う。
@@ -114,7 +115,9 @@ public final class DebugCommands {
                                         .executes(c -> withNearestCar(c, (ctx, car) -> configure(ctx, car,
                                                 car.fixtures().withLeftPanelIndicator(BoolArgumentType.getBool(ctx, "value")))))))
                         .then(Commands.literal("hall_indicator")
-                                .then(enumValue(FixtureConfig.HallIndicator.class, FixtureConfig::withHallIndicator)))));
+                                .then(enumValue(FixtureConfig.HallIndicator.class, FixtureConfig::withHallIndicator)))
+                        .then(Commands.literal("hall_lantern")
+                                .then(enumValue(FixtureConfig.HallLanternPlacement.class, FixtureConfig::withHallLantern)))));
     }
 
     private static int spawn(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
@@ -235,7 +238,8 @@ public final class DebugCommands {
                 + fixtures.panelSides().name().toLowerCase(Locale.ROOT)
                 + "、かごの表示器 " + fixtures.carIndicator().name().toLowerCase(Locale.ROOT)
                 + "、左の表示器 " + fixtures.leftPanelIndicator()
-                + "、乗場の表示器 " + fixtures.hallIndicator().name().toLowerCase(Locale.ROOT)), false);
+                + "、乗場の表示器 " + fixtures.hallIndicator().name().toLowerCase(Locale.ROOT)
+                + "、ホールランタン " + fixtures.hallLantern().name().toLowerCase(Locale.ROOT)), false);
         return 1;
     }
 

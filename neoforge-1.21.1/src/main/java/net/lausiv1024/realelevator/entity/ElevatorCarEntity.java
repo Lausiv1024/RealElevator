@@ -3,6 +3,7 @@ package net.lausiv1024.realelevator.entity;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import javax.annotation.Nullable;
 
@@ -13,14 +14,17 @@ import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.control.CallType;
 import net.lausiv1024.realelevator.core.control.CollectiveControl;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
+import net.lausiv1024.realelevator.core.control.OperationTiming;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
+import net.lausiv1024.realelevator.core.display.HallLantern;
 import net.lausiv1024.realelevator.core.door.DoorController;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.door.DoorState;
 import net.lausiv1024.realelevator.core.door.DoorTiming;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.motion.Trip;
+import net.lausiv1024.realelevator.registry.ModSounds;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
@@ -34,8 +38,11 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * エレベーターのかご。
@@ -80,6 +87,16 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private int targetFloor;
     /** 最後に位置を計算したゲーム時刻。描画の補間に使う。 */
     private long lastTick;
+    /** この走行の到着チャイムをもう鳴らしたか。サーバーだけが使う。 */
+    private boolean arrivalAnnounced;
+    /** ホールランタンの点滅を始めたゲーム時刻（到着チャイムを鳴らした時刻）。点滅の位相の起点。 */
+    private long lanternTick;
+    /** 到着チャイムを鳴らした行先の階。走行中、この階のホールランタンを点滅させる。なければ −1。 */
+    private int announcedFloor = -1;
+    /** 到着チャイムを鳴らしたときに先読みした、到着後の進行方向。 */
+    private TravelDirection announcedDirection = TravelDirection.NONE;
+    /** 発車を決めたあと、実際に動き始めるゲーム時刻。発車待ちでなければ −1。サーバーだけが使う。 */
+    private long departureTick = -1;
     /** 運搬の移動量を最後に評価したゲーム時刻と、そのときと前のtickのかごの位置。 */
     private long carryTick = Long.MIN_VALUE;
     private double carryFromY;
@@ -199,6 +216,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     private void handlePress(PressResult result, CallType callType) {
         if (result == PressResult.SERVED_HERE) {
+            if (callType == CallType.HALL) {
+                lanternTick = level().getGameTime();
+                playArrivalChime(currentFloor, control != null ? control.direction() : TravelDirection.NONE);
+            }
             openDoor(callType);
         }
         if (result == PressResult.SERVED_HERE || result == PressResult.REGISTERED) {
@@ -289,6 +310,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             serveCurrentFloor(now);
         } else if (trip != null) {
             stopOnTheWayIfPossible(now);
+            announceArrivalIfCertain(now);
         }
 
         boolean doorChanged = door.tick(now);
@@ -308,11 +330,24 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                 syncCalls();
             }
             if (next == currentFloor) {
+                departureTick = -1;
                 serveCurrentFloor(now);
             } else if (next >= 0) {
-                targetFloor = next;
-                setTrip(new Trip(now, getY(), floors[next], speedSpec));
+                // 発車を決めてから、少し遅れて動き始める
+                if (departureTick < 0) {
+                    departureTick = now + OperationTiming.START_DELAY_TICKS;
+                }
+                if (now >= departureTick) {
+                    departureTick = -1;
+                    targetFloor = next;
+                    setTrip(new Trip(now, getY(), floors[next], speedSpec));
+                }
+            } else {
+                departureTick = -1;
             }
+        } else if (trip == null) {
+            // 戸が開き直したら発車を取りやめる
+            departureTick = -1;
         }
     }
 
@@ -338,12 +373,105 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         }
     }
 
-    /** 今いる階の呼びに応えて戸を開く。 */
+    /** 今いる階の呼びに応えて戸を開く。走行中に到着チャイムを鳴らしていなければ、ここで鳴らす。 */
     private void serveCurrentFloor(long now) {
         CallType served = control != null ? control.arrive(currentFloor) : CallType.CAR;
+        if (!arrivalAnnounced) {
+            lanternTick = now;
+            playArrivalChime(currentFloor, control != null ? control.direction() : TravelDirection.NONE);
+        }
+        arrivalAnnounced = false;
+        announcedFloor = -1;
         door.open(now, door.timing().dwellTicks(served));
         syncDoor();
         syncCalls();
+    }
+
+    /**
+     * 行先への到着が確定し、到着が近づいたら、行先階の乗場で到着チャイムを鳴らす。
+     *
+     * <p>到着が確定するのは、行先の1つ手前の階に減速しても止まれなくなったとき（途中階で呼ばれても止まれなくなったとき）。
+     * 行先が隣の階なら発車した時点で確定する。長い走行で早く鳴りすぎないよう、到着の6秒前までは待つ。
+     * チャイムの向きは、到着したあとの進行方向を先読みして決める。
+     */
+    private void announceArrivalIfCertain(long now) {
+        if (arrivalAnnounced || trip == null || control == null) {
+            return;
+        }
+        int step = trip.to() > trip.from() ? 1 : -1;
+        int beforeTarget = targetFloor - step;
+        boolean certain = beforeTarget == currentFloor || trip.retarget(now, floors[beforeTarget]) == null;
+        if (HallLantern.shouldChime(certain, trip.arrivalTick() - now)) {
+            arrivalAnnounced = true;
+            announcedFloor = targetFloor;
+            announcedDirection = directionAfterArrivingAt(targetFloor);
+            // ホールランタンもチャイムと同時に点滅を始める
+            lanternTick = now;
+            playArrivalChime(targetFloor, announcedDirection);
+            syncDoor();
+        }
+    }
+
+    /** floor に着いて呼びに応えたあとの進行方向。今の呼びのまま着いたとして先読みする。 */
+    private TravelDirection directionAfterArrivingAt(int floor) {
+        long[][] calls = control.snapshot();
+        CollectiveControl probe = new CollectiveControl(floors.length);
+        probe.restore(calls[0], calls[1], calls[2], control.direction());
+        probe.arrive(floor);
+        return probe.direction();
+    }
+
+    /** 停止階 floor の乗場で、ホールランタンの位置から到着チャイムを鳴らす。下りは C6→G#5、それ以外は G#5→C6。 */
+    private void playArrivalChime(int floor, TravelDirection direction) {
+        Vec3 position = lanternCenter(floor);
+        SoundEvent sound = (direction == TravelDirection.DOWN ? ModSounds.CHIME_DOWN : ModSounds.CHIME_UP).get();
+        level().playSound(null, position.x, position.y, position.z, sound, SoundSource.BLOCKS, 1.0F, 1.0F);
+    }
+
+    /** 停止階 floor のホールランタンの中心（ワールド座標）。 */
+    private Vec3 lanternCenter(int floor) {
+        AABB bounds = null;
+        for (HallLantern.Section section : HallLantern.sections(model(), fixtures, isTerminalFloor(floor))) {
+            AABB box = CarShapes.toAabb(section.box().rotateQuarterTurns(facing().get2DDataValue()), getX(), floors[floor], getZ());
+            bounds = bounds == null ? box : bounds.minmax(box);
+        }
+        return bounds != null ? bounds.getCenter() : position();
+    }
+
+    /** 最上階または最下階か。 */
+    public boolean isTerminalFloor(int floor) {
+        return floor == 0 || floor == floors.length - 1;
+    }
+
+    /** 到着チャイムを鳴らした行先の階。なければ −1。 */
+    public int announcedFloor() {
+        return announcedFloor;
+    }
+
+    /** この走行の到着チャイムをもう鳴らしたか。 */
+    public boolean isArrivalAnnounced() {
+        return arrivalAnnounced;
+    }
+
+    /** ホールランタンが点滅を始めてからの経過時間 [tick]。点滅の位相に使う。 */
+    public double lanternTicks(double tick) {
+        return tick - lanternTick;
+    }
+
+    /**
+     * 停止階 floor のホールランタンの点灯する段（点滅の消灯中かどうかは含めない）。
+     *
+     * <p>到着チャイムを鳴らしてから到着するまでは、行先階のランタンを先読みした方向で点け、
+     * 到着して扉が開いている間は、その階のランタンを今の進行方向で点ける。
+     */
+    public Set<TravelDirection> lanternSections(int floor) {
+        if (trip != null) {
+            return floor == announcedFloor
+                    ? HallLantern.litSections(floor, floors.length, announcedDirection, true)
+                    : Set.of();
+        }
+        boolean doorOpenHere = floorIndexAt(getY()) == floor && door.state() != DoorState.CLOSED;
+        return HallLantern.litSections(floor, floors.length, control != null ? control.direction() : TravelDirection.NONE, doorOpenHere);
     }
 
     /** セーフティシュー：閉まりかけの戸（かごと乗場の両方）に生き物が触れているかどうか。 */
@@ -511,7 +639,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     private void syncDoor() {
-        this.entityData.set(DATA_DOOR, writeDoor(door));
+        this.entityData.set(DATA_DOOR, writeDoorState());
     }
 
     private void syncCalls() {
@@ -538,7 +666,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                 setPos(getX(), previous.to(), getZ());
             }
         } else if (DATA_DOOR.equals(key)) {
-            readDoor(this.entityData.get(DATA_DOOR), door);
+            readDoorState(this.entityData.get(DATA_DOOR));
         } else if (DATA_CALLS.equals(key)) {
             readCalls(this.entityData.get(DATA_CALLS));
         } else if (DATA_FIXTURES.equals(key)) {
@@ -586,7 +714,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (trip != null) {
             tag.put("Trip", writeTrip(trip));
         }
-        tag.put("Door", writeDoor(door));
+        tag.put("Door", writeDoorState());
+        tag.putBoolean("ArrivalAnnounced", arrivalAnnounced);
         if (control != null) {
             tag.put("Calls", writeCalls(control));
         }
@@ -606,7 +735,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         setFixtures(readFixtures(tag.getCompound("Fixtures")));
         // 保存時に走行中・開閉中だった場合は、ゲーム時刻に合わせてそのまま続きから動く
         setTrip(tag.contains("Trip") ? readTrip(tag.getCompound("Trip")) : null);
-        readDoor(tag.getCompound("Door"), door);
+        readDoorState(tag.getCompound("Door"));
+        arrivalAnnounced = tag.getBoolean("ArrivalAnnounced");
         syncDoor();
         readCalls(tag.getCompound("Calls"));
         syncCalls();
@@ -643,6 +773,21 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         return tag;
     }
 
+    private void readDoorState(CompoundTag tag) {
+        readDoor(tag, door);
+        lanternTick = tag.getLong("LanternTick");
+        announcedFloor = tag.contains("AnnouncedFloor") ? tag.getInt("AnnouncedFloor") : -1;
+        announcedDirection = parseEnum(TravelDirection.class, tag.getString("AnnouncedDirection"), TravelDirection.NONE);
+    }
+
+    private CompoundTag writeDoorState() {
+        CompoundTag tag = writeDoor(door);
+        tag.putLong("LanternTick", lanternTick);
+        tag.putInt("AnnouncedFloor", announcedFloor);
+        tag.putString("AnnouncedDirection", announcedDirection.name());
+        return tag;
+    }
+
     private static void readDoor(CompoundTag tag, DoorController door) {
         door.restore(parseEnum(DoorState.class, tag.getString("State"), DoorState.CLOSED),
                 tag.getLong("StartTick"), tag.getDouble("StartFraction"), tag.getInt("Dwell"));
@@ -654,6 +799,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.putString("CarIndicator", fixtures.carIndicator().name());
         tag.putBoolean("LeftPanelIndicator", fixtures.leftPanelIndicator());
         tag.putString("HallIndicator", fixtures.hallIndicator().name());
+        tag.putString("HallLantern", fixtures.hallLantern().name());
         return tag;
     }
 
@@ -663,7 +809,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                 parseEnum(FixtureConfig.PanelSides.class, tag.getString("PanelSides"), defaults.panelSides()),
                 parseEnum(FixtureConfig.CarIndicator.class, tag.getString("CarIndicator"), defaults.carIndicator()),
                 tag.getBoolean("LeftPanelIndicator"),
-                parseEnum(FixtureConfig.HallIndicator.class, tag.getString("HallIndicator"), defaults.hallIndicator()));
+                parseEnum(FixtureConfig.HallIndicator.class, tag.getString("HallIndicator"), defaults.hallIndicator()),
+                parseEnum(FixtureConfig.HallLanternPlacement.class, tag.getString("HallLantern"), defaults.hallLantern()));
     }
 
     private static CompoundTag writeCalls(CollectiveControl control) {

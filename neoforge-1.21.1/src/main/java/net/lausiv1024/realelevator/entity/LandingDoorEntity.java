@@ -2,6 +2,7 @@ package net.lausiv1024.realelevator.entity;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
@@ -10,6 +11,7 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
+import net.lausiv1024.realelevator.core.display.HallLantern;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
@@ -115,6 +117,16 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         return car != null ? car.floorIndexAt(getY()) : -1;
     }
 
+    /** ホールランタンの点灯する段（点滅の消灯中かどうかは含めない）。到着チャイムが鳴ってから、扉が閉まるまで点く。 */
+    public Set<TravelDirection> litLanternSections() {
+        ElevatorCarEntity car = car();
+        int floor = floorIndex();
+        if (car == null || floor < 0) {
+            return Set.of();
+        }
+        return car.lanternSections(floor);
+    }
+
     @Override
     public List<Button> buttons() {
         ElevatorCarEntity car = car();
@@ -160,16 +172,22 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
 
     @Override
     protected AABB makeBoundingBox() {
-        // 描画のカリングに使うので、戸が動く範囲、ボタン（中間階の▲▼）、階床表示器を含める
+        // 描画のカリングに使うので、戸が動く範囲、ボタン（中間階の▲▼）、階床表示器、ホールランタンを含める
         AABB bounds = CarShapes.toAabb(CarShapes.doorTravelBounds(model(), facing(), DoorGeometry.Side.LANDING), getX(), getY(), getZ());
         int turns = facing().get2DDataValue();
         for (Button button : ButtonLayout.hallButtons(model(), 1, 3)) {
             bounds = bounds.minmax(CarShapes.toAabb(button.box().rotateQuarterTurns(turns), getX(), getY(), getZ()));
         }
-        // 階床表示器はどちらの位置に付けても入るようにする
-        for (FixtureConfig.HallIndicator placement : FixtureConfig.HallIndicator.values()) {
-            Box indicator = FloorIndicator.hall(model(), FixtureConfig.DEFAULT.withHallIndicator(placement), "", TravelDirection.NONE).face();
-            bounds = bounds.minmax(CarShapes.toAabb(indicator.rotateQuarterTurns(turns), getX(), getY(), getZ()));
+        // 階床表示器とホールランタンは、どの位置に付けても入るようにする
+        for (FixtureConfig.HallIndicator indicatorPlacement : FixtureConfig.HallIndicator.values()) {
+            for (FixtureConfig.HallLanternPlacement lanternPlacement : FixtureConfig.HallLanternPlacement.values()) {
+                FixtureConfig config = FixtureConfig.DEFAULT.withHallIndicator(indicatorPlacement).withHallLantern(lanternPlacement);
+                Box indicator = FloorIndicator.hall(model(), config, "", TravelDirection.NONE).face();
+                bounds = bounds.minmax(CarShapes.toAabb(indicator.rotateQuarterTurns(turns), getX(), getY(), getZ()));
+                for (HallLantern.Section section : HallLantern.sections(model(), config, false)) {
+                    bounds = bounds.minmax(CarShapes.toAabb(section.box().rotateQuarterTurns(turns), getX(), getY(), getZ()));
+                }
+            }
         }
         return bounds;
     }

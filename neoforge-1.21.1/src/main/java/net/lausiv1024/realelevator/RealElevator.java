@@ -7,6 +7,7 @@ import com.mojang.logging.LogUtils;
 import net.lausiv1024.realelevator.command.DebugCommands;
 import net.lausiv1024.realelevator.network.PressButtonPayload;
 import net.lausiv1024.realelevator.registry.ModEntities;
+import net.lausiv1024.realelevator.registry.ModSounds;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -22,6 +23,7 @@ public class RealElevator {
 
     public RealElevator(IEventBus modEventBus, ModContainer modContainer) {
         ModEntities.ENTITY_TYPES.register(modEventBus);
+        ModSounds.SOUND_EVENTS.register(modEventBus);
         modEventBus.addListener(RealElevator::registerPayloads);
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> DebugCommands.register(event.getDispatcher()));
     }

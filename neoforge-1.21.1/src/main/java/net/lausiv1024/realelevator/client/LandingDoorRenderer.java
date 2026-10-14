@@ -1,11 +1,14 @@
 package net.lausiv1024.realelevator.client;
 
+import java.util.Set;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
+import net.lausiv1024.realelevator.core.display.HallLantern;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.CarShapes;
@@ -20,7 +23,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * 乗場の扉、▲▼ボタン、階床表示器の仮の描画。戸はかごの戸と同じテクスチャを使う。
+ * 乗場の扉、▲▼ボタン、階床表示器、ホールランタンの仮の描画。戸はかごの戸と同じテクスチャを使う。
  */
 public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
     public LandingDoorRenderer(EntityRendererProvider.Context context) {
@@ -46,6 +49,13 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
                         car.indicatorDirection())
                 : FloorIndicator.hall(door.model(), FixtureConfig.DEFAULT, "", TravelDirection.NONE);
         BoxRenderer.renderIndicator(pose, consumer, indicator, door.facing().get2DDataValue(), packedLight);
+        FixtureConfig fixtures = car != null ? car.fixtures() : FixtureConfig.DEFAULT;
+        // 点灯する段は、点滅の消灯中は消す
+        Set<TravelDirection> lit = car != null && HallLantern.isBlinkOn(car.lanternTicks(car.renderTick(partialTick)))
+                ? door.litLanternSections() : Set.of();
+        boolean terminal = car != null && door.floorIndex() >= 0 && car.isTerminalFloor(door.floorIndex());
+        BoxRenderer.renderLantern(pose, consumer, HallLantern.sections(door.model(), fixtures, terminal), lit,
+                door.facing().get2DDataValue(), packedLight);
         super.render(door, entityYaw, partialTick, poseStack, bufferSource, packedLight);
     }
 

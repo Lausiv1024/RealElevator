@@ -28,6 +28,11 @@ public final class Trip {
         return curve.positionAtTick(tick - startTick);
     }
 
+    /** 到着するゲーム時刻（partialTickを含む）。 */
+    public double arrivalTick() {
+        return startTick + curve.duration() * TravelCurve.TICKS_PER_SECOND;
+    }
+
     /** ゲーム時刻 tick の時点で到着しているかどうか。 */
     public boolean isArrivedAt(double tick) {
         return curve.isArrived((tick - startTick) / TravelCurve.TICKS_PER_SECOND);

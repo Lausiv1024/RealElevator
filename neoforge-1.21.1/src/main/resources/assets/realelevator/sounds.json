@@ -1,0 +1,10 @@
+{
+  "chime_up": {
+    "subtitle": "subtitles.realelevator.chime",
+    "sounds": ["realelevator:chime_up"]
+  },
+  "chime_down": {
+    "subtitle": "subtitles.realelevator.chime",
+    "sounds": ["realelevator:chime_down"]
+  }
+}

@@ -2,12 +2,15 @@ package net.lausiv1024.realelevator.gametest;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import net.lausiv1024.realelevator.RealElevator;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
+import net.lausiv1024.realelevator.core.control.OperationTiming;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.door.DoorState;
@@ -152,9 +155,20 @@ public class ElevatorCarGameTests {
         int upperY = helper.absolutePos(LOWER).getY() + RISE;
         helper.assertTrue(car.pressHallCall(0, TravelDirection.UP) == PressResult.SERVED_HERE, "the door should open at the current floor");
         helper.assertTrue(car.pressCarCall(1) == PressResult.REGISTERED, "not registered");
+        AtomicLong closedAt = new AtomicLong(-1);
+        AtomicBoolean departed = new AtomicBoolean();
         helper.onEachTick(() -> {
+            long now = helper.getLevel().getGameTime();
             if (car.isMoving() && car.doorState() != DoorState.CLOSED) {
                 helper.fail("departed with the door " + car.doorState());
+            }
+            if (car.doorState() == DoorState.CLOSED && closedAt.get() < 0) {
+                closedAt.set(now);
+            }
+            if (car.isMoving() && !departed.getAndSet(true)) {
+                // 戸が閉まってから少し遅れて動き始める
+                helper.assertTrue(now - closedAt.get() >= OperationTiming.START_DELAY_TICKS,
+                        "departed " + (now - closedAt.get()) + " ticks after the door closed");
             }
         });
         helper.succeedWhen(() -> helper.assertTrue(car.getY() == upperY && !car.isMoving(), "not arrived yet"));
@@ -219,7 +233,7 @@ public class ElevatorCarGameTests {
     public static void stopsOnTheWayWhenThereIsRoomToBrake(GameTestHelper helper) {
         ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, 4, 8).car();
         car.pressCarCall(2);
-        helper.runAtTickTime(5, () -> {
+        helper.runAtTickTime(OperationTiming.START_DELAY_TICKS + 5, () -> {
             helper.assertTrue(car.isMoving(), "should have departed");
             helper.assertTrue(car.pressHallCall(1, TravelDirection.UP) == PressResult.REGISTERED, "not registered");
         });
@@ -306,6 +320,99 @@ public class ElevatorCarGameTests {
         helper.assertTrue(car.isCarCallLit(1) && car.isButtonLit(leftSecondFloor) && car.isButtonLit(indexOf(car.buttons(), ButtonLayout.Kind.CAR_CALL, 1)),
                 "both panels should light up");
         helper.succeed();
+    }
+
+    /**
+     * ホールランタンは、到着チャイムが鳴ってから扉が閉まるまで、中間階では進行方向の段、最上階では両方の段が点く。
+     * 行先でもなく、かごがいない階は点かない。
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = 1200)
+    public static void hallLanternLightsWhileTheDoorIsOpen(GameTestHelper helper) {
+        Elevator elevator = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, 4, 8);
+        ElevatorCarEntity car = elevator.car();
+        LandingDoorEntity middle = elevator.landingDoors().get(1);
+        LandingDoorEntity top = elevator.landingDoors().get(2);
+        car.pressHallCall(1, TravelDirection.UP);
+        AtomicBoolean sawMiddle = new AtomicBoolean();
+        AtomicBoolean sawMiddleBeforeArrival = new AtomicBoolean();
+        AtomicBoolean pressed = new AtomicBoolean();
+        AtomicBoolean sawTop = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            for (LandingDoorEntity door : elevator.landingDoors()) {
+                boolean here = door.isCarHere() && car.doorState() != DoorState.CLOSED;
+                boolean approaching = car.isMoving() && car.announcedFloor() == door.floorIndex();
+                if (!here && !approaching && !door.litLanternSections().isEmpty()) {
+                    helper.fail("a lantern lit on a floor the car is neither at nor arriving at", door);
+                }
+            }
+            if (!middle.litLanternSections().isEmpty()) {
+                helper.assertTrue(middle.litLanternSections().equals(Set.of(TravelDirection.UP)), "middle: " + middle.litLanternSections());
+                sawMiddle.set(true);
+                if (car.isMoving()) {
+                    sawMiddleBeforeArrival.set(true);
+                } else if (!pressed.getAndSet(true)) {
+                    // 乗った人が最上階を押した
+                    car.pressCarCall(2);
+                }
+            }
+            if (!top.litLanternSections().isEmpty()) {
+                helper.assertTrue(top.litLanternSections().equals(Set.of(TravelDirection.UP, TravelDirection.DOWN)), "top: " + top.litLanternSections());
+                sawTop.set(true);
+            }
+        });
+        helper.succeedWhen(() -> helper.assertTrue(sawMiddle.get() && sawMiddleBeforeArrival.get() && sawTop.get()
+                && car.doorState() == DoorState.CLOSED, "not finished yet"));
+    }
+
+    /**
+     * 到着チャイムは走行中、到着が確定した時点（途中階で呼ばれても止まれなくなった時点）で鳴る。
+     * その後に途中階で呼ばれても止まらない。
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = 1200)
+    public static void arrivalIsAnnouncedOnceItCannotChange(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, 4, 8).car();
+        car.pressCarCall(2);
+        AtomicBoolean announced = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            if (!announced.get() && car.isArrivalAnnounced()) {
+                announced.set(true);
+                helper.assertTrue(car.isMoving(), "should be announced before arriving");
+                // 発車直後（まだ止まれるうち）には鳴らない
+                helper.assertTrue(car.getY() > car.floors()[0], "announced before departing");
+                car.pressHallCall(1, TravelDirection.UP);
+            }
+        });
+        List<Integer> stops = recordStops(helper, car);
+        helper.succeedWhen(() -> helper.assertTrue(announced.get() && stops.equals(List.of(2, 1)), "stops so far: " + stops));
+    }
+
+    /** 6秒より長い走行では、到着チャイムは到着の6秒前に鳴る（隣の階なので発車時点で確定しているが、それより待つ）。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 400)
+    public static void longTripAnnouncesSixSecondsBeforeArrival(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE).car();
+        car.pressCarCall(1);
+        int upperY = car.floors()[1];
+        AtomicLong departedAt = new AtomicLong(-1);
+        AtomicLong announcedAt = new AtomicLong(-1);
+        AtomicLong arrivedAt = new AtomicLong(-1);
+        helper.onEachTick(() -> {
+            long now = helper.getLevel().getGameTime();
+            if (departedAt.get() < 0 && car.isMoving()) {
+                departedAt.set(now);
+            }
+            if (announcedAt.get() < 0 && car.isArrivalAnnounced()) {
+                announcedAt.set(now);
+            }
+            if (arrivedAt.get() < 0 && car.getY() == upperY) {
+                arrivedAt.set(now);
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(arrivedAt.get() >= 0 && announcedAt.get() >= 0, "not arrived yet");
+            long lead = arrivedAt.get() - announcedAt.get();
+            helper.assertTrue(announcedAt.get() > departedAt.get(), "should wait after departing");
+            helper.assertTrue(lead >= 119 && lead <= 121, "announced " + lead + " ticks before arriving");
+        });
     }
 
     /** 戸が開き始めるたびに、その階を記録する。 */
