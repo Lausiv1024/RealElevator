@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
@@ -17,7 +18,7 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
  *
  * <p>プレイヤーはクライアントが位置を決めるので、クライアントでローカルプレイヤーだけを動かす。
  * それ以外のエンティティはサーバーで動かす。どちらも、そのエンティティの移動処理の直前に、
- * このtickのかごの移動量をそのまま加える。
+ * 前のtickからかごが実際に動いた量（{@link ElevatorCarEntity#carryDelta}）を加える。
  */
 @EventBusSubscriber(modid = RealElevator.MODID)
 public final class CarTransport {
@@ -42,15 +43,22 @@ public final class CarTransport {
 
         long now = level.getGameTime();
         for (ElevatorCarEntity car : cars) {
-            if (!car.isMoving() || car.isRemoved()) {
+            if (car.isRemoved()) {
                 continue;
             }
-            double previous = car.yAt(now - 1);
-            double dy = car.yAt(now) - previous;
-            if (dy != 0 && car.carries(entity, previous)) {
-                entity.setPos(entity.getX(), entity.getY() + dy, entity.getZ());
-                return;
+            double dy = car.carryDelta(now);
+            if (dy == 0 || !car.carries(entity, car.carryFromY(now))) {
+                continue;
             }
+            entity.setPos(entity.getX(), entity.getY() + dy, entity.getZ());
+            // ゲーム時刻が飛んで床が1tick分より大きく動いたときは、床の中に取り残されるので押し上げる
+            double surface = car.sunkSurface(entity, now);
+            if (!Double.isNaN(surface)) {
+                entity.setPos(entity.getX(), surface, entity.getZ());
+                Vec3 motion = entity.getDeltaMovement();
+                entity.setDeltaMovement(motion.x, Math.max(0, motion.y), motion.z);
+            }
+            return;
         }
     }
 

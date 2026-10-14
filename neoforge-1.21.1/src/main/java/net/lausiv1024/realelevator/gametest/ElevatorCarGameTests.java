@@ -13,6 +13,7 @@ import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.door.DoorState;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
+import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
 import net.lausiv1024.realelevator.registry.ModEntities;
@@ -88,6 +89,31 @@ public class ElevatorCarGameTests {
             helper.assertTrue(helper.getTick() > 10 && !car.isMoving(), "still moving");
             helper.assertTrue(Math.abs(stand.getY() - car.getY()) < EPS, "not on the floor: " + stand.getY() + " / " + car.getY());
             helper.assertTrue(stand.onGround(), "not on ground");
+        });
+    }
+
+    /**
+     * 高速で上昇中に、乗っている防具立てが床の中に入り込んでも（クライアントの時刻が飛んだときと同じ状況）、
+     * 下へ抜けずに床の上へ戻る。
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = 300)
+    public static void entitySunkIntoTheFloorIsLiftedBack(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.HIGH, 0, RISE).car();
+        ArmorStand stand = helper.spawn(EntityType.ARMOR_STAND, LOWER);
+        stand.moveTo(car.getX(), car.getY(), car.getZ());
+        helper.runAtTickTime(5, () -> car.pressCarCall(1));
+        AtomicBoolean pushed = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            if (!pushed.get() && car.isMoving() && car.getY() > car.floors()[0] + 2) {
+                pushed.set(true);
+                stand.setPos(stand.getX(), car.getY() - 0.3, stand.getZ());
+            } else if (pushed.get() && stand.getY() < car.getY() - 0.31) {
+                helper.fail("fell through the floor: " + (stand.getY() - car.getY()), stand);
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(pushed.get() && !car.isMoving(), "not arrived yet");
+            helper.assertTrue(Math.abs(stand.getY() - car.getY()) < EPS, "not on the floor: " + (stand.getY() - car.getY()));
         });
     }
 
@@ -216,6 +242,70 @@ public class ElevatorCarGameTests {
         });
         List<Integer> stops = recordStops(helper, car);
         helper.succeedWhen(() -> helper.assertTrue(stops.equals(List.of(2, 1)), "stops so far: " + stops));
+    }
+
+    /** 階床表示は、走行中は進行方向の矢印と通過中の階を出し、呼びがなくなると矢印を消す。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 1200)
+    public static void indicatorFollowsTheCar(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, 4, 8).car();
+        helper.assertTrue(car.indicatorDirection() == TravelDirection.NONE, "no arrow while idle");
+        car.pressCarCall(2);
+        List<Integer> shown = new ArrayList<>();
+        AtomicBoolean arrived = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            long now = helper.getLevel().getGameTime();
+            int floor = car.indicatorFloor(now);
+            if (shown.isEmpty() || shown.get(shown.size() - 1) != floor) {
+                shown.add(floor);
+            }
+            if (car.isMoving() && car.indicatorDirection() != TravelDirection.UP) {
+                helper.fail("the arrow should point up while moving up");
+            }
+            if (!car.isMoving() && car.doorState() != DoorState.CLOSED) {
+                arrived.set(true);
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(arrived.get() && car.doorState() == DoorState.CLOSED, "the door cycle is not finished");
+            helper.assertTrue(shown.equals(List.of(0, 1, 2)), "shown floors: " + shown);
+            helper.assertTrue(car.indicatorDirection() == TravelDirection.NONE, "the arrow should disappear");
+            helper.assertTrue(car.floorLabel(2).equals("3"), "labels count from 1");
+        });
+    }
+
+    /** 方向の決まっていないかごが止まっている階で乗場ボタンを押すと、その時点で矢印が出る。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 100)
+    public static void hallCallAtTheStoppedFloorShowsTheArrowImmediately(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
+        helper.assertTrue(car.indicatorDirection() == TravelDirection.NONE, "no arrow while idle");
+        helper.assertTrue(car.pressHallCall(0, TravelDirection.UP) == PressResult.SERVED_HERE, "the door should open");
+        helper.assertTrue(car.indicatorDirection() == TravelDirection.UP, "the arrow should point up right away");
+        helper.assertTrue(car.syncedIndicatorDirection() == TravelDirection.UP, "the direction should be sent to clients");
+        helper.succeed();
+    }
+
+    /** 操作盤を両側にすると左側のボタンでも呼べ、配置を変えても登録済みの呼びは消えない。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 100)
+    public static void bothPanelsWorkAndConfigChangesKeepCalls(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, 4, 8).car();
+        car.pressCarCall(2);
+        int rightOnly = car.buttons().size();
+        car.setFixtures(car.fixtures().withPanelSides(FixtureConfig.PanelSides.BOTH));
+        helper.assertTrue(car.buttons().size() == rightOnly * 2, "the left panel should be added");
+        helper.assertTrue(car.isCarCallLit(2), "registered calls should survive a config change");
+
+        // 左側の操作盤の2階のボタン
+        int leftSecondFloor = -1;
+        for (int i = rightOnly; i < car.buttons().size(); i++) {
+            if (car.buttons().get(i).kind() == ButtonLayout.Kind.CAR_CALL && car.buttons().get(i).floor() == 1) {
+                leftSecondFloor = i;
+            }
+        }
+        helper.assertTrue(leftSecondFloor >= 0, "no left button for the 2nd floor");
+        car.pressButton(leftSecondFloor);
+        helper.assertTrue(car.isCarCallLit(1) && car.isButtonLit(leftSecondFloor) && car.isButtonLit(indexOf(car.buttons(), ButtonLayout.Kind.CAR_CALL, 1)),
+                "both panels should light up");
+        helper.succeed();
     }
 
     /** 戸が開き始めるたびに、その階を記録する。 */

@@ -7,12 +7,14 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import net.lausiv1024.realelevator.core.car.Box;
+import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.control.CallType;
 import net.lausiv1024.realelevator.core.control.CollectiveControl;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
+import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.door.DoorController;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.door.DoorState;
@@ -21,6 +23,7 @@ import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.motion.Trip;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
+import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -51,13 +54,19 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private static final EntityDataAccessor<CompoundTag> DATA_TRIP = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
     private static final EntityDataAccessor<CompoundTag> DATA_DOOR = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
     private static final EntityDataAccessor<CompoundTag> DATA_CALLS = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
+    private static final EntityDataAccessor<CompoundTag> DATA_FIXTURES = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
 
     /** セーフティシューの検知に使う、戸板のまわりのわずかな余裕。 */
     private static final double SAFETY_SHOE_MARGIN = 0.01;
+    /** 床や屋根に入り込んだとみなす深さの下限。衝突判定が面の手前に残すすき間より大きくする。 */
+    private static final double SINK_TOLERANCE = 1e-4;
+    /** 床や屋根に入り込んだとみなす深さの上限。これより深いものは、かごの下にいるものとして押し上げない。 */
+    private static final double MAX_SINK = 1.0;
 
     /** 停止階の床面のY座標（下から順）。 */
     private int[] floors = new int[0];
     private List<Button> buttons = List.of();
+    private FixtureConfig fixtures = FixtureConfig.DEFAULT;
     /** 停止階が2つ以上あるときだけ作る。 */
     @Nullable
     private CollectiveControl control;
@@ -71,6 +80,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private int targetFloor;
     /** 最後に位置を計算したゲーム時刻。描画の補間に使う。 */
     private long lastTick;
+    /** 運搬の移動量を最後に評価したゲーム時刻と、そのときと前のtickのかごの位置。 */
+    private long carryTick = Long.MIN_VALUE;
+    private double carryFromY;
+    private double carryToY;
 
     public ElevatorCarEntity(EntityType<? extends ElevatorCarEntity> type, Level level) {
         super(type, level);
@@ -95,7 +108,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private void applyFloors(int[] floors) {
         this.floors = floors;
         this.control = floors.length >= 2 ? new CollectiveControl(floors.length) : null;
-        this.buttons = ButtonLayout.carPanel(model(), floors.length);
+        rebuildButtons();
+    }
+
+    private void rebuildButtons() {
+        this.buttons = ButtonLayout.carPanel(model(), floors.length, fixtures.panelSides());
     }
 
     @Override
@@ -106,6 +123,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         builder.define(DATA_TRIP, new CompoundTag());
         builder.define(DATA_DOOR, new CompoundTag());
         builder.define(DATA_CALLS, new CompoundTag());
+        builder.define(DATA_FIXTURES, new CompoundTag());
     }
 
     public CarModel model() {
@@ -135,6 +153,18 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             }
         }
         return -1;
+    }
+
+    /** 操作盤と階床表示器の配置。 */
+    public FixtureConfig fixtures() {
+        return fixtures;
+    }
+
+    /** 操作盤と階床表示器の配置を変える。サーバーで呼ぶ。 */
+    public void setFixtures(FixtureConfig fixtures) {
+        this.fixtures = fixtures;
+        this.entityData.set(DATA_FIXTURES, writeFixtures(fixtures));
+        rebuildButtons();
     }
 
     public boolean isMoving() {
@@ -170,7 +200,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private void handlePress(PressResult result, CallType callType) {
         if (result == PressResult.SERVED_HERE) {
             openDoor(callType);
-        } else if (result == PressResult.REGISTERED) {
+        }
+        if (result == PressResult.SERVED_HERE || result == PressResult.REGISTERED) {
+            // その場で応えた乗場呼びでも進行方向が決まるので、階床表示器の矢印のために送る
             syncCalls();
         }
     }
@@ -242,6 +274,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (trip != null) {
             setPos(getX(), trip.positionAt(now), getZ());
         }
+        // 誰も乗っていないtickでも、運搬の基準の位置を進めておく
+        carryDelta(now);
         if (!level().isClientSide) {
             serverTick(now);
         }
@@ -267,7 +301,12 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         }
 
         if (trip == null && door.isClosed() && control != null) {
+            TravelDirection before = control.direction();
             int next = control.nextStop(currentFloor);
+            if (control.direction() != before) {
+                // 階床表示器の矢印のため、進行方向の変化も送る
+                syncCalls();
+            }
             if (next == currentFloor) {
                 serveCurrentFloor(now);
             } else if (next >= 0) {
@@ -321,7 +360,54 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                 entity -> !entity.isSpectator() && panels.stream().anyMatch(entity.getBoundingBox()::intersects)).isEmpty();
     }
 
+    // ---- 階床表示 ----
+
+    /** 停止階 floor の階名。 */
+    public String floorLabel(int floor) {
+        return FloorIndicator.defaultLabel(floor);
+    }
+
+    /** ゲーム時刻 tick に階床表示器に出す階。かごの位置に最も近い階。 */
+    public int indicatorFloor(double tick) {
+        return floors.length > 0 ? FloorIndicator.displayedFloor(yAt(tick), floors) : 0;
+    }
+
+    /** 階床表示器に出す矢印の向き。走行中はその向き、停止中は次に進む方向。 */
+    public TravelDirection indicatorDirection() {
+        if (trip != null) {
+            return trip.to() > trip.from() ? TravelDirection.UP : TravelDirection.DOWN;
+        }
+        return control != null ? control.direction() : TravelDirection.NONE;
+    }
+
+    /** クライアントへ送っている進行方向。クライアントの矢印はこれで決まる。 */
+    public TravelDirection syncedIndicatorDirection() {
+        return parseEnum(TravelDirection.class, this.entityData.get(DATA_CALLS).getString("Direction"), TravelDirection.NONE);
+    }
+
     // ---- 位置と形状 ----
+
+    /**
+     * ゲーム時刻 now のtickに、かごが前のtickから実際に動いた量。乗っているエンティティの運搬に使う。
+     *
+     * <p>クライアントのゲーム時刻はサーバーの時刻に合わせて数tick飛んだり戻ったりすることがあるので、
+     * 「1tick分の移動量」ではなく、前に評価したtickの位置からの差を返す。同じtickに何度呼んでも同じ値になり、
+     * かごとエンティティのどちらが先にtickしても変わらない。
+     */
+    public double carryDelta(long now) {
+        if (now != carryTick) {
+            carryFromY = carryTick == Long.MIN_VALUE ? yAt(now) : carryToY;
+            carryToY = yAt(now);
+            carryTick = now;
+        }
+        return carryToY - carryFromY;
+    }
+
+    /** {@link #carryDelta} の基準にした、前のtickでのかごの床面のY座標。 */
+    public double carryFromY(long now) {
+        carryDelta(now);
+        return carryFromY;
+    }
 
     /** ゲーム時刻 tick（partialTickを含めてよい）でのかごの床面のY座標。 */
     public double yAt(double tick) {
@@ -383,6 +469,30 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                 && feet > exterior.minY() - 0.25 && feet < exterior.maxY() + 0.5;
     }
 
+    /**
+     * entity の足が、ゲーム時刻 tick でのかごの床または屋根の中に入り込んでいれば、その上面のY座標を返す。
+     * 入り込んでいなければ NaN。
+     *
+     * <p>クライアントのゲーム時刻はサーバーの時刻に合わせて数tick飛ぶことがあり、そのときかごの床は1tick分より大きく動く。
+     * 運搬では1tick分の移動量しか加えないので、上昇中は床の中に取り残されて下へ抜けてしまう。それを防ぐために使う。
+     */
+    public double sunkSurface(Entity entity, long tick) {
+        double y = yAt(tick);
+        double feet = entity.getY();
+        for (Part part : parts()) {
+            if (part.type() != CarGeometry.PartType.FLOOR && part.type() != CarGeometry.PartType.CEILING) {
+                continue;
+            }
+            AABB box = CarShapes.toAabb(part.box(), getX(), y, getZ());
+            boolean above = entity.getX() > box.minX && entity.getX() < box.maxX
+                    && entity.getZ() > box.minZ && entity.getZ() < box.maxZ;
+            if (above && feet < box.maxY - SINK_TOLERANCE && feet > box.maxY - MAX_SINK) {
+                return box.maxY;
+            }
+        }
+        return Double.NaN;
+    }
+
     private int nearestFloor(double y) {
         int nearest = 0;
         for (int i = 1; i < floors.length; i++) {
@@ -431,6 +541,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             readDoor(this.entityData.get(DATA_DOOR), door);
         } else if (DATA_CALLS.equals(key)) {
             readCalls(this.entityData.get(DATA_CALLS));
+        } else if (DATA_FIXTURES.equals(key)) {
+            fixtures = readFixtures(this.entityData.get(DATA_FIXTURES));
+            rebuildButtons();
         }
     }
 
@@ -477,6 +590,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (control != null) {
             tag.put("Calls", writeCalls(control));
         }
+        tag.put("Fixtures", writeFixtures(fixtures));
         tag.putInt("CurrentFloor", currentFloor);
         tag.putInt("TargetFloor", targetFloor);
     }
@@ -489,6 +603,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             facing = Direction.SOUTH;
         }
         setup(model, facing, tag.getIntArray("Floors"), parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW));
+        setFixtures(readFixtures(tag.getCompound("Fixtures")));
         // 保存時に走行中・開閉中だった場合は、ゲーム時刻に合わせてそのまま続きから動く
         setTrip(tag.contains("Trip") ? readTrip(tag.getCompound("Trip")) : null);
         readDoor(tag.getCompound("Door"), door);
@@ -531,6 +646,24 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private static void readDoor(CompoundTag tag, DoorController door) {
         door.restore(parseEnum(DoorState.class, tag.getString("State"), DoorState.CLOSED),
                 tag.getLong("StartTick"), tag.getDouble("StartFraction"), tag.getInt("Dwell"));
+    }
+
+    private static CompoundTag writeFixtures(FixtureConfig fixtures) {
+        CompoundTag tag = new CompoundTag();
+        tag.putString("PanelSides", fixtures.panelSides().name());
+        tag.putString("CarIndicator", fixtures.carIndicator().name());
+        tag.putBoolean("LeftPanelIndicator", fixtures.leftPanelIndicator());
+        tag.putString("HallIndicator", fixtures.hallIndicator().name());
+        return tag;
+    }
+
+    private static FixtureConfig readFixtures(CompoundTag tag) {
+        FixtureConfig defaults = FixtureConfig.DEFAULT;
+        return new FixtureConfig(
+                parseEnum(FixtureConfig.PanelSides.class, tag.getString("PanelSides"), defaults.panelSides()),
+                parseEnum(FixtureConfig.CarIndicator.class, tag.getString("CarIndicator"), defaults.carIndicator()),
+                tag.getBoolean("LeftPanelIndicator"),
+                parseEnum(FixtureConfig.HallIndicator.class, tag.getString("HallIndicator"), defaults.hallIndicator()));
     }
 
     private static CompoundTag writeCalls(CollectiveControl control) {

@@ -3,10 +3,13 @@ package net.lausiv1024.realelevator.command;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.function.BiFunction;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
@@ -17,6 +20,7 @@ import net.lausiv1024.realelevator.core.control.CallType;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
+import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.ElevatorTracker;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
@@ -41,6 +45,10 @@ import net.minecraft.world.phys.Vec3;
  * /realelevator hall &lt;階&gt; [up|down]   乗場呼び（省略時は最上階なら下り、それ以外は上り）
  * /realelevator open | close   開・閉ボタン
  * /realelevator remove         かごと乗場の扉を撤去
+ * /realelevator config panel right|both                    操作盤を右側だけ／両側に置く
+ * /realelevator config car_indicator over_door|over_panel  かごの階床表示器を扉の上／操作盤の上に置く
+ * /realelevator config left_indicator true|false           両側の操作盤のとき、左側にも表示器を付けるか
+ * /realelevator config hall_indicator over_door|over_buttons  乗場の階床表示器を扉の上／ボタンの上に置く
  * </pre>
  *
  * call 以降は、半径32ブロック以内で最も近いかごに対して行う。
@@ -95,7 +103,18 @@ public final class DebugCommands {
                 .then(Commands.literal("close")
                         .executes(c -> withNearestCar(c, DebugCommands::close)))
                 .then(Commands.literal("remove")
-                        .executes(c -> withNearestCar(c, DebugCommands::remove))));
+                        .executes(c -> withNearestCar(c, DebugCommands::remove)))
+                .then(Commands.literal("config")
+                        .then(Commands.literal("panel")
+                                .then(enumValue(FixtureConfig.PanelSides.class, FixtureConfig::withPanelSides)))
+                        .then(Commands.literal("car_indicator")
+                                .then(enumValue(FixtureConfig.CarIndicator.class, FixtureConfig::withCarIndicator)))
+                        .then(Commands.literal("left_indicator")
+                                .then(Commands.argument("value", BoolArgumentType.bool())
+                                        .executes(c -> withNearestCar(c, (ctx, car) -> configure(ctx, car,
+                                                car.fixtures().withLeftPanelIndicator(BoolArgumentType.getBool(ctx, "value")))))))
+                        .then(Commands.literal("hall_indicator")
+                                .then(enumValue(FixtureConfig.HallIndicator.class, FixtureConfig::withHallIndicator)))));
     }
 
     private static int spawn(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
@@ -198,6 +217,25 @@ public final class DebugCommands {
         }
         car.discard();
         context.getSource().sendSuccess(() -> Component.literal("かごと乗場の扉を撤去しました"), true);
+        return 1;
+    }
+
+    /** 列挙型の値を1つ受け取って、かごの配置の設定を変える引数。 */
+    private static <E extends Enum<E>> RequiredArgumentBuilder<CommandSourceStack, String> enumValue(
+            Class<E> type, BiFunction<FixtureConfig, E, FixtureConfig> apply) {
+        return Commands.argument("value", StringArgumentType.word())
+                .suggests((c, b) -> SharedSuggestionProvider.suggest(names(type.getEnumConstants()), b))
+                .executes(c -> withNearestCar(c, (ctx, car) -> configure(ctx, car,
+                        apply.apply(car.fixtures(), parse(type, StringArgumentType.getString(ctx, "value"))))));
+    }
+
+    private static int configure(CommandContext<CommandSourceStack> context, ElevatorCarEntity car, FixtureConfig fixtures) {
+        car.setFixtures(fixtures);
+        context.getSource().sendSuccess(() -> Component.literal("配置を変更しました：操作盤 "
+                + fixtures.panelSides().name().toLowerCase(Locale.ROOT)
+                + "、かごの表示器 " + fixtures.carIndicator().name().toLowerCase(Locale.ROOT)
+                + "、左の表示器 " + fixtures.leftPanelIndicator()
+                + "、乗場の表示器 " + fixtures.hallIndicator().name().toLowerCase(Locale.ROOT)), false);
         return 1;
     }
 

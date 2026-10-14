@@ -131,6 +131,23 @@ class CollectiveControlTest {
     }
 
     @Test
+    void directionIsDecidedAsSoonAsACallIsRegisteredWhileStopped() {
+        CollectiveControl control = new CollectiveControl(5);
+        // 2階に止まって戸が開いている（方向なし）ときに、4階の乗場呼びが登録された
+        assertEquals(REGISTERED, control.pressHall(4, DOWN, 2, true));
+        assertEquals(UP, control.direction());
+
+        CollectiveControl other = new CollectiveControl(5);
+        assertEquals(REGISTERED, other.pressCar(0, 2, true));
+        assertEquals(DOWN, other.direction());
+
+        // 走行中の登録では、方向はそのまま
+        CollectiveControl moving = new CollectiveControl(5);
+        assertEquals(REGISTERED, moving.pressCar(0, 2, false));
+        assertEquals(NONE, moving.direction());
+    }
+
+    @Test
     void oppositeHallCallAfterServingAHallCallIsRegistered() {
         CollectiveControl control = new CollectiveControl(5);
         control.pressHall(2, DOWN, 0, true);

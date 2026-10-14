@@ -90,4 +90,22 @@ class ButtonLayoutTest {
         assertEquals(List.of(Kind.HALL_UP), ButtonLayout.hallButtons(CarModel.P11, 0, 2).stream().map(Button::kind).toList());
         assertEquals(List.of(Kind.HALL_DOWN), ButtonLayout.hallButtons(CarModel.P11, 1, 2).stream().map(Button::kind).toList());
     }
+
+    @Test
+    void bothPanelsMirrorOntoTheLeftJamb() {
+        List<Button> right = ButtonLayout.carPanel(CarModel.P11, 3);
+        List<Button> both = ButtonLayout.carPanel(CarModel.P11, 3, FixtureConfig.PanelSides.BOTH);
+        assertEquals(right.size() * 2, both.size());
+        assertEquals(right, both.subList(0, right.size()));
+        for (int i = 0; i < right.size(); i++) {
+            Button r = right.get(i);
+            Button l = both.get(right.size() + i);
+            assertEquals(r.kind(), l.kind());
+            assertEquals(r.floor(), l.floor());
+            assertEquals(r.box().minY(), l.box().minY(), EPS);
+            assertTrue(l.box().minX() >= CarGeometry.entrance(CarModel.P11).maxX());
+        }
+        assertEquals(ButtonLayout.carPanelTopPx(3) / 16.0,
+                both.stream().mapToDouble(b -> b.box().maxY()).max().orElseThrow(), EPS);
+    }
 }

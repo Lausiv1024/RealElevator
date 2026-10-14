@@ -9,8 +9,10 @@ import javax.annotation.Nullable;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
+import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
+import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -158,10 +160,16 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
 
     @Override
     protected AABB makeBoundingBox() {
-        // 描画のカリングに使うので、戸が動く範囲とボタン（中間階の▲▼）の両方を含める
+        // 描画のカリングに使うので、戸が動く範囲、ボタン（中間階の▲▼）、階床表示器を含める
         AABB bounds = CarShapes.toAabb(CarShapes.doorTravelBounds(model(), facing(), DoorGeometry.Side.LANDING), getX(), getY(), getZ());
+        int turns = facing().get2DDataValue();
         for (Button button : ButtonLayout.hallButtons(model(), 1, 3)) {
-            bounds = bounds.minmax(CarShapes.toAabb(button.box().rotateQuarterTurns(facing().get2DDataValue()), getX(), getY(), getZ()));
+            bounds = bounds.minmax(CarShapes.toAabb(button.box().rotateQuarterTurns(turns), getX(), getY(), getZ()));
+        }
+        // 階床表示器はどちらの位置に付けても入るようにする
+        for (FixtureConfig.HallIndicator placement : FixtureConfig.HallIndicator.values()) {
+            Box indicator = FloorIndicator.hall(model(), FixtureConfig.DEFAULT.withHallIndicator(placement), "", TravelDirection.NONE).face();
+            bounds = bounds.minmax(CarShapes.toAabb(indicator.rotateQuarterTurns(turns), getX(), getY(), getZ()));
         }
         return bounds;
     }

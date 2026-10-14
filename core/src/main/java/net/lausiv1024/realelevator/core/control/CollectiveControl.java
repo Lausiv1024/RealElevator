@@ -52,7 +52,7 @@ public final class CollectiveControl {
         if (stopped && floor == carFloor) {
             return PressResult.SERVED_HERE;
         }
-        return register(carCalls, floor);
+        return register(carCalls, floor, carFloor, stopped);
     }
 
     /**
@@ -70,7 +70,7 @@ public final class CollectiveControl {
             direction = callDirection;
             return PressResult.SERVED_HERE;
         }
-        return register(callDirection == TravelDirection.UP ? upCalls : downCalls, floor);
+        return register(callDirection == TravelDirection.UP ? upCalls : downCalls, floor, carFloor, stopped);
     }
 
     /**
@@ -174,11 +174,15 @@ public final class CollectiveControl {
         target.or(BitSet.valueOf(bits));
     }
 
-    private PressResult register(BitSet calls, int floor) {
+    private PressResult register(BitSet calls, int floor, int carFloor, boolean stopped) {
         if (calls.get(floor)) {
             return PressResult.ALREADY_REGISTERED;
         }
         calls.set(floor);
+        // 停止中で方向が決まっていなければ、戸が開いていてもその場で呼びの方へ方向を決める（方向灯をすぐにつける）
+        if (stopped && direction == TravelDirection.NONE && floor != carFloor) {
+            direction = floor > carFloor ? TravelDirection.UP : TravelDirection.DOWN;
+        }
         return PressResult.REGISTERED;
     }
 

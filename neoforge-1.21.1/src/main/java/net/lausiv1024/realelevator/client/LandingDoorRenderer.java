@@ -4,8 +4,12 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.lausiv1024.realelevator.core.car.Box;
+import net.lausiv1024.realelevator.core.control.TravelDirection;
+import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
+import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.CarShapes;
+import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -16,7 +20,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * 乗場の扉と▲▼ボタンの仮の描画。戸はかごの戸と同じテクスチャを使う。
+ * 乗場の扉、▲▼ボタン、階床表示器の仮の描画。戸はかごの戸と同じテクスチャを使う。
  */
 public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
     public LandingDoorRenderer(EntityRendererProvider.Context context) {
@@ -35,6 +39,13 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
             BoxRenderer.renderBox(pose, consumer, panel, sprite, packedLight);
         }
         BoxRenderer.renderButtons(pose, consumer, door, door.facing().get2DDataValue(), packedLight);
+        // かごが読み込まれていなければ、表示器は消灯したままにする
+        ElevatorCarEntity car = door.car();
+        FloorIndicator.Frame indicator = car != null
+                ? FloorIndicator.hall(door.model(), car.fixtures(), car.floorLabel(car.indicatorFloor(car.renderTick(partialTick))),
+                        car.indicatorDirection())
+                : FloorIndicator.hall(door.model(), FixtureConfig.DEFAULT, "", TravelDirection.NONE);
+        BoxRenderer.renderIndicator(pose, consumer, indicator, door.facing().get2DDataValue(), packedLight);
         super.render(door, entityYaw, partialTick, poseStack, bufferSource, packedLight);
     }
 

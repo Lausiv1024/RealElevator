@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
 import net.lausiv1024.realelevator.core.car.CarGeometry.PartType;
+import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.entity.CarShapes;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
@@ -50,6 +51,11 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
             BoxRenderer.renderBox(pose, consumer, panel, door, packedLight);
         }
         BoxRenderer.renderButtons(pose, consumer, car, car.facing().get2DDataValue(), packedLight);
+        double tick = car.renderTick(partialTick);
+        for (FloorIndicator.Frame indicator : FloorIndicator.car(car.model(), car.floorCount(), car.fixtures(),
+                car.floorLabel(car.indicatorFloor(tick)), car.indicatorDirection())) {
+            BoxRenderer.renderIndicator(pose, consumer, indicator, car.facing().get2DDataValue(), packedLight);
+        }
         poseStack.popPose();
         super.render(car, entityYaw, partialTick, poseStack, bufferSource, packedLight);
     }
