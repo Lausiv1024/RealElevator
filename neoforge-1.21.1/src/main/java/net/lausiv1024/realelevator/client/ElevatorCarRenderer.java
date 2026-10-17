@@ -57,6 +57,8 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
             BoxRenderer.renderIndicator(pose, consumer, indicator, car.facing().get2DDataValue(), packedLight);
         }
         poseStack.popPose();
+        // シーブの側面は向きを気にせず描けるよう、裏面も描く
+        HoistRenderer.render(car, partialTick, poseStack, bufferSource.getBuffer(RenderType.entityCutoutNoCull(TextureAtlas.LOCATION_BLOCKS)));
         super.render(car, entityYaw, partialTick, poseStack, bufferSource, packedLight);
     }
 

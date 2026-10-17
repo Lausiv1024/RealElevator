@@ -9,7 +9,7 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * かごの床・壁・天井・戸と乗場の戸を、エンティティの衝突判定に加える。Mixinから呼ぶ。
+ * かごの床・壁・天井・戸、釣合い重り、乗場の戸を、エンティティの衝突判定に加える。Mixinから呼ぶ。
  */
 public final class CarCollisions {
     /** 段差の乗り越え判定は検索範囲より少し広い範囲を見るので、その分を含めて集める。 */
@@ -38,8 +38,15 @@ public final class CarCollisions {
         long now = entity.level().getGameTime();
         List<VoxelShape> result = null;
         for (ElevatorCarEntity car : cars) {
-            if (!car.isRemoved() && car.exteriorAt(car.yAt(now)).intersects(search)) {
+            if (car.isRemoved()) {
+                continue;
+            }
+            if (car.exteriorAt(car.yAt(now)).intersects(search)) {
                 result = add(result, shapes, car.collisionBoxesAt(now));
+            }
+            AABB counterweight = car.counterweightAt(now);
+            if (counterweight != null && counterweight.intersects(search)) {
+                result = add(result, shapes, List.of(counterweight));
             }
         }
         for (LandingDoorEntity door : landingDoors) {

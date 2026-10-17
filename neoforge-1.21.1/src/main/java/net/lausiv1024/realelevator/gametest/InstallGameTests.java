@@ -5,6 +5,7 @@ import java.util.List;
 import net.lausiv1024.realelevator.RealElevator;
 import net.lausiv1024.realelevator.block.ControlPanelBlockEntity;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
+import net.lausiv1024.realelevator.core.hoist.HoistMechanism;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.ElevatorTracker;
@@ -14,6 +15,9 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.phys.Vec3;
@@ -103,6 +107,27 @@ public class InstallGameTests {
             for (BlockPos rail : rails) {
                 helper.assertTrue(helper.getLevel().getBlockState(rail).isAir(), "the rail should be removed: " + rail);
             }
+        });
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 100)
+    public static void somethingFallingOntoTheCounterweightStopsOnIt(GameTestHelper helper) {
+        ControlPanelBlockEntity panel = placePanel(helper);
+        panel.install();
+        ElevatorCarEntity car = ElevatorTracker.cars(helper.getLevel()).stream()
+                .filter(c -> c.position().distanceToSqr(panel.carOrigin()) < 1e-6).findFirst().orElseThrow();
+        HoistMechanism hoist = car.hoist();
+        helper.assertTrue(hoist != null && hoist.pitMode() == ShaftLayout.PitMode.COMPACT, "the car should have the hoistway");
+        // かごが最下階にいるので、釣合い重りは上のほうにある
+        AABB counterweight = car.counterweightAt(helper.getLevel().getGameTime());
+        Vec3 centre = counterweight.getCenter();
+        ArmorStand stand = new ArmorStand(EntityType.ARMOR_STAND, helper.getLevel());
+        stand.moveTo(centre.x, counterweight.maxY + 1, centre.z, 0, 0);
+        helper.getLevel().addFreshEntity(stand);
+        helper.runAfterDelay(40, () -> {
+            helper.assertTrue(Math.abs(stand.getY() - counterweight.maxY) < 1e-3,
+                    "should stand on the counterweight at " + counterweight.maxY + " but is at " + stand.getY());
+            helper.succeed();
         });
     }
 }

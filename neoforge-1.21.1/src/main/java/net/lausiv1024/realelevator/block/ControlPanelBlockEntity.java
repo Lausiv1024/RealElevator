@@ -298,6 +298,7 @@ public class ControlPanelBlockEntity extends BlockEntity {
         }
         car.moveTo(origin.x, origin.y, origin.z, 0, 0);
         car.setup(model, facing(), floorYs(), speed);
+        car.setHoistway(pitMode);
         car.setFixtures(fixtures);
         car.setAnnouncements(announcements);
         car.setLabels(labelArray());

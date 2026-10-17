@@ -27,7 +27,9 @@ import net.lausiv1024.realelevator.core.door.DoorController;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.door.DoorState;
 import net.lausiv1024.realelevator.core.door.DoorTiming;
+import net.lausiv1024.realelevator.core.hoist.HoistMechanism;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
+import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.motion.Trip;
 import net.lausiv1024.realelevator.network.AnnouncePayload;
@@ -83,6 +85,12 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 停止階の床面のY座標（下から順）。 */
     private int[] floors = new int[0];
+    /** 昇降路のピットの方式。ウィザードで設置したかごだけが持ち、昇降路の機構を描く。 */
+    @Nullable
+    private PitMode pitMode;
+    /** pitMode と停止階から作った昇降路の機構。停止階などが変わったら作り直す。 */
+    @Nullable
+    private HoistMechanism hoist;
     /** 停止階の階名（下から順）。空文字なら初期値（下から 1、2、3…）を使う。 */
     private String[] labels = new String[0];
     private List<Button> buttons = List.of();
@@ -138,6 +146,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         Arrays.sort(sorted);
         CompoundTag tag = new CompoundTag();
         tag.putIntArray("Floors", sorted);
+        if (pitMode != null) {
+            tag.putString("Pit", pitMode.name());
+        }
         this.entityData.set(DATA_FLOORS, tag);
         applyFloors(sorted);
         this.speedSpec = speedSpec;
@@ -148,8 +159,56 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         setBoundingBox(makeBoundingBox());
     }
 
+    /** 昇降路の機構を付ける（ウィザードで設置したとき）。サーバーで呼ぶ。 */
+    public void setHoistway(PitMode pitMode) {
+        this.pitMode = pitMode;
+        this.hoist = null;
+        CompoundTag tag = this.entityData.get(DATA_FLOORS).copy();
+        tag.putString("Pit", pitMode.name());
+        this.entityData.set(DATA_FLOORS, tag);
+    }
+
+    /** 昇降路の機構。ウィザードで設置していないかごは null。 */
+    @Nullable
+    public HoistMechanism hoist() {
+        if (hoist == null && pitMode != null && floors.length >= 2) {
+            hoist = new HoistMechanism(model(), pitMode, floors);
+        }
+        return hoist;
+    }
+
+    /** ゲーム時刻 tick での釣合い重りの当たり判定の箱（ワールド座標）。機構がなければ null。 */
+    @Nullable
+    public AABB counterweightAt(double tick) {
+        HoistMechanism hoist = hoist();
+        if (hoist == null) {
+            return null;
+        }
+        Box box = hoist.counterweight(yAt(tick)).rotateQuarterTurns(facing().get2DDataValue());
+        return new AABB(box.minX() + getX(), box.minY(), box.minZ() + getZ(), box.maxX() + getX(), box.maxY(), box.maxZ() + getZ());
+    }
+
+    /** 昇降路の全体（ワールド座標）。機構がなければ null。 */
+    @Nullable
+    public AABB hoistwayBounds() {
+        HoistMechanism hoist = hoist();
+        if (hoist == null) {
+            return null;
+        }
+        Box box = hoist.shaftBounds().rotateQuarterTurns(facing().get2DDataValue());
+        return new AABB(box.minX() + getX(), box.minY(), box.minZ() + getZ(), box.maxX() + getX(), box.maxY(), box.maxZ() + getZ());
+    }
+
+    @Override
+    public AABB getBoundingBoxForCulling() {
+        // 昇降路の機構は、かごが見えていなくても見えることがある
+        AABB shaft = hoistwayBounds();
+        return shaft != null ? shaft.minmax(super.getBoundingBoxForCulling()) : super.getBoundingBoxForCulling();
+    }
+
     private void applyFloors(int[] floors) {
         this.floors = floors;
+        this.hoist = null;
         this.control = floors.length >= 2 ? new CollectiveControl(floors.length) : null;
         rebuildButtons();
     }
@@ -814,8 +873,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             return;
         }
         if (DATA_MODEL.equals(key) || DATA_FLOORS.equals(key)) {
-            applyFloors(this.entityData.get(DATA_FLOORS).getIntArray("Floors"));
-            labels = readLabels(this.entityData.get(DATA_FLOORS));
+            CompoundTag floorTag = this.entityData.get(DATA_FLOORS);
+            pitMode = floorTag.contains("Pit") ? parseEnum(PitMode.class, floorTag.getString("Pit"), PitMode.REAL) : null;
+            applyFloors(floorTag.getIntArray("Floors"));
+            labels = readLabels(floorTag);
             readCalls(this.entityData.get(DATA_CALLS));
         } else if (DATA_TRIP.equals(key)) {
             Trip previous = trip;
@@ -870,6 +931,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.putString("Facing", facing().getSerializedName());
         tag.putIntArray("Floors", floors);
         tag.putString("Speed", speedSpec.name());
+        if (pitMode != null) {
+            tag.putString("Pit", pitMode.name());
+        }
         if (trip != null) {
             tag.put("Trip", writeTrip(trip));
         }
@@ -892,6 +956,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (facing == null || facing.getAxis().isVertical()) {
             facing = Direction.SOUTH;
         }
+        pitMode = tag.contains("Pit") ? parseEnum(PitMode.class, tag.getString("Pit"), PitMode.REAL) : null;
         setup(model, facing, tag.getIntArray("Floors"), parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW));
         setFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")));
         setLabels(readLabels(tag));
