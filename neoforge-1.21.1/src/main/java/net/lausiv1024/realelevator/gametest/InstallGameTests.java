@@ -1,5 +1,6 @@
 package net.lausiv1024.realelevator.gametest;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import net.lausiv1024.realelevator.RealElevator;
@@ -8,6 +9,7 @@ import net.lausiv1024.realelevator.block.ControllerBlockEntity;
 import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.block.InstallerBlockEntity;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.registry.ModEntities;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
@@ -435,6 +437,51 @@ public class InstallGameTests {
             long now = helper.getLevel().getGameTime();
             helper.assertTrue(car.doorFractionAt(now, Entrance.REAR) > 0.99, "the rear doors should open after the front closes");
             helper.assertTrue(car.doorFractionAt(now, Entrance.FRONT) == 0 && !car.isMoving(), "the car should stay with the front closed");
+        });
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 600)
+    public static void aCarCallFromTheRearPanelOpensOnlyTheRearDoor(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        BlockPos panelPos = helper.absolutePos(PANEL);
+        int top = panelPos.getY() + RISE;
+        CompoundTag settings = panel.settingsTag();
+        settings.putBoolean("Through", true);
+        CompoundTag entrances = new CompoundTag();
+        entrances.putString(Integer.toString(top), FloorEntrances.BOTH.name());
+        settings.put("Entrances", entrances);
+        panel.applySettings(settings);
+        ElevatorPlan plan = panel.plan();
+        panel.install();
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        car.pressCarCall(1, Entrance.REAR);
+        // 奥の操作盤の行先ボタンだけが点き、保存して読み込み直しても（同期と同じデータ）点いたまま
+        List<ButtonLayout.Button> buttons = car.buttons();
+        List<Integer> callButtons = new ArrayList<>();
+        for (int i = 0; i < buttons.size(); i++) {
+            if (buttons.get(i).kind() == ButtonLayout.Kind.CAR_CALL && buttons.get(i).floor() == 1) {
+                callButtons.add(i);
+            }
+        }
+        helper.assertTrue(callButtons.size() == 2, "a car call button on each panel");
+        helper.assertTrue(!car.isButtonLit(callButtons.get(0)) && car.isButtonLit(callButtons.get(1)), "only the rear button should light");
+        ElevatorCarEntity copy = ModEntities.ELEVATOR_CAR.get().create(helper.getLevel());
+        copy.load(car.saveWithoutId(new CompoundTag()));
+        helper.assertTrue(copy.isButtonLit(callButtons.get(1)), "the rear car call should survive saving");
+        // 2方向目（正面の操作盤）の登録も、クライアントへ送り直される
+        car.pressCarCall(1, Entrance.FRONT);
+        helper.assertTrue(car.isCarCallSynced(1, Entrance.REAR) && car.isCarCallSynced(1, Entrance.FRONT),
+                "both sides should be sent to the client");
+        helper.succeedWhen(() -> {
+            long now = helper.getLevel().getGameTime();
+            helper.assertTrue(!car.isMoving() && car.getY() == top && car.doorFractionAt(now, Entrance.REAR) > 0.99,
+                    "the rear door should open");
+            // 奥が先に登録されたので奥から開き、正面は奥が閉まってから。正面の応答灯は、それまで点いたまま
+            helper.assertTrue(car.doorFractionAt(now, Entrance.FRONT) == 0, "the front door should wait");
+            helper.assertTrue(!car.isButtonLit(callButtons.get(1)) && car.isButtonLit(callButtons.get(0)),
+                    "the rear lamp should go out and the front lamp should stay lit");
+            helper.assertTrue(car.isCarCallSynced(1, Entrance.FRONT) && !car.isCarCallSynced(1, Entrance.REAR),
+                    "the client should see the same lamps");
         });
     }
 }
