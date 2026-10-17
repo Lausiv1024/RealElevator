@@ -3,6 +3,7 @@ package net.lausiv1024.realelevator.gametest;
 import java.util.List;
 
 import net.lausiv1024.realelevator.RealElevator;
+import net.lausiv1024.realelevator.block.ControllerBlock;
 import net.lausiv1024.realelevator.block.ControllerBlockEntity;
 import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.block.InstallerBlockEntity;
@@ -35,6 +36,7 @@ import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -322,5 +324,33 @@ public class InstallGameTests {
         panel.applySettings(settings);
         helper.assertTrue(panel.plan().spec().door() == DoorType.SIDE_RIGHT, "2S should be chosen for P-13");
         helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 400)
+    public static void sideCounterweightPutsTheWeightBehindTheInstaller(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        CompoundTag settings = panel.settingsTag();
+        settings.putString("Counterweight", ShaftLayout.CounterweightPosition.SIDE.name());
+        panel.applySettings(settings);
+        ElevatorPlan plan = panel.plan();
+        ShaftLayout layout = plan.layout();
+        helper.assertTrue(layout.counterweight() == ShaftLayout.CounterweightPosition.SIDE, "side counterweight");
+        // 重りの列（設置用ブロックの真後ろ）も空いている必要がある
+        helper.assertTrue(layout.requiredClearCells().contains(new ShaftLayout.Cell(0, 0, -1)), "the counterweight column should be cleared");
+        helper.assertTrue(panel.obstructions(helper.getLevel()).isEmpty(), "the shaft should be clear: " + panel.obstructions(helper.getLevel()));
+        panel.install();
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        AABB counterweight = car.counterweightAt(helper.getLevel().getGameTime());
+        BlockPos panelPos = helper.absolutePos(PANEL);
+        // 南向きの設置用ブロックの真後ろ（北）の列。X は設置用ブロックと同じ
+        helper.assertTrue(counterweight.minX >= panelPos.getX() && counterweight.maxX <= panelPos.getX() + 1,
+                "the counterweight should be behind the installer: " + counterweight);
+        BlockPos controllerPos = car.controllerPos();
+        BlockState controller = helper.getLevel().getBlockState(controllerPos);
+        helper.assertTrue(controller.is(ModBlocks.CONTROLLER.get()) && controller.getValue(ControllerBlock.CORNER)
+                && controller.getValue(HorizontalDirectionalBlock.FACING) == Direction.EAST, "the controller should be on the left wall: " + controller);
+        helper.assertTrue(controllerPos.getX() == panelPos.getX() + layout.leftColumn(), "the controller should be in the left column");
+        helper.assertTrue(car.pressCarCall(1) == PressResult.REGISTERED, "the call should be registered");
+        helper.succeedWhen(() -> helper.assertTrue(!car.isMoving() && car.getY() == panelPos.getY() + RISE, "not arrived yet"));
     }
 }

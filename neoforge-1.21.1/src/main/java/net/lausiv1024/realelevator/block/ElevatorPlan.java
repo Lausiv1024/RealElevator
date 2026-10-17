@@ -10,6 +10,7 @@ import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.Cell;
+import net.lausiv1024.realelevator.core.install.ShaftLayout.CounterweightPosition;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
 import net.lausiv1024.realelevator.core.motion.SpeedSetting;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
@@ -42,6 +43,7 @@ public final class ElevatorPlan {
     private DoorType door = DoorType.CENTER;
     private SpeedSetting speed = SpeedSetting.standard(SpeedSpec.NORMAL_LOW);
     private PitMode pitMode = PitMode.REAL;
+    private CounterweightPosition counterweight = CounterweightPosition.REAR;
     private FixtureConfig fixtures = FixtureConfig.DEFAULT;
     private AnnouncementConfig announcements = AnnouncementConfig.DEFAULT;
 
@@ -100,6 +102,11 @@ public final class ElevatorPlan {
         return pitMode;
     }
 
+    /** 釣合い重りの位置（後ろ落とし／横落とし）。 */
+    public CounterweightPosition counterweight() {
+        return counterweight;
+    }
+
     public FixtureConfig fixtures() {
         return fixtures;
     }
@@ -154,6 +161,7 @@ public final class ElevatorPlan {
             speed = readSpeed(requested, tag);
         }
         pitMode = ConfigTags.parseEnum(PitMode.class, tag.getString("Pit"), pitMode);
+        counterweight = ConfigTags.parseEnum(CounterweightPosition.class, tag.getString("Counterweight"), counterweight);
     }
 
     /** 設置したあとも変えられる設定（配置・アナウンス・階名）を反映する。 */
@@ -179,6 +187,7 @@ public final class ElevatorPlan {
         tag.putDouble("Acceleration", speed.acceleration());
         tag.putDouble("Jerk", speed.jerk());
         tag.putString("Pit", pitMode.name());
+        tag.putString("Counterweight", counterweight.name());
         tag.put("Fixtures", ConfigTags.writeFixtures(fixtures));
         tag.put("Announcements", ConfigTags.writeAnnouncements(announcements));
         CompoundTag labelTag = new CompoundTag();
@@ -201,7 +210,7 @@ public final class ElevatorPlan {
 
     public ShaftLayout layout() {
         int[] relative = floors.stream().mapToInt(y -> y - origin.getY()).toArray();
-        return new ShaftLayout(spec(), pitMode, relative);
+        return new ShaftLayout(spec(), pitMode, counterweight, relative);
     }
 
     /** 設置用ブロックからの相対位置 cell のワールドの位置。 */
@@ -256,6 +265,7 @@ public final class ElevatorPlan {
         plan.door = ConfigTags.parseEnum(DoorType.class, tag.getString("Door"), DoorType.CENTER);
         plan.speed = readSpeed(ConfigTags.parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW), tag);
         plan.pitMode = ConfigTags.parseEnum(PitMode.class, tag.getString("Pit"), PitMode.REAL);
+        plan.counterweight = ConfigTags.parseEnum(CounterweightPosition.class, tag.getString("Counterweight"), CounterweightPosition.REAR);
         plan.fixtures = ConfigTags.readFixtures(tag.getCompound("Fixtures"));
         plan.announcements = ConfigTags.readAnnouncements(tag.getCompound("Announcements"));
         CompoundTag labelTag = tag.getCompound("Labels");

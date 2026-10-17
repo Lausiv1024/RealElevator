@@ -240,7 +240,7 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
         }
         car.moveTo(origin.x, origin.y, origin.z, 0, 0);
         car.setup(plan.spec(), facing(), floorYs(), plan.speed());
-        car.setHoistway(plan.pitMode());
+        car.setHoistway(plan.pitMode(), plan.counterweight());
         car.setFixtures(plan.fixtures());
         car.setAnnouncements(plan.announcements());
         car.setLabels(plan.labelArray());
@@ -256,7 +256,11 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
         }
 
         // 頂部の制御盤を置き、計画とネザースターを移す
-        BlockState controller = ModBlocks.CONTROLLER.get().defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, facing());
+        // 横落としでは左の壁に付ける（制御盤の背面が乗場から見て左を向く）
+        Direction controllerFacing = layout.controllerOnLeftWall() ? facing().getCounterClockWise() : facing();
+        BlockState controller = ModBlocks.CONTROLLER.get().defaultBlockState()
+                .setValue(HorizontalDirectionalBlock.FACING, controllerFacing)
+                .setValue(ControllerBlock.CORNER, layout.controllerOnLeftWall());
         level.setBlock(controllerPos, controller.setValue(ControllerBlock.HALF, DoubleBlockHalf.LOWER), Block.UPDATE_ALL);
         level.setBlock(cellPos(controllerCells.get(1)), controller.setValue(ControllerBlock.HALF, DoubleBlockHalf.UPPER), Block.UPDATE_ALL);
         if (level.getBlockEntity(controllerPos) instanceof ControllerBlockEntity controllerEntity) {

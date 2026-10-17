@@ -76,5 +76,8 @@
   "gui.realelevator.door.center": "2-panel center (CO)",
   "gui.realelevator.door.side_left": "2-panel side, left (2S)",
   "gui.realelevator.door.side_right": "2-panel side, right (2S)",
-  "gui.realelevator.door.four_center": "4-panel center (4CO)"
+  "gui.realelevator.door.four_center": "4-panel center (4CO)",
+  "gui.realelevator.panel.counterweight": "Counterweight",
+  "gui.realelevator.counterweight.rear": "Rear",
+  "gui.realelevator.counterweight.side": "Side (right)"
 }

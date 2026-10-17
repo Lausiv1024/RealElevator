@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -24,7 +25,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * 昇降路の頂部の制御盤。縦2ブロックで、下のブロックがブロックエンティティ（{@link ControllerBlockEntity}）を持つ。
- * FACING は乗場の向きで、制御盤は昇降路の奥の壁に付いている。
+ * 制御盤は背面（FACING と反対の面）の壁に付く。後ろ落としでは奥の壁（FACING は乗場の向き）、横落としでは左の壁
+ * （FACING は乗場から見て右の向き）で、奥寄りに付ける（CORNER）。
  *
  * <p>サバイバルでは壊せない（撤去は保守用レンチの「解体」で行う）。クリエイティブやコマンドで消されたときは、
  * エレベーターごと解体する。
@@ -32,17 +34,26 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class ControllerBlock extends HorizontalDirectionalBlock implements EntityBlock {
     public static final MapCodec<ControllerBlock> CODEC = simpleCodec(ControllerBlock::new);
     public static final EnumProperty<DoubleBlockHalf> HALF = BlockStateProperties.DOUBLE_BLOCK_HALF;
+    /** 背面の壁の端に寄せて付けるか（横落としで左の壁の奥寄りに付けるとき）。false なら中央。 */
+    public static final BooleanProperty CORNER = BooleanProperty.create("corner");
 
-    /** 奥の壁（FACING と反対の面）に付いた、幅12px・奥行き6pxの箱。 */
+    /** 背面の壁（FACING と反対の面）に付いた、幅12px・厚み4pxの箱（{@code ShaftLayout#controllerBoxes} と同じ形）。 */
     private static final Map<Direction, VoxelShape> SHAPES = Map.of(
-            Direction.SOUTH, Block.box(2, 0, 0, 14, 16, 6),
-            Direction.NORTH, Block.box(2, 0, 10, 14, 16, 16),
-            Direction.EAST, Block.box(0, 0, 2, 6, 16, 14),
-            Direction.WEST, Block.box(10, 0, 2, 16, 16, 14));
+            Direction.SOUTH, Block.box(2, 0, 0, 14, 16, 4),
+            Direction.NORTH, Block.box(2, 0, 12, 14, 16, 16),
+            Direction.EAST, Block.box(0, 0, 2, 4, 16, 14),
+            Direction.WEST, Block.box(12, 0, 2, 16, 16, 14));
+    /** 端に寄せたもの。FACING から反時計回りに90°の向き（北向きなら西）へ2pxずらす。 */
+    private static final Map<Direction, VoxelShape> CORNER_SHAPES = Map.of(
+            Direction.SOUTH, Block.box(4, 0, 0, 16, 16, 4),
+            Direction.NORTH, Block.box(0, 0, 12, 12, 16, 16),
+            Direction.EAST, Block.box(0, 0, 0, 4, 16, 12),
+            Direction.WEST, Block.box(12, 0, 4, 16, 16, 16));
 
     public ControllerBlock(Properties properties) {
         super(properties);
-        registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(HALF, DoubleBlockHalf.LOWER));
+        registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(HALF, DoubleBlockHalf.LOWER)
+                .setValue(CORNER, false));
     }
 
     @Override
@@ -52,12 +63,12 @@ public class ControllerBlock extends HorizontalDirectionalBlock implements Entit
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, HALF);
+        builder.add(FACING, HALF, CORNER);
     }
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return SHAPES.get(state.getValue(FACING));
+        return (state.getValue(CORNER) ? CORNER_SHAPES : SHAPES).get(state.getValue(FACING));
     }
 
     @Nullable

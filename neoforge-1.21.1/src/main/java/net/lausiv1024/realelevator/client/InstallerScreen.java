@@ -13,6 +13,7 @@ import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.FloorProblem;
+import net.lausiv1024.realelevator.core.install.ShaftLayout.CounterweightPosition;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
 import net.lausiv1024.realelevator.core.motion.SpeedSetting;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
@@ -57,6 +58,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
     private DoorType door;
     private SpeedSetting speed;
     private PitMode pitMode;
+    private CounterweightPosition counterweight;
     private boolean preview;
     @Nullable
     private SettingsForm form;
@@ -93,6 +95,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
             door = installer.plan().spec().door();
             speed = installer.speed();
             pitMode = installer.pitMode();
+            counterweight = installer.plan().counterweight();
             preview = installer.isPreviewing();
             hadStar = installer.hasNetherStar();
             form = new SettingsForm(installer.settingsTag());
@@ -162,6 +165,13 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
                 .withValues(PitMode.values()).withInitialValue(pitMode)
                 .create(0, 0, SettingsForm.MAX_SETTING_WIDTH, 20, Component.translatable("gui.realelevator.panel.pit"), (b, v) -> {
                     pitMode = v;
+                    send();
+                }));
+        settings.add(CycleButton.<CounterweightPosition>builder(c -> Component.translatable(
+                        "gui.realelevator.counterweight." + c.name().toLowerCase(Locale.ROOT)))
+                .withValues(CounterweightPosition.values()).withInitialValue(counterweight)
+                .create(0, 0, SettingsForm.MAX_SETTING_WIDTH, 20, Component.translatable("gui.realelevator.panel.counterweight"), (b, v) -> {
+                    counterweight = v;
                     send();
                 }));
         settings.addAll(form.fixtureWidgets(this::send));
@@ -257,6 +267,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
         tag.putDouble("Acceleration", speed.acceleration());
         tag.putDouble("Jerk", speed.jerk());
         tag.putString("Pit", pitMode.name());
+        tag.putString("Counterweight", counterweight.name());
         tag.putBoolean("Preview", preview);
         form.writeTo(tag);
         PacketDistributor.sendToServer(new PanelPayloads.Settings(menu.pos(), tag));

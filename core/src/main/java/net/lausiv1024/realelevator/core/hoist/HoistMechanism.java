@@ -8,6 +8,7 @@ import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
+import net.lausiv1024.realelevator.core.install.ShaftLayout.CounterweightPosition;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
 
 /**
@@ -18,7 +19,10 @@ import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
  *
  * <p>ロープの経路（乗場から見て）：左上の固定端 → かごの左側のすき間を下りる → かご下の2つのシーブで左から右へくぐる →
  * かごの右側のすき間を上る → 頂部のそらせ車で奥へ向きを変える → 頂部の奥右にある巻上機の綱車 → 奥の釣合い重りの上のシーブ →
- * 頂部の固定端。かご側のロープとシーブは、かごが傾かないよう奥行きの中央に置く。ただし、ガイドレールが中央の近くにある機種では、
+ * 頂部の固定端。かご側のロープとシーブは、かごが傾かないよう奥行きの中央に置く。
+ *
+ * <p>横落とし（釣合い重りがかごの右の列）では、かごの右側を上ったロープが、頂部の右にある巻上機の綱車（軸は前後）を越えて
+ * そのまま右の列へ下り、重りの上のシーブ（軸は左右）を前から後ろへくぐって頂部の固定端に戻る。そらせ車はいらない。ただし、ガイドレールが中央の近くにある機種では、
  * レールに当たらないよう、中央からレールと反対の向きへ少しずらす。
  * 巻上機の周速はかごの速度の2倍、釣合い重りはかごと逆向きに同じ速さで動く。
  */
@@ -82,6 +86,10 @@ public final class HoistMechanism {
 
     private final CarModel model;
     private final PitMode pitMode;
+    /** 横落としか。 */
+    private final boolean side;
+    /** 横落としの重りの列の中心の X。 */
+    private final double columnX;
     private final int bottomFloor;
     private final int topFloor;
 
@@ -107,9 +115,14 @@ public final class HoistMechanism {
         this(CarSpec.of(model), pitMode, floors);
     }
 
-    /** 扉の方式で、乗場の戸の奥行き（かごの位置）とガイドレールの位置が変わる。 */
     public HoistMechanism(CarSpec spec, PitMode pitMode, int[] floors) {
+        this(spec, pitMode, CounterweightPosition.REAR, floors);
+    }
+
+    /** 扉の方式で、乗場の戸の奥行き（かごの位置）とガイドレールの位置が変わる。 */
+    public HoistMechanism(CarSpec spec, PitMode pitMode, CounterweightPosition counterweight, int[] floors) {
         CarModel model = spec.model();
+        this.side = counterweight == CounterweightPosition.SIDE;
         if (floors.length < 2) {
             throw new IllegalArgumentException("at least two floors are needed");
         }
@@ -134,12 +147,20 @@ public final class HoistMechanism {
         // 軸が X のシーブ（そらせ車・綱車）はかごの横のすき間の上にあるので、ロープもシーブもすき間に収める
         this.ropeSpacing = px(Math.min(MAX_ROPE_SPACING_PX, (gapPx - ROPE_WIDTH_PX) / (ROPE_COUNT - 1)));
         this.sheaveWidth = px(Math.min(MAX_SHEAVE_WIDTH_PX, gapPx));
-        this.machineZ = px(carBackPx - 1 - MACHINE_SHEAVE_RADIUS_PX);
-        this.counterweightZ = machineZ - px(MACHINE_SHEAVE_RADIUS_PX);
-        this.counterweightSheaveX = ropeX - px(COUNTERWEIGHT_SHEAVE_RADIUS_PX);
-        ShaftLayout layout = new ShaftLayout(spec, pitMode, new int[] {0, ShaftLayout.MIN_FLOOR_SPACING});
+        ShaftLayout layout = new ShaftLayout(spec, pitMode, counterweight, new int[] {0, ShaftLayout.MIN_FLOOR_SPACING});
         this.backWallZ = layout.backRow() - 0.5 - layout.carZ();
         this.carRopeZ = carRopeZ(layout.railRowZ() - layout.carZ());
+        this.columnX = layout.counterweightColumn() - layout.carX();
+        if (side) {
+            // 重りのシーブの前の端に、綱車から下りたロープが来る
+            this.machineZ = carRopeZ;
+            this.counterweightZ = carRopeZ - px(COUNTERWEIGHT_SHEAVE_RADIUS_PX);
+            this.counterweightSheaveX = columnX;
+        } else {
+            this.machineZ = px(carBackPx - 1 - MACHINE_SHEAVE_RADIUS_PX);
+            this.counterweightZ = machineZ - px(MACHINE_SHEAVE_RADIUS_PX);
+            this.counterweightSheaveX = ropeX - px(COUNTERWEIGHT_SHEAVE_RADIUS_PX);
+        }
     }
 
     /** ガイドレールの奥行きの半分と、かご側のロープ・シーブ・金具のうち一番太いものの半分 [px]。この和だけレールから離す。 */
@@ -180,7 +201,13 @@ public final class HoistMechanism {
     public Box shaftBounds() {
         double half = px(shaftHalfWidthPx);
         double front = CarGeometry.exterior(model).maxZ();
-        return new Box(-half, bottom(), backWallZ, half, top(), front);
+        double right = side ? columnX + 0.5 : half;
+        return new Box(-half, bottom(), backWallZ, right, top(), front);
+    }
+
+    /** 横落としの巻上機の綱車の、ロープが通る半径。かごの右のすき間と重りの列の中心のあいだにかかる。 */
+    private double sideMachineRadius() {
+        return (columnX - ropeX) / 2;
     }
 
     /** かごが最下階にいるときを0とした、かごの移動量。 */
@@ -203,17 +230,30 @@ public final class HoistMechanism {
     /** 釣合い重りの外形。当たり判定にも使う。 */
     public Box counterweight(double carY) {
         double bottom = counterweightBottom(carY);
-        double halfWidth = px(COUNTERWEIGHT_WIDTH_PX) / 2;
-        double halfThickness = px(COUNTERWEIGHT_THICKNESS_PX) / 2;
+        // 後ろ落としでは左右に広く、横落としでは前後に広い
+        double halfX = px(side ? COUNTERWEIGHT_THICKNESS_PX : COUNTERWEIGHT_WIDTH_PX) / 2;
+        double halfZ = px(side ? COUNTERWEIGHT_WIDTH_PX : COUNTERWEIGHT_THICKNESS_PX) / 2;
         double centreX = counterweightSheaveX;
-        return new Box(centreX - halfWidth, bottom, counterweightZ - halfThickness,
-                centreX + halfWidth, bottom + px(COUNTERWEIGHT_HEIGHT_PX), counterweightZ + halfThickness);
+        return new Box(centreX - halfX, bottom, counterweightZ - halfZ,
+                centreX + halfX, bottom + px(COUNTERWEIGHT_HEIGHT_PX), counterweightZ + halfZ);
     }
 
     /** 釣合い重りのシーブを支える金具（シーブの両側の板）。 */
     public List<Box> counterweightSheaveBrackets(double carY) {
         double top = counterweightBottom(carY) + px(COUNTERWEIGHT_HEIGHT_PX);
-        return sheaveBrackets(counterweightSheaveX, top, top + px(COUNTERWEIGHT_SHEAVE_RISE_PX + 1), counterweightZ);
+        double bracketTop = top + px(COUNTERWEIGHT_SHEAVE_RISE_PX + 1);
+        if (side) {
+            // シーブの軸が左右なので、板はシーブの左右に付く
+            double halfWidth = px(2);
+            double inner = sheaveWidth / 2;
+            double outer = inner + px(1);
+            double x = counterweightSheaveX;
+            double z = counterweightZ;
+            return List.of(
+                    new Box(x - outer, top, z - halfWidth, x - inner, bracketTop, z + halfWidth),
+                    new Box(x + inner, top, z - halfWidth, x + outer, bracketTop, z + halfWidth));
+        }
+        return sheaveBrackets(counterweightSheaveX, top, bracketTop, counterweightZ);
     }
 
     // ---- かご ----
@@ -253,19 +293,37 @@ public final class HoistMechanism {
 
     /** 巻上機の綱車の中心。 */
     private Point machineCentre() {
+        if (side) {
+            double r = sideMachineRadius();
+            return new Point(ropeX + r, topRopeY() - r, machineZ);
+        }
         return new Point(ropeX, topRopeY() - px(MACHINE_SHEAVE_RADIUS_PX), machineZ);
     }
 
-    /** 巻上機のモーター。綱車と同じ軸で、綱車の内側（−X 側）にある。 */
+    /** 巻上機のモーター。綱車と同じ軸で、後ろ落としでは綱車の内側（−X 側）、横落としでは綱車の手前（+Z 側）にある。 */
     public Box motor() {
         Point c = machineCentre();
-        double inner = c.x() - sheaveWidth / 2;
         double r = px(MOTOR_RADIUS_PX);
+        if (side) {
+            double front = c.z() + sheaveWidth / 2;
+            return new Box(c.x() - r, c.y() - r, front, c.x() + r, c.y() + r, front + px(MOTOR_LENGTH_PX));
+        }
+        double inner = c.x() - sheaveWidth / 2;
         return new Box(inner - px(MOTOR_LENGTH_PX), c.y() - r, c.z() - r, inner, c.y() + r, c.z() + r);
     }
 
-    /** 釣合い重りのレール。重りの奥に、両端に1本ずつ、ピットの底から天井まで。 */
+    /** 釣合い重りのレール。重りの背面（かごと反対の面）の両端に1本ずつ、ピットの底から天井まで。 */
     public List<Box> counterweightRails() {
+        if (side) {
+            // 後ろ落としと同じく、重りの背面（かごと反対の面、右の壁の側）の前後の両端に沿わせる。
+            // 重りのシーブに出入りするロープは重りの厚みの中を通るので、レールとは重ならない
+            Box cw = counterweight(topFloor);
+            double width = px(COUNTERWEIGHT_RAIL_WIDTH_PX);
+            double depth = px(COUNTERWEIGHT_RAIL_DEPTH_PX);
+            return List.of(
+                    new Box(cw.maxX(), bottom(), cw.minZ(), cw.maxX() + depth, top(), cw.minZ() + width),
+                    new Box(cw.maxX(), bottom(), cw.maxZ() - width, cw.maxX() + depth, top(), cw.maxZ()));
+        }
         double halfWidth = px(COUNTERWEIGHT_WIDTH_PX) / 2;
         double back = counterweightZ - px(COUNTERWEIGHT_THICKNESS_PX) / 2;
         double width = px(COUNTERWEIGHT_RAIL_WIDTH_PX);
@@ -282,8 +340,14 @@ public final class HoistMechanism {
         double y0 = top() - px(HITCH_DEPTH_PX);
         double halfX = px(1.5);
         double halfZ = ropeSpacing + px(1);
-        return List.of(
-                new Box(-ropeX - halfX, y0, carRopeZ - halfZ, -ropeX + halfX, top(), carRopeZ + halfZ),
+        Box carSide = new Box(-ropeX - halfX, y0, carRopeZ - halfZ, -ropeX + halfX, top(), carRopeZ + halfZ);
+        if (side) {
+            // 重りのシーブの軸は左右なので、ロープは左右に並ぶ
+            double deadEndZ = counterweightZ - px(COUNTERWEIGHT_SHEAVE_RADIUS_PX);
+            return List.of(carSide, new Box(counterweightSheaveX - halfZ, y0, deadEndZ - halfX,
+                    counterweightSheaveX + halfZ, top(), deadEndZ + halfX));
+        }
+        return List.of(carSide,
                 new Box(counterweightDeadEndX() - halfX, y0, counterweightZ - halfZ,
                         counterweightDeadEndX() + halfX, top(), counterweightZ + halfZ));
     }
@@ -308,6 +372,16 @@ public final class HoistMechanism {
         double machineR = px(MACHINE_SHEAVE_RADIUS_PX);
         double cwR = px(COUNTERWEIGHT_SHEAVE_RADIUS_PX);
         double carSheaveY = carY + px(CAR_SHEAVE_Y_PX);
+        if (side) {
+            double r = sideMachineRadius();
+            return List.of(
+                    new Sheave(new Point(-carSheaveX(), carSheaveY, carRopeZ), carR - ropeHalf, sheaveWidth, Axis.Z, d / carR),
+                    new Sheave(new Point(carSheaveX(), carSheaveY, carRopeZ), carR - ropeHalf, sheaveWidth, Axis.Z, d / carR),
+                    // かご側から上ってきたロープが、上端を右（+X）へ進む
+                    new Sheave(machineCentre(), r - ropeHalf, sheaveWidth, Axis.Z, -2 * d / r),
+                    // ロープは前から下りて、下端を後ろ（−Z）へ進む
+                    new Sheave(counterweightSheaveCentre(carY), cwR - ropeHalf, sheaveWidth, Axis.X, d / cwR));
+        }
         return List.of(
                 // ロープはかご下を左から右へ進む（下端が +X へ動く）
                 new Sheave(new Point(-carSheaveX(), carSheaveY, carRopeZ), carR - ropeHalf, sheaveWidth, Axis.Z, d / carR),
@@ -346,6 +420,17 @@ public final class HoistMechanism {
             double o = (i - (ROPE_COUNT - 1) / 2.0) * ropeSpacing;
             List<Point> rope = new ArrayList<>();
             rope.add(new Point(-ropeX, hitchY, carRopeZ + o));
+            if (side) {
+                arcXY(rope, -carSheaveX(), carSheaveY, carRopeZ + o, carR, 180, 270);
+                arcXY(rope, carSheaveX(), carSheaveY, carRopeZ + o, carR, 270, 360);
+                // 巻上機の綱車：左端から上を通って右端へ。ロープは軸（Z）の方向に並んだまま
+                arcXY(rope, machine.x(), machine.y(), machine.z() + o, sideMachineRadius(), 180, 0);
+                // 重りのシーブ：前の端から下を通って後ろの端へ。ここからロープは軸（X）の方向に並ぶ
+                arcZY(rope, cw.x() + o, cw.y(), cw.z(), cwR, 0, -180);
+                rope.add(new Point(cw.x() + o, hitchY, cw.z() - cwR));
+                ropes.add(rope);
+                continue;
+            }
             // かご下の左のシーブ：左端（180°）から下端（270°）へ
             arcXY(rope, -carSheaveX(), carSheaveY, carRopeZ + o, carR, 180, 270);
             // かご下の右のシーブ：下端（270°）から右端（360°）へ

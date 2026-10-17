@@ -19,6 +19,7 @@ import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism.Point;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism.Sheave;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
+import net.lausiv1024.realelevator.core.install.ShaftLayout.CounterweightPosition;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
 
 class HoistMechanismTest {
@@ -61,6 +62,32 @@ class HoistMechanismTest {
     }
 
     @Test
+    void sideCounterweightKeepsTheRopeLengthAndTurnsTheSheavesByTheRope() {
+        for (CarModel model : CarModel.values()) {
+            HoistMechanism hoist = new HoistMechanism(CarSpec.of(model), PitMode.COMPACT, CounterweightPosition.SIDE, FLOORS);
+            List<List<Point>> atBottom = hoist.ropes(64);
+            for (double y = 64; y <= 80; y += 0.37) {
+                List<List<Point>> ropes = hoist.ropes(y);
+                for (int i = 0; i < ropes.size(); i++) {
+                    assertEquals(length(atBottom.get(i)), length(ropes.get(i)), 0.02, model + " " + y);
+                }
+            }
+            List<Sheave> at0 = hoist.sheaves(64);
+            List<Sheave> at1 = hoist.sheaves(65);
+            // かご下（かごに対して）d、綱車 2d、重りのシーブ d。横落としにはそらせ車がない
+            double[] ropePerBlock = {1, 1, -2, 1};
+            assertEquals(ropePerBlock.length, at0.size());
+            for (int i = 0; i < at0.size(); i++) {
+                double ropeRadius = at0.get(i).radius() + HoistMechanism.ROPE_WIDTH_PX / CarModel.PIXELS_PER_BLOCK / 2;
+                assertEquals(ropePerBlock[i], (at1.get(i).angle() - at0.get(i).angle()) * ropeRadius, EPS, model.name());
+            }
+            // 重りは右の列（設置用ブロックの真後ろ）にある
+            Box cw = hoist.counterweight(70);
+            assertTrue(cw.minX() > CarGeometry.exterior(model).maxX(), model + " the counterweight should be beside the car");
+        }
+    }
+
+    @Test
     void counterweightMovesOppositeToTheCarAtTheSameSpeed() {
         HoistMechanism hoist = new HoistMechanism(CarModel.P11, PitMode.REAL, FLOORS);
         assertEquals(-3.5, hoist.counterweightBottom(73.5) - hoist.counterweightBottom(70), EPS);
@@ -84,8 +111,9 @@ class HoistMechanismTest {
     @EnumSource(CarModel.class)
     void nothingHitsTheCarOrLeavesTheShaft(CarModel model) {
         for (PitMode pit : PitMode.values()) {
-          for (CarSpec spec : specs(model)) {
-            HoistMechanism hoist = new HoistMechanism(spec, pit, FLOORS);
+          for (Case c : cases(model)) {
+            CarSpec spec = c.spec();
+            HoistMechanism hoist = new HoistMechanism(spec, pit, c.cw(), FLOORS);
             Box shaft = hoist.shaftBounds();
             List<Box> fixed = new ArrayList<>();
             fixed.add(hoist.motor());
@@ -152,8 +180,9 @@ class HoistMechanismTest {
     void ropesNeverPassThroughTheCar(CarModel model) {
         double half = HoistMechanism.ROPE_WIDTH_PX / CarModel.PIXELS_PER_BLOCK / 2;
         for (PitMode pit : PitMode.values()) {
-          for (CarSpec spec : specs(model)) {
-            HoistMechanism hoist = new HoistMechanism(spec, pit, FLOORS);
+          for (Case c : cases(model)) {
+            CarSpec spec = c.spec();
+            HoistMechanism hoist = new HoistMechanism(spec, pit, c.cw(), FLOORS);
             for (double y = 64; y <= 80; y += 0.5) {
                 Box e = CarGeometry.exterior(model).move(0, y, 0);
                 Box car = new Box(e.minX() - half, e.minY() - half, e.minZ() - half, e.maxX() + half, e.maxY() + half, e.maxZ() + half);
@@ -182,13 +211,16 @@ class HoistMechanismTest {
     void sheavesAndRopesClearTheGuideRails(CarModel model) {
         for (PitMode pit : PitMode.values()) {
             // 制御盤を Y=64 に置いた昇降路
-          for (CarSpec spec : specs(model)) {
-            ShaftLayout layout = new ShaftLayout(spec, pit, new int[] {0, 5, 9, 16});
-            HoistMechanism hoist = new HoistMechanism(spec, pit, FLOORS);
+          for (Case c : cases(model)) {
+            CarSpec spec = c.spec();
+            ShaftLayout layout = new ShaftLayout(spec, pit, c.cw(), new int[] {0, 5, 9, 16});
+            HoistMechanism hoist = new HoistMechanism(spec, pit, c.cw(), FLOORS);
             List<Box> rails = new ArrayList<>();
             for (ShaftLayout.Rail rail : layout.rails()) {
                 rails.add(rail.box().move(-layout.carX(), 64, -layout.carZ()));
             }
+            // 釣合い重りのレールも
+            rails.addAll(hoist.counterweightRails());
             for (double y = 64; y <= 80; y += 0.5) {
                 for (Sheave sheave : hoist.sheaves(y)) {
                     Box b = bounds(sheave);
@@ -230,13 +262,13 @@ class HoistMechanismTest {
     void nothingMovesThroughTheController(CarModel model) {
         for (PitMode pit : PitMode.values()) {
             // 制御盤を Y=64 に置いた昇降路
-          for (CarSpec spec : specs(model)) {
-            ShaftLayout layout = new ShaftLayout(spec, pit, new int[] {0, 5, 9, 16});
-            HoistMechanism hoist = new HoistMechanism(spec, pit, FLOORS);
+          for (Case c : cases(model)) {
+            CarSpec spec = c.spec();
+            ShaftLayout layout = new ShaftLayout(spec, pit, c.cw(), new int[] {0, 5, 9, 16});
+            HoistMechanism hoist = new HoistMechanism(spec, pit, c.cw(), FLOORS);
             List<Box> controller = new ArrayList<>();
-            for (ShaftLayout.Cell cell : layout.controllerCells()) {
-                controller.add(new Box(cell.x() - 0.5, cell.y(), cell.z() - 0.5, cell.x() + 0.5, cell.y() + 1, cell.z() + 0.5)
-                        .move(-layout.carX(), 64, -layout.carZ()));
+            for (Box box : layout.controllerBoxes()) {
+                controller.add(box.move(-layout.carX(), 64, -layout.carZ()));
             }
             List<Box> fixed = new ArrayList<>(hoist.counterweightRails());
             fixed.add(hoist.motor());
@@ -248,16 +280,16 @@ class HoistMechanismTest {
                 moving.addAll(hoist.counterweightSheaveBrackets(y));
                 hoist.sheaves(y).forEach(sheave -> moving.add(bounds(sheave)));
                 for (Box box : moving) {
-                    for (Box c : controller) {
-                        assertFalse(box.intersects(c), model + " " + pit + " " + box + " hits the controller at " + y);
+                    for (Box ctrl : controller) {
+                        assertFalse(box.intersects(ctrl), model + " " + pit + " " + c + " " + box + " hits the controller at " + y);
                     }
                 }
                 double half = HoistMechanism.ROPE_WIDTH_PX / CarModel.PIXELS_PER_BLOCK / 2;
                 for (List<Point> rope : hoist.ropes(y)) {
                     for (Point p : rope) {
-                        for (Box c : controller) {
-                            boolean in = p.x() > c.minX() - half && p.x() < c.maxX() + half && p.y() > c.minY() - half
-                                    && p.y() < c.maxY() + half && p.z() > c.minZ() - half && p.z() < c.maxZ() + half;
+                        for (Box ctrl : controller) {
+                            boolean in = p.x() > ctrl.minX() - half && p.x() < ctrl.maxX() + half && p.y() > ctrl.minY() - half
+                                    && p.y() < ctrl.maxY() + half && p.z() > ctrl.minZ() - half && p.z() < ctrl.maxZ() + half;
                             assertFalse(in, model + " " + pit + " a rope passes through the controller");
                         }
                     }
@@ -267,15 +299,20 @@ class HoistMechanismTest {
         }
     }
 
-    /** 機種 model で選べるすべての扉の方式。 */
-    private static List<CarSpec> specs(CarModel model) {
-        List<CarSpec> specs = new ArrayList<>();
+    private record Case(CarSpec spec, CounterweightPosition cw) {
+    }
+
+    /** 機種 model で選べるすべての扉の方式と、釣合い重りの位置の組み合わせ。 */
+    private static List<Case> cases(CarModel model) {
+        List<Case> cases = new ArrayList<>();
         for (DoorType door : DoorType.values()) {
             if (door.isAvailable(model)) {
-                specs.add(new CarSpec(model, door));
+                for (CounterweightPosition cw : CounterweightPosition.values()) {
+                    cases.add(new Case(new CarSpec(model, door), cw));
+                }
             }
         }
-        return specs;
+        return cases;
     }
 
     private static boolean inside(Box box, Box shaft) {

@@ -31,6 +31,7 @@ import net.lausiv1024.realelevator.core.door.DoorState;
 import net.lausiv1024.realelevator.core.door.DoorTiming;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
+import net.lausiv1024.realelevator.core.install.ShaftLayout.CounterweightPosition;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
 import net.lausiv1024.realelevator.core.motion.SpeedSetting;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
@@ -97,6 +98,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     /** 昇降路のピットの方式。ウィザードで設置したかごだけが持ち、昇降路の機構を描く。 */
     @Nullable
     private PitMode pitMode;
+    /** 釣合い重りの位置（ウィザードで設置したかごだけ）。 */
+    private CounterweightPosition counterweight = CounterweightPosition.REAR;
     /** pitMode と停止階から作った昇降路の機構。停止階などが変わったら作り直す。 */
     @Nullable
     private HoistMechanism hoist;
@@ -166,6 +169,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.putIntArray("Floors", sorted);
         if (pitMode != null) {
             tag.putString("Pit", pitMode.name());
+            tag.putString("Counterweight", counterweight.name());
         }
         this.entityData.set(DATA_FLOORS, tag);
         applyFloors(sorted);
@@ -195,10 +199,17 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 昇降路の機構を付ける（ウィザードで設置したとき）。サーバーで呼ぶ。 */
     public void setHoistway(PitMode pitMode) {
+        setHoistway(pitMode, CounterweightPosition.REAR);
+    }
+
+    /** 昇降路の機構を付ける（ウィザードで設置したとき）。サーバーで呼ぶ。 */
+    public void setHoistway(PitMode pitMode, CounterweightPosition counterweight) {
         this.pitMode = pitMode;
+        this.counterweight = counterweight;
         this.hoist = null;
         CompoundTag tag = this.entityData.get(DATA_FLOORS).copy();
         tag.putString("Pit", pitMode.name());
+        tag.putString("Counterweight", counterweight.name());
         this.entityData.set(DATA_FLOORS, tag);
     }
 
@@ -206,7 +217,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     @Nullable
     public HoistMechanism hoist() {
         if (hoist == null && pitMode != null && floors.length >= 2) {
-            hoist = new HoistMechanism(spec(), pitMode, floors);
+            hoist = new HoistMechanism(spec(), pitMode, counterweight, floors);
         }
         return hoist;
     }
@@ -918,6 +929,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (DATA_MODEL.equals(key) || DATA_FLOORS.equals(key)) {
             CompoundTag floorTag = this.entityData.get(DATA_FLOORS);
             pitMode = floorTag.contains("Pit") ? parseEnum(PitMode.class, floorTag.getString("Pit"), PitMode.REAL) : null;
+            counterweight = parseEnum(CounterweightPosition.class, floorTag.getString("Counterweight"), CounterweightPosition.REAR);
             applyFloors(floorTag.getIntArray("Floors"));
             labels = readLabels(floorTag);
             readCalls(this.entityData.get(DATA_CALLS));
@@ -982,6 +994,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.putDouble("Jerk", speed.jerk());
         if (pitMode != null) {
             tag.putString("Pit", pitMode.name());
+            tag.putString("Counterweight", counterweight.name());
         }
         if (trip != null) {
             tag.put("Trip", writeTrip(trip));
@@ -1006,6 +1019,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             facing = Direction.SOUTH;
         }
         pitMode = tag.contains("Pit") ? parseEnum(PitMode.class, tag.getString("Pit"), PitMode.REAL) : null;
+        counterweight = parseEnum(CounterweightPosition.class, tag.getString("Counterweight"), CounterweightPosition.REAR);
         controllerPos = NbtUtils.readBlockPos(tag, "Controller").orElse(null);
         SpeedSetting speed = SpeedSetting.standard(parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW));
         if (tag.contains("Acceleration")) {

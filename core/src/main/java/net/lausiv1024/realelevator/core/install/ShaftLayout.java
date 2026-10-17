@@ -21,7 +21,7 @@ import net.lausiv1024.realelevator.core.panel.FixtureConfig;
  * <li>制御盤は乗場の壁の列（Z=0）にある。昇降路と三方枠は、制御盤の左隣から左へ、機種で決まる幅（3または4ブロック）だけ並ぶ
  * （幅3ブロックなら X=−3〜−1、4ブロックなら X=−4〜−1）。出入口はその中央で、三方枠の高さは{@value DoorGeometry#LANDING_FRAME_HEIGHT}ブロック。</li>
  * <li>乗場の戸は壁の列の昇降路側の面（Z=−0.5）に付き、かごはその奥（−Z 側）にある。昇降路の奥行きは、
- * かごの奥行きに釣合い重りの1列を足した分。</li>
+ * かごの奥行きに釣合い重りの1列を足した分（横落としでは、重りの列を右に足し、奥行きはかごの分だけ）。</li>
  * <li>ガイドレールは、かごの中心の列で、昇降路の左右の端のブロックに置く。</li>
  * </ul>
  */
@@ -66,9 +66,21 @@ public final class ShaftLayout {
         BELOW_PANEL
     }
 
+    /** 釣合い重りの位置。 */
+    public enum CounterweightPosition {
+        /** かごの奥（後ろ落とし）。昇降路の奥行きに重りの1列を足す。 */
+        REAR,
+        /**
+         * かごの右（横落とし）。設置用ブロックの真後ろの列（X=0、乗場の壁の列より奥）を重りの列にする。
+         * 展望仕様と二方向出入口で使う。
+         */
+        SIDE
+    }
+
     private final CarSpec spec;
     private final CarModel model;
     private final PitMode pitMode;
+    private final CounterweightPosition counterweight;
     private final int[] floors;
 
     /**
@@ -79,9 +91,14 @@ public final class ShaftLayout {
     }
 
     public ShaftLayout(CarSpec spec, PitMode pitMode, int[] floors) {
+        this(spec, pitMode, CounterweightPosition.REAR, floors);
+    }
+
+    public ShaftLayout(CarSpec spec, PitMode pitMode, CounterweightPosition counterweight, int[] floors) {
         this.spec = spec;
         this.model = spec.model();
         this.pitMode = pitMode;
+        this.counterweight = counterweight;
         this.floors = floors.clone();
         Arrays.sort(this.floors);
     }
@@ -142,10 +159,27 @@ public final class ShaftLayout {
         return -0.5 - landingDoorFromCar;
     }
 
-    /** 昇降路の奥行きの列（Z）。かごの奥の面を含む列から、釣合い重りの1列を足して、壁の列の手前（Z=−1）まで。 */
+    /**
+     * 昇降路の奥行きの列（Z）。かごの奥の面を含む列から、壁の列の手前（Z=−1）まで。後ろ落としでは、さらに釣合い重りの1列を足す。
+     */
     public int backRow() {
         double carBack = carZ() + CarGeometry.exterior(model).minZ();
-        return (int) Math.floor(carBack + 0.5) - 1;
+        int carBackRow = (int) Math.floor(carBack + 0.5);
+        return counterweight == CounterweightPosition.REAR ? carBackRow - 1 : carBackRow;
+    }
+
+    public CounterweightPosition counterweight() {
+        return counterweight;
+    }
+
+    /** 釣合い重りの列の X（横落としのときだけ。設置用ブロックの真後ろ）。 */
+    public int counterweightColumn() {
+        return 0;
+    }
+
+    /** 昇降路の右端の X（横落としでは重りの列を含む）。 */
+    private int shaftRightColumn() {
+        return counterweight == CounterweightPosition.SIDE ? counterweightColumn() : rightColumn();
     }
 
     /** 昇降路の一番下（ピットの底）の高さ。 */
@@ -164,7 +198,7 @@ public final class ShaftLayout {
     public List<Cell> requiredClearCells() {
         List<Cell> cells = new ArrayList<>();
         for (int y = bottom(); y < top(); y++) {
-            for (int x = leftColumn(); x <= rightColumn(); x++) {
+            for (int x = leftColumn(); x <= shaftRightColumn(); x++) {
                 for (int z = backRow(); z <= -1; z++) {
                     cells.add(new Cell(x, y, z));
                 }
@@ -220,6 +254,9 @@ public final class ShaftLayout {
 
     /** 頂部の制御盤の高さ [ブロック]。 */
     public static final int CONTROLLER_HEIGHT = 2;
+    /** 頂部の制御盤の幅（壁に沿った向き）と厚み [px]。横落としでかごの横のすき間（4px〜）に収まる厚み。 */
+    public static final int CONTROLLER_WIDTH_PX = 12;
+    public static final int CONTROLLER_DEPTH_PX = 4;
 
     /**
      * 頂部の制御盤のブロック（下から順）。昇降路の左奥の隅の、天井から下 {@value #CONTROLLER_HEIGHT} ブロック。
@@ -228,9 +265,61 @@ public final class ShaftLayout {
     public List<Cell> controllerCells() {
         List<Cell> cells = new ArrayList<>();
         for (int y = top() - CONTROLLER_HEIGHT; y < top(); y++) {
-            cells.add(new Cell(leftColumn(), y, backRow()));
+            cells.add(new Cell(leftColumn(), y, controllerRow()));
         }
         return cells;
+    }
+
+    /**
+     * 頂部の制御盤の形（制御盤からの相対座標）。ブロックごとに、壁に付いた幅 {@value #CONTROLLER_WIDTH_PX}px・厚み {@value #CONTROLLER_DEPTH_PX}px の箱。
+     * 後ろ落としでは奥の壁の中央、横落としでは左の壁の奥寄りに付く。
+     */
+    public List<Box> controllerBoxes() {
+        double p = CarModel.PIXELS_PER_BLOCK;
+        double halfWidth = CONTROLLER_WIDTH_PX / p / 2;
+        double depth = CONTROLLER_DEPTH_PX / p;
+        List<Box> boxes = new ArrayList<>();
+        for (Cell cell : controllerCells()) {
+            // 横落としでは、左の壁の奥寄り（かご側のロープの固定端を避ける）
+            boxes.add(controllerOnLeftWall()
+                    ? new Box(cell.x() - 0.5, cell.y(), cell.z() - 0.5, cell.x() - 0.5 + depth, cell.y() + 1, cell.z() - 0.5 + halfWidth * 2)
+                    : new Box(cell.x() - halfWidth, cell.y(), cell.z() - 0.5, cell.x() + halfWidth, cell.y() + 1, cell.z() - 0.5 + depth));
+        }
+        return boxes;
+    }
+
+    /**
+     * 頂部の制御盤の列（Z）。後ろ落としでは奥の重りの列（左奥の隅）。横落としでは左の壁に付けるので、
+     * かご側のロープとガイドレールを避けた、いちばん奥の列にする。
+     */
+    private int controllerRow() {
+        if (counterweight == CounterweightPosition.REAR) {
+            return backRow();
+        }
+        // 左の壁のすき間には、かご側のロープ（奥行きの中央から6pxまでずれる）と固定端、ガイドレールが通る。それを避けた奥の列
+        double p = CarModel.PIXELS_PER_BLOCK;
+        double ropeBand = (6 + 3) / p;
+        double railHalf = RAIL_DEPTH_PX / p / 2;
+        double railZ = railRowZ() - carZ();
+        for (int row = backRow(); row <= -1; row++) {
+            double from = row - 0.5 - carZ();
+            double to = from + CONTROLLER_WIDTH_PX / p;
+            boolean clearOfRopes = to <= -ropeBand || from >= ropeBand;
+            boolean clearOfRail = to <= railZ - railHalf || from >= railZ + railHalf;
+            if (clearOfRopes && clearOfRail) {
+                return row;
+            }
+        }
+        return backRow();
+    }
+
+    /**
+     * 頂部の制御盤を付ける壁。後ろ落としでは奥の壁、横落としでは左の壁。
+     *
+     * @return 乗場から見た、制御盤の背面の向き（true なら左の壁）
+     */
+    public boolean controllerOnLeftWall() {
+        return counterweight == CounterweightPosition.SIDE;
     }
 
     public CarSpec spec() {
