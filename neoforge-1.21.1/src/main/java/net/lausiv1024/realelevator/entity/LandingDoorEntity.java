@@ -12,6 +12,7 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.DoorType;
+import net.lausiv1024.realelevator.core.car.Entrance;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.display.HallLantern;
@@ -39,11 +40,15 @@ import net.minecraft.world.phys.AABB;
  * そのため、かごとの間で追加の同期はいらない。
  *
  * <p>乗場の▲▼ボタン、階床表示器、ホールランタン、三方枠（仮）もこのエンティティが持つ。応答灯はかごに登録された乗場呼びを表示する。
+ *
+ * <p>二方向出入口（前後）の奥の乗場の扉は、正面の形をかごの中心のまわりに180°回したもので、三方枠はブロックの格子にそろうよう厚くする。
  */
 public class LandingDoorEntity extends Entity implements ButtonHost {
     private static final EntityDataAccessor<Optional<UUID>> DATA_CAR = SynchedEntityData.defineId(LandingDoorEntity.class, EntityDataSerializers.OPTIONAL_UUID);
     private static final EntityDataAccessor<Byte> DATA_MODEL = SynchedEntityData.defineId(LandingDoorEntity.class, EntityDataSerializers.BYTE);
     private static final EntityDataAccessor<Direction> DATA_FACING = SynchedEntityData.defineId(LandingDoorEntity.class, EntityDataSerializers.DIRECTION);
+    /** かごのどちらの出入口の乗場か（{@link Entrance} の番号）。 */
+    private static final EntityDataAccessor<Byte> DATA_ENTRANCE = SynchedEntityData.defineId(LandingDoorEntity.class, EntityDataSerializers.BYTE);
 
     @Nullable
     private ElevatorCarEntity cachedCar;
@@ -54,6 +59,12 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     }
 
     public void setup(ElevatorCarEntity car) {
+        setup(car, Entrance.FRONT);
+    }
+
+    /** かご car の、出入口 entrance の乗場の扉にする。 */
+    public void setup(ElevatorCarEntity car, Entrance entrance) {
+        this.entityData.set(DATA_ENTRANCE, (byte) entrance.ordinal());
         this.entityData.set(DATA_CAR, Optional.of(car.getUUID()));
         this.entityData.set(DATA_MODEL, CarShapes.encode(car.spec()));
         this.entityData.set(DATA_FACING, car.facing());
@@ -65,6 +76,23 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         builder.define(DATA_CAR, Optional.empty());
         builder.define(DATA_MODEL, CarShapes.encode(CarSpec.of(CarModel.P11)));
         builder.define(DATA_FACING, Direction.SOUTH);
+        builder.define(DATA_ENTRANCE, (byte) Entrance.FRONT.ordinal());
+    }
+
+    /** かごのどちらの出入口の乗場か。 */
+    public Entrance entrance() {
+        Entrance[] values = Entrance.values();
+        return values[Mth.clamp(this.entityData.get(DATA_ENTRANCE), 0, values.length - 1)];
+    }
+
+    /** かごのローカル座標の形（正面の形）を、ワールドの向きにするために90°回す回数。 */
+    public int quarterTurns() {
+        return facing().get2DDataValue() + entrance().quarterTurns();
+    }
+
+    /** 乗場の面を正面の乗場の面からずらす量（奥の乗場で三方枠を厚くする分）。 */
+    public double faceOffset() {
+        return CarShapes.faceOffset(spec(), entrance());
     }
 
     public CarModel model() {
@@ -103,22 +131,22 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     /** ゲーム時刻 tick での開き具合。かごがこの階にいなければ全閉。 */
     public double fractionAt(double tick) {
         ElevatorCarEntity car = car();
-        return isCarHere() && car != null ? car.doorFractionAt(tick) : 0;
+        return isCarHere() && car != null ? car.doorFractionAt(tick, entrance()) : 0;
     }
 
     /** 描画用の開き具合。かごと同じ時刻の基準を使う。 */
     public double renderFraction(float partialTick) {
         ElevatorCarEntity car = car();
-        return isCarHere() && car != null ? car.doorFractionAt(car.renderTick(partialTick)) : 0;
+        return isCarHere() && car != null ? car.doorFractionAt(car.renderTick(partialTick), entrance()) : 0;
     }
 
     /** 当たり判定の箱（ワールド座標）。戸と三方枠。 */
     public List<AABB> collisionBoxesAt(long tick) {
         List<AABB> boxes = new ArrayList<>();
-        for (Box box : CarShapes.doorPanels(spec(), facing(), DoorGeometry.Side.LANDING, fractionAt(tick))) {
+        for (Box box : CarShapes.doorPanels(spec(), facing(), DoorGeometry.Side.LANDING, fractionAt(tick), entrance())) {
             boxes.add(CarShapes.toAabb(box, getX(), getY(), getZ()));
         }
-        for (Box box : CarShapes.landingFrame(spec(), facing())) {
+        for (Box box : CarShapes.landingFrame(spec(), facing(), entrance())) {
             boxes.add(CarShapes.toAabb(box, getX(), getY(), getZ()));
         }
         return boxes;
@@ -137,19 +165,19 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         if (car == null || floor < 0) {
             return Set.of();
         }
-        return car.lanternSections(floor);
+        return car.lanternSections(floor, entrance());
     }
 
     @Override
     public List<Button> buttons() {
         ElevatorCarEntity car = car();
         int floor = floorIndex();
-        return car != null && floor >= 0 ? ButtonLayout.hallButtons(spec(), floor, car.floorCount()) : List.of();
+        return car != null && floor >= 0 ? ButtonLayout.hallButtons(spec(), floor, car.floorCount(), faceOffset()) : List.of();
     }
 
     @Override
     public AABB buttonBox(int index) {
-        Box box = buttons().get(index).box().rotateQuarterTurns(facing().get2DDataValue());
+        Box box = buttons().get(index).box().rotateQuarterTurns(quarterTurns());
         return CarShapes.toAabb(box, getX(), getY(), getZ());
     }
 
@@ -157,7 +185,7 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     public boolean isButtonLit(int index) {
         ElevatorCarEntity car = car();
         Button button = buttons().get(index);
-        return car != null && car.isHallCallLit(button.floor(), direction(button));
+        return car != null && car.isHallCallLit(button.floor(), direction(button), entrance());
     }
 
     @Override
@@ -165,7 +193,7 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         ElevatorCarEntity car = car();
         if (car != null) {
             Button button = buttons().get(index);
-            car.pressHallCall(button.floor(), direction(button));
+            car.pressHallCall(button.floor(), direction(button), entrance());
         }
     }
 
@@ -176,7 +204,7 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     @Override
     public void onSyncedDataUpdated(EntityDataAccessor<?> key) {
         super.onSyncedDataUpdated(key);
-        if (DATA_MODEL.equals(key) || DATA_FACING.equals(key)) {
+        if (DATA_MODEL.equals(key) || DATA_FACING.equals(key) || DATA_ENTRANCE.equals(key)) {
             setBoundingBox(makeBoundingBox());
         } else if (DATA_CAR.equals(key)) {
             cachedCar = null;
@@ -186,21 +214,22 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     @Override
     protected AABB makeBoundingBox() {
         // 描画のカリングに使うので、戸が動く範囲、三方枠、ボタン（中間階の▲▼）、階床表示器、ホールランタンを含める
-        AABB bounds = CarShapes.toAabb(CarShapes.doorTravelBounds(spec(), facing(), DoorGeometry.Side.LANDING), getX(), getY(), getZ());
-        for (Box box : CarShapes.landingFrame(spec(), facing())) {
+        AABB bounds = CarShapes.toAabb(CarShapes.doorTravelBounds(spec(), facing(), DoorGeometry.Side.LANDING, entrance()), getX(), getY(), getZ());
+        for (Box box : CarShapes.landingFrame(spec(), facing(), entrance())) {
             bounds = bounds.minmax(CarShapes.toAabb(box, getX(), getY(), getZ()));
         }
-        int turns = facing().get2DDataValue();
-        for (Button button : ButtonLayout.hallButtons(spec(), 1, 3)) {
+        int turns = quarterTurns();
+        double offset = faceOffset();
+        for (Button button : ButtonLayout.hallButtons(spec(), 1, 3, offset)) {
             bounds = bounds.minmax(CarShapes.toAabb(button.box().rotateQuarterTurns(turns), getX(), getY(), getZ()));
         }
         // 階床表示器とホールランタンは、どの位置に付けても入るようにする
         for (FixtureConfig.HallIndicator indicatorPlacement : FixtureConfig.HallIndicator.values()) {
             for (FixtureConfig.HallLanternPlacement lanternPlacement : FixtureConfig.HallLanternPlacement.values()) {
                 FixtureConfig config = FixtureConfig.DEFAULT.withHallIndicator(indicatorPlacement).withHallLantern(lanternPlacement);
-                Box indicator = FloorIndicator.hall(spec(), config, "", TravelDirection.NONE).face();
+                Box indicator = FloorIndicator.hall(spec(), config, "", TravelDirection.NONE, offset).face();
                 bounds = bounds.minmax(CarShapes.toAabb(indicator.rotateQuarterTurns(turns), getX(), getY(), getZ()));
-                for (HallLantern.Section section : HallLantern.sections(spec(), config, false)) {
+                for (HallLantern.Section section : HallLantern.sections(spec(), config, false, offset)) {
                     bounds = bounds.minmax(CarShapes.toAabb(section.box().rotateQuarterTurns(turns), getX(), getY(), getZ()));
                 }
             }
@@ -229,8 +258,9 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     protected void addAdditionalSaveData(CompoundTag tag) {
         carUuid().ifPresent(uuid -> tag.putUUID("Car", uuid));
         tag.putString("Model", model().name());
-        tag.putString("Door", spec().door().name());
+        tag.putString("DoorType", spec().door().name());
         tag.putString("Facing", facing().getSerializedName());
+        tag.putString("Entrance", entrance().name());
     }
 
     @Override
@@ -244,13 +274,20 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         }
         DoorType door;
         try {
-            door = DoorType.valueOf(tag.getString("Door"));
+            door = DoorType.valueOf(tag.getString("DoorType"));
         } catch (IllegalArgumentException e) {
             door = DoorType.CENTER;
         }
         this.entityData.set(DATA_MODEL, CarShapes.encode(new CarSpec(model, door)));
         Direction facing = Direction.byName(tag.getString("Facing"));
         this.entityData.set(DATA_FACING, facing != null && facing.getAxis().isHorizontal() ? facing : Direction.SOUTH);
+        Entrance entrance = Entrance.FRONT;
+        try {
+            entrance = Entrance.valueOf(tag.getString("Entrance"));
+        } catch (IllegalArgumentException ignored) {
+            // 古い保存データは正面
+        }
+        this.entityData.set(DATA_ENTRANCE, (byte) entrance.ordinal());
         setBoundingBox(makeBoundingBox());
     }
 }

@@ -134,6 +134,14 @@ public final class DoorGeometry {
         return travelBounds(spec, Side.LANDING).minZ() + 1;
     }
 
+    /**
+     * 乗場の面を faceOffset だけ乗場側へずらしたもの。二方向出入口の奥の乗場では、乗場の戸がブロックの格子にそろわないので、
+     * 三方枠を厚くして次のブロックの面まで埋める。
+     */
+    public static double landingFace(CarSpec spec, double faceOffset) {
+        return landingFace(spec) + faceOffset;
+    }
+
     /** 中央開き（CO）の三方枠。 */
     public static List<Box> landingFrame(CarModel model) {
         return landingFrame(CarSpec.of(model));
@@ -144,9 +152,14 @@ public final class DoorGeometry {
      * 戸は三方枠の裏（昇降路側）を滑るので、戸と三方枠は重ならない。
      */
     public static List<Box> landingFrame(CarSpec spec) {
+        return landingFrame(spec, 0);
+    }
+
+    /** 乗場の面を faceOffset だけずらした三方枠（{@link #landingFace(CarSpec, double)}）。 */
+    public static List<Box> landingFrame(CarSpec spec, double faceOffset) {
         Box entrance = CarGeometry.entrance(spec);
         double back = travelBounds(spec, Side.LANDING).maxZ();
-        double face = landingFace(spec);
+        double face = landingFace(spec, faceOffset);
         double half = landingFrameHalfWidth(spec);
         double top = LANDING_FRAME_HEIGHT;
         return List.of(

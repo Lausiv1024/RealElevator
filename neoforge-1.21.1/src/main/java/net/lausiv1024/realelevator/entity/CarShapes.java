@@ -10,6 +10,9 @@ import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.DoorType;
+import net.lausiv1024.realelevator.core.car.Entrance;
+import net.lausiv1024.realelevator.core.car.FloorEntrances;
+import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.minecraft.core.Direction;
 import net.minecraft.world.phys.AABB;
@@ -18,7 +21,11 @@ import net.minecraft.world.phys.AABB;
  * coreのかごと戸の形状を、向きに合わせて回す。動かない部分はキャッシュする。
  */
 public final class CarShapes {
-    private static final Map<CarSpec, List<List<Part>>> PARTS = new ConcurrentHashMap<>();
+    private record PartsKey(CarSpec spec, boolean through) {
+    }
+
+    private static final Map<PartsKey, List<List<Part>>> PARTS = new ConcurrentHashMap<>();
+    private static final Map<CarSpec, Double> REAR_FACE_OFFSETS = new ConcurrentHashMap<>();
     private static final Map<CarModel, List<Box>> EXTERIORS = new ConcurrentHashMap<>();
     /** 同期データの1バイトのうち、機種の番号に使う下位のビット。上位のビットは扉の方式の番号。 */
     private static final int MODEL_BITS = 4;
@@ -43,8 +50,13 @@ public final class CarShapes {
 
     /** 正面を facing に向けたときの部位（ワールドの軸に平行、かごの原点からの相対座標）。 */
     public static List<Part> parts(CarSpec spec, Direction facing) {
-        return PARTS.computeIfAbsent(spec, key -> {
-            List<Part> parts = CarGeometry.parts(key);
+        return parts(spec, facing, false);
+    }
+
+    /** through なら、奥壁にも出入口を開けたかご（二方向出入口の前後）。 */
+    public static List<Part> parts(CarSpec spec, Direction facing, boolean through) {
+        return PARTS.computeIfAbsent(new PartsKey(spec, through), key -> {
+            List<Part> parts = CarGeometry.parts(key.spec(), key.through());
             return List.of(rotate(parts, 0), rotate(parts, 1), rotate(parts, 2), rotate(parts, 3));
         }).get(facing.get2DDataValue());
     }
@@ -73,6 +85,32 @@ public final class CarShapes {
 
     public static Box doorTravelBounds(CarSpec spec, Direction facing, DoorGeometry.Side side) {
         return DoorGeometry.travelBounds(spec, side).rotateQuarterTurns(facing.get2DDataValue());
+    }
+
+    /** 出入口 entrance の戸板（かごの原点からの相対座標）。奥の出入口は、正面の形を180°回したもの。 */
+    public static List<Box> doorPanels(CarSpec spec, Direction facing, DoorGeometry.Side side, double fraction, Entrance entrance) {
+        int turns = facing.get2DDataValue() + entrance.quarterTurns();
+        return DoorGeometry.panels(spec, side, fraction).stream().map(box -> box.rotateQuarterTurns(turns)).toList();
+    }
+
+    public static Box doorTravelBounds(CarSpec spec, Direction facing, DoorGeometry.Side side, Entrance entrance) {
+        return DoorGeometry.travelBounds(spec, side).rotateQuarterTurns(facing.get2DDataValue() + entrance.quarterTurns());
+    }
+
+    /** 出入口 entrance の三方枠。奥の三方枠は、ブロックの格子にそろうよう厚くする（{@link #faceOffset}）。 */
+    public static List<Box> landingFrame(CarSpec spec, Direction facing, Entrance entrance) {
+        int turns = facing.get2DDataValue() + entrance.quarterTurns();
+        return DoorGeometry.landingFrame(spec, faceOffset(spec, entrance)).stream().map(box -> box.rotateQuarterTurns(turns)).toList();
+    }
+
+    /** 出入口 entrance の乗場の面を、正面の乗場の面からずらす量（奥の乗場だけ）。 */
+    public static double faceOffset(CarSpec spec, Entrance entrance) {
+        if (entrance == Entrance.FRONT) {
+            return 0;
+        }
+        return REAR_FACE_OFFSETS.computeIfAbsent(spec, key -> new ShaftLayout(key, ShaftLayout.PitMode.REAL,
+                ShaftLayout.CounterweightPosition.SIDE, new int[] {0, ShaftLayout.MIN_FLOOR_SPACING},
+                new FloorEntrances[] {FloorEntrances.BOTH, FloorEntrances.BOTH}).rearFaceOffset());
     }
 
     public static AABB toAabb(Box box, double x, double y, double z) {

@@ -151,8 +151,13 @@ public final class ButtonLayout {
     }
 
     public static List<Button> hallButtons(CarSpec spec, int floor, int floorCount) {
+        return hallButtons(spec, floor, floorCount, 0);
+    }
+
+    /** 乗場の面を faceOffset だけずらした乗場のボタン（二方向出入口の奥の乗場）。 */
+    public static List<Button> hallButtons(CarSpec spec, int floor, int floorCount, double faceOffset) {
         int x = hallButtonMinXPx(spec);
-        int face = px(DoorGeometry.landingFace(spec));
+        int face = px(DoorGeometry.landingFace(spec, faceOffset));
         List<Button> buttons = new ArrayList<>(2);
         if (floor < floorCount - 1) {
             buttons.add(new Button(Kind.HALL_UP, floor, Box.ofPixels(x, HALL_BOTTOM_PX + BUTTON_PX + GAP_PX * 2, face,

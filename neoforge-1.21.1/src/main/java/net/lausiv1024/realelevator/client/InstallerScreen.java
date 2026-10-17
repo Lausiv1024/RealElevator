@@ -59,6 +59,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
     private SpeedSetting speed;
     private PitMode pitMode;
     private CounterweightPosition counterweight;
+    private boolean through;
     private boolean preview;
     @Nullable
     private SettingsForm form;
@@ -96,6 +97,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
             speed = installer.speed();
             pitMode = installer.pitMode();
             counterweight = installer.plan().counterweight();
+            through = installer.plan().isThrough();
             preview = installer.isPreviewing();
             hadStar = installer.hasNetherStar();
             form = new SettingsForm(installer.settingsTag());
@@ -167,14 +169,25 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
                     pitMode = v;
                     send();
                 }));
-        settings.add(CycleButton.<CounterweightPosition>builder(c -> Component.translatable(
+        settings.add(CycleButton.onOffBuilder(through)
+                .create(0, 0, SettingsForm.MAX_SETTING_WIDTH, 20, Component.translatable("gui.realelevator.panel.through"), (b, v) -> {
+                    through = v;
+                    send();
+                    // 停止階の出入口のボタンと、釣合い重りの選べる値が変わる
+                    rebuildWidgets();
+                }));
+        // 二方向出入口では横落としに決まる
+        CycleButton<CounterweightPosition> counterweightButton = CycleButton.<CounterweightPosition>builder(c -> Component.translatable(
                         "gui.realelevator.counterweight." + c.name().toLowerCase(Locale.ROOT)))
-                .withValues(CounterweightPosition.values()).withInitialValue(counterweight)
+                .withValues(CounterweightPosition.values()).withInitialValue(through ? CounterweightPosition.SIDE : counterweight)
                 .create(0, 0, SettingsForm.MAX_SETTING_WIDTH, 20, Component.translatable("gui.realelevator.panel.counterweight"), (b, v) -> {
                     counterweight = v;
                     send();
-                }));
+                });
+        counterweightButton.active = !through;
+        settings.add(counterweightButton);
         settings.addAll(form.fixtureWidgets(this::send));
+        form.setEditableEntrances(through);
         form.layout(font, width, height - 42, settings, this::addRenderableWidget, this::send, this::rebuildWidgets);
 
         // 下の4つのボタンは、画面の幅に合わせて縮める
@@ -268,6 +281,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
         tag.putDouble("Jerk", speed.jerk());
         tag.putString("Pit", pitMode.name());
         tag.putString("Counterweight", counterweight.name());
+        tag.putBoolean("Through", through);
         tag.putBoolean("Preview", preview);
         form.writeTo(tag);
         PacketDistributor.sendToServer(new PanelPayloads.Settings(menu.pos(), tag));

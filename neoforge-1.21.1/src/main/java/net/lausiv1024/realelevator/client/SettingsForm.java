@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import net.lausiv1024.realelevator.block.ElevatorPlan;
+import net.lausiv1024.realelevator.core.car.FloorEntrances;
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
@@ -34,8 +35,11 @@ final class SettingsForm {
     static final int GAP = 4;
     /** 設定のボタンの幅の上限。 */
     static final int MAX_SETTING_WIDTH = 200;
-    /** 停止階の欄の幅（「◯階（Y=◯）」、階名の入力欄、スクロールのボタン）。 */
-    static final int FLOOR_COLUMN_WIDTH = 170;
+    /** 停止階の欄の幅（「◯階（Y=◯）」、階名の入力欄、出入口のボタン、スクロールのボタン）。 */
+    static final int FLOOR_COLUMN_WIDTH = 194;
+    /** 出入口のボタンと、スクロールのボタンの、停止階の欄の左端からの位置。 */
+    private static final int ENTRANCE_BUTTON_X = 144;
+    private static final int SCROLL_BUTTON_X = 170;
 
     interface Setter<T> {
         void set(T value);
@@ -46,6 +50,10 @@ final class SettingsForm {
     private int[] floors;
     /** 停止階のY座標ごとの階名。入力欄の内容で更新する。 */
     private final Map<Integer, String> labels = new HashMap<>();
+    /** 停止階のY座標ごとの出入口（二方向出入口のとき）。 */
+    private final Map<Integer, FloorEntrances> entrances = new HashMap<>();
+    /** 二方向出入口で、停止階ごとの出入口を選べるか（設置する前の設定画面だけ）。 */
+    private boolean editableEntrances;
     private final List<EditBox> labelBoxes = new ArrayList<>();
     private int scroll;
     private int visibleFloors;
@@ -56,9 +64,16 @@ final class SettingsForm {
         this.announcements = ConfigTags.readAnnouncements(settings.getCompound("Announcements"));
         setFloors(settings.getIntArray("Floors"));
         CompoundTag labelTag = settings.getCompound("Labels");
+        CompoundTag entranceTag = settings.getCompound("Entrances");
         for (int floorY : floors) {
             labels.put(floorY, labelTag.getString(Integer.toString(floorY)));
+            entrances.put(floorY, ConfigTags.parseEnum(FloorEntrances.class, entranceTag.getString(Integer.toString(floorY)), FloorEntrances.FRONT));
         }
+    }
+
+    /** 停止階ごとの出入口のボタンを出すか（二方向出入口で、設置する前）。 */
+    void setEditableEntrances(boolean editable) {
+        this.editableEntrances = editable;
     }
 
     /** 停止階を変える（設置用ブロックで登録し直されたとき）。 */
@@ -142,16 +157,38 @@ final class SettingsForm {
             });
             labelBoxes.add(box);
             add.accept(box);
+            if (editableEntrances) {
+                // 最下階（設置用ブロックの階）は前を必ず使う
+                boolean lowest = index == 0;
+                List<FloorEntrances> values = new ArrayList<>();
+                for (FloorEntrances value : FloorEntrances.values()) {
+                    if (!lowest || value.allowedOnLowestFloor()) {
+                        values.add(value);
+                    }
+                }
+                FloorEntrances initial = entrances.getOrDefault(floorY, FloorEntrances.FRONT);
+                if (!values.contains(initial)) {
+                    initial = FloorEntrances.FRONT;
+                }
+                add.accept(CycleButton.<FloorEntrances>builder(v -> Component.translatable(
+                                "gui.realelevator.entrance." + v.name().toLowerCase(Locale.ROOT)))
+                        .withValues(values).withInitialValue(initial).displayOnlyValue()
+                        .create(floorColumnX + ENTRANCE_BUTTON_X, TOP + row * ROW, 24, 18,
+                                Component.translatable("gui.realelevator.panel.entrances"), (b, v) -> {
+                                    entrances.put(floorY, v);
+                                    send.run();
+                                }));
+            }
         }
         if (floors.length > visibleFloors) {
             add.accept(Button.builder(Component.literal("▲"), b -> {
                 scroll--;
                 rebuild.run();
-            }).bounds(floorColumnX + 146, TOP, 20, 20).build());
+            }).bounds(floorColumnX + SCROLL_BUTTON_X, TOP, 20, 20).build());
             add.accept(Button.builder(Component.literal("▼"), b -> {
                 scroll++;
                 rebuild.run();
-            }).bounds(floorColumnX + 146, TOP + (visibleFloors - 1) * ROW, 20, 20).build());
+            }).bounds(floorColumnX + SCROLL_BUTTON_X, TOP + (visibleFloors - 1) * ROW, 20, 20).build());
         }
     }
 
@@ -181,6 +218,11 @@ final class SettingsForm {
             labelTag.putString(Integer.toString(floorY), labels.getOrDefault(floorY, ""));
         }
         tag.put("Labels", labelTag);
+        CompoundTag entranceTag = new CompoundTag();
+        for (int floorY : floors) {
+            entranceTag.putString(Integer.toString(floorY), entrances.getOrDefault(floorY, FloorEntrances.FRONT).name());
+        }
+        tag.put("Entrances", entranceTag);
     }
 
     static <T extends Enum<T>> CycleButton<T> enumButton(String key, T[] values, T initial, Setter<T> setter, Runnable send) {

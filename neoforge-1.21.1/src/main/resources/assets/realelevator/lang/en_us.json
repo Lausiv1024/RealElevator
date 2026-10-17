@@ -79,5 +79,10 @@
   "gui.realelevator.door.four_center": "4-panel center (4CO)",
   "gui.realelevator.panel.counterweight": "Counterweight",
   "gui.realelevator.counterweight.rear": "Rear",
-  "gui.realelevator.counterweight.side": "Side (right)"
+  "gui.realelevator.counterweight.side": "Side (right)",
+  "gui.realelevator.panel.through": "Through car (front & rear)",
+  "gui.realelevator.panel.entrances": "Entrances",
+  "gui.realelevator.entrance.front": "F",
+  "gui.realelevator.entrance.rear": "R",
+  "gui.realelevator.entrance.both": "F+R"
 }

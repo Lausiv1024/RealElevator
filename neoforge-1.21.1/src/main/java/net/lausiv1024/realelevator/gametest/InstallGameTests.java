@@ -8,6 +8,11 @@ import net.lausiv1024.realelevator.block.ControllerBlockEntity;
 import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.block.InstallerBlockEntity;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.registry.ModEntities;
+import net.lausiv1024.realelevator.entity.LandingDoorEntity;
+import net.lausiv1024.realelevator.core.control.TravelDirection;
+import net.lausiv1024.realelevator.core.car.FloorEntrances;
+import net.lausiv1024.realelevator.core.car.Entrance;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
@@ -352,5 +357,84 @@ public class InstallGameTests {
         helper.assertTrue(controllerPos.getX() == panelPos.getX() + layout.leftColumn(), "the controller should be in the left column");
         helper.assertTrue(car.pressCarCall(1) == PressResult.REGISTERED, "the call should be registered");
         helper.succeedWhen(() -> helper.assertTrue(!car.isMoving() && car.getY() == panelPos.getY() + RISE, "not arrived yet"));
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 600)
+    public static void throughCarOpensOnlyTheSideThatWasCalled(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        BlockPos panelPos = helper.absolutePos(PANEL);
+        int top = panelPos.getY() + RISE;
+        CompoundTag settings = panel.settingsTag();
+        settings.putBoolean("Through", true);
+        CompoundTag entrances = new CompoundTag();
+        entrances.putString(Integer.toString(top), FloorEntrances.BOTH.name());
+        settings.put("Entrances", entrances);
+        panel.applySettings(settings);
+        ElevatorPlan plan = panel.plan();
+        helper.assertTrue(plan.isThrough() && plan.counterweight() == ShaftLayout.CounterweightPosition.SIDE, "through cars use the side counterweight");
+        helper.assertTrue(panel.obstructions(helper.getLevel()).isEmpty(), "the shaft should be clear: " + panel.obstructions(helper.getLevel()));
+        panel.install();
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        helper.assertTrue(car.isThrough(), "the car should be a through car");
+        List<LandingDoorEntity> doors = ElevatorTracker.landingDoors(helper.getLevel()).stream()
+                .filter(door -> door.carUuid().filter(car.getUUID()::equals).isPresent()).toList();
+        helper.assertTrue(doors.size() == 3, "front at both floors and rear at the top: " + doors.size());
+        LandingDoorEntity rearTop = doors.stream().filter(door -> door.entrance() == Entrance.REAR).findFirst().orElseThrow();
+        helper.assertTrue(rearTop.getY() == top, "the rear door should be at the top floor");
+        // 奥の乗場で▼を押すと、かごが来て奥の扉だけ開く
+        car.pressHallCall(1, TravelDirection.DOWN, Entrance.REAR);
+        helper.assertTrue(car.isHallCallLit(1, TravelDirection.DOWN, Entrance.REAR) && !car.isHallCallLit(1, TravelDirection.DOWN, Entrance.FRONT),
+                "only the rear hall button should light");
+        helper.succeedWhen(() -> {
+            long now = helper.getLevel().getGameTime();
+            helper.assertTrue(!car.isMoving() && car.getY() == top && car.doorFractionAt(now, Entrance.REAR) > 0.99,
+                    "the rear door should open");
+            helper.assertTrue(car.doorFractionAt(now, Entrance.FRONT) == 0 && rearTop.fractionAt(now) > 0.99, "only the rear doors");
+        });
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void theDoorTypeSurvivesSavingAndLoading(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        CompoundTag settings = panel.settingsTag();
+        settings.putString("Door", DoorType.SIDE_RIGHT.name());
+        panel.applySettings(settings);
+        ElevatorPlan plan = panel.plan();
+        panel.install();
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        CompoundTag saved = car.saveWithoutId(new CompoundTag());
+        ElevatorCarEntity loaded = ModEntities.ELEVATOR_CAR.get().create(helper.getLevel());
+        loaded.load(saved);
+        helper.assertTrue(loaded.spec().equals(car.spec()) && loaded.spec().door() == DoorType.SIDE_RIGHT,
+                "the door type should be kept: " + loaded.spec());
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 800)
+    public static void theOtherSideOpensAfterTheOpenDoorsClose(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        BlockPos panelPos = helper.absolutePos(PANEL);
+        CompoundTag settings = panel.settingsTag();
+        settings.putBoolean("Through", true);
+        CompoundTag entrances = new CompoundTag();
+        entrances.putString(Integer.toString(panelPos.getY()), FloorEntrances.BOTH.name());
+        settings.put("Entrances", entrances);
+        panel.applySettings(settings);
+        ElevatorPlan plan = panel.plan();
+        panel.install();
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        // かごがいる最下階で、正面の▲で正面を開き、開いているあいだに奥の▲を押す
+        car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT);
+        helper.runAfterDelay(50, () -> {
+            long now = helper.getLevel().getGameTime();
+            helper.assertTrue(car.doorFractionAt(now, Entrance.FRONT) > 0.99, "the front doors should be open");
+            car.pressHallCall(0, TravelDirection.UP, Entrance.REAR);
+            helper.assertTrue(car.doorFractionAt(now, Entrance.REAR) == 0, "the rear doors should wait");
+        });
+        helper.succeedWhen(() -> {
+            long now = helper.getLevel().getGameTime();
+            helper.assertTrue(car.doorFractionAt(now, Entrance.REAR) > 0.99, "the rear doors should open after the front closes");
+            helper.assertTrue(car.doorFractionAt(now, Entrance.FRONT) == 0 && !car.isMoving(), "the car should stay with the front closed");
+        });
     }
 }

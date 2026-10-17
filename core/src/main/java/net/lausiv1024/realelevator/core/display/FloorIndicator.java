@@ -159,7 +159,12 @@ public final class FloorIndicator {
 
     /** 乗場の表示器。扉の上なら出入口の中央に合わせる。 */
     public static Frame hall(CarSpec model, FixtureConfig config, String label, TravelDirection direction) {
-        int face = px(DoorGeometry.landingFace(model));
+        return hall(model, config, label, direction, 0);
+    }
+
+    /** 乗場の面を faceOffset だけずらした乗場の表示器（二方向出入口の奥の乗場）。 */
+    public static Frame hall(CarSpec model, FixtureConfig config, String label, TravelDirection direction, double faceOffset) {
+        int face = px(DoorGeometry.landingFace(model, faceOffset));
         if (config.hallIndicator() == FixtureConfig.HallIndicator.OVER_BUTTONS) {
             // ボタンの列の中央に合わせる
             int buttonCenter2 = ButtonLayout.hallButtonMinXPx(model) * 2 + ButtonLayout.BUTTON_PX;

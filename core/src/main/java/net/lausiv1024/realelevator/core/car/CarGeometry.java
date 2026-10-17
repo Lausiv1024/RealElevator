@@ -1,5 +1,6 @@
 package net.lausiv1024.realelevator.core.car;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -38,6 +39,32 @@ public final class CarGeometry {
      * 出入口の位置は扉の方式で決まる（{@link CarSpec}）。
      */
     public static List<Part> parts(CarSpec model) {
+        return parts(model, false);
+    }
+
+    /**
+     * かごを構成する部位。through なら二方向出入口（前後）で、奥壁にも正面と同じ出入口を開ける
+     * （正面の袖壁とトランサムを、かごの中心のまわりに180°回したもの）。
+     */
+    public static List<Part> parts(CarSpec model, boolean through) {
+        List<Part> single = single(model);
+        if (!through) {
+            return single;
+        }
+        // 奥壁を除き、正面の袖壁とトランサムを180°回したものを奥に足す
+        List<Part> parts = new ArrayList<>(single.subList(0, BACK_WALL));
+        parts.addAll(single.subList(FRONT_WALLS, single.size()));
+        for (Part front : single.subList(FRONT_WALLS, single.size())) {
+            parts.add(new Part(front.type(), front.box().rotateQuarterTurns(Entrance.REAR.quarterTurns())));
+        }
+        return List.copyOf(parts);
+    }
+
+    /** {@link #single} の並びでの、奥壁の番号と、正面の袖壁（左・右・トランサム）の始まりの番号。 */
+    private static final int BACK_WALL = 4;
+    private static final int FRONT_WALLS = 5;
+
+    private static List<Part> single(CarSpec model) {
         int halfWidth = model.interiorWidthPx() / 2;
         int halfDepth = model.interiorDepthPx() / 2;
         int height = CarModel.CEILING_HEIGHT_PX;

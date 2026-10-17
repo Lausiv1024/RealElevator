@@ -8,6 +8,8 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.car.Entrance;
+import net.lausiv1024.realelevator.core.car.FloorEntrances;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 
@@ -82,6 +84,8 @@ public final class ShaftLayout {
     private final PitMode pitMode;
     private final CounterweightPosition counterweight;
     private final int[] floors;
+    /** 二方向出入口（前後）のときの、階ごとの出入口（floors と同じ並び）。一方向出入口なら null。 */
+    private final FloorEntrances[] entrances;
 
     /**
      * @param floors 停止階の床面の高さ（制御盤からの相対、0 が最下階）
@@ -95,12 +99,49 @@ public final class ShaftLayout {
     }
 
     public ShaftLayout(CarSpec spec, PitMode pitMode, CounterweightPosition counterweight, int[] floors) {
+        this(spec, pitMode, counterweight, floors, null);
+    }
+
+    /**
+     * @param entrances 二方向出入口（前後）なら、階ごとの出入口（floors を下から並べた順）。一方向出入口なら null。
+     *                  二方向出入口では、釣合い重りは横落としに決まる
+     */
+    public ShaftLayout(CarSpec spec, PitMode pitMode, CounterweightPosition counterweight, int[] floors, FloorEntrances[] entrances) {
         this.spec = spec;
         this.model = spec.model();
         this.pitMode = pitMode;
-        this.counterweight = counterweight;
+        this.counterweight = entrances != null ? CounterweightPosition.SIDE : counterweight;
         this.floors = floors.clone();
         Arrays.sort(this.floors);
+        this.entrances = entrances != null ? entrances.clone() : null;
+    }
+
+    /** 二方向出入口（前後）か。 */
+    public boolean isThrough() {
+        return entrances != null;
+    }
+
+    /** floor 番目（下から）の階で使う出入口。 */
+    public FloorEntrances entrances(int floor) {
+        return entrances == null || floor >= entrances.length ? FloorEntrances.FRONT : entrances[floor];
+    }
+
+    /**
+     * 二方向出入口の奥の乗場の壁の列（Z）。正面と同じく、乗場の戸のかご側の面より乗場側で、昇降路側の面がいちばん近い列。
+     * 奥の乗場の戸はこの列の中を動き、奥の三方枠は乗場の戸からこの列の乗場側の面までを埋める（正面より最大で1ブロック厚い）。
+     */
+    public int rearWallRow() {
+        double doorCarSide = carZ() - DoorGeometry.travelBounds(spec, DoorGeometry.Side.LANDING).minZ();
+        return (int) Math.floor(doorCarSide - 0.5 + 1e-9);
+    }
+
+    /**
+     * 二方向出入口の奥の乗場の面を、正面の乗場の面（{@link DoorGeometry#landingFace}）から乗場側へずらす量 [ブロック]。
+     * 奥の三方枠と乗場の器具を、奥の形（正面の形を180°回したもの）で求めるときに使う。
+     */
+    public double rearFaceOffset() {
+        double rearFace = carZ() - (rearWallRow() - 0.5);
+        return rearFace - DoorGeometry.landingFace(spec);
     }
 
     /** 停止階の並びに問題がないか。 */
@@ -163,6 +204,10 @@ public final class ShaftLayout {
      * 昇降路の奥行きの列（Z）。かごの奥の面を含む列から、壁の列の手前（Z=−1）まで。後ろ落としでは、さらに釣合い重りの1列を足す。
      */
     public int backRow() {
+        if (isThrough()) {
+            // 奥の乗場の壁の列の手前まで
+            return rearWallRow() + 1;
+        }
         double carBack = carZ() + CarGeometry.exterior(model).minZ();
         int carBackRow = (int) Math.floor(carBack + 0.5);
         return counterweight == CounterweightPosition.REAR ? carBackRow - 1 : carBackRow;
@@ -204,7 +249,23 @@ public final class ShaftLayout {
                 }
             }
         }
-        for (int floor : floors) {
+        for (int i = 0; i < floors.length; i++) {
+            int floor = floors[i];
+            if (!entrances(i).has(Entrance.REAR)) {
+                continue;
+            }
+            // 奥の三方枠
+            for (int y = floor; y < floor + DoorGeometry.LANDING_FRAME_HEIGHT; y++) {
+                for (int x = leftColumn(); x <= rightColumn(); x++) {
+                    cells.add(new Cell(x, y, rearWallRow()));
+                }
+            }
+        }
+        for (int i = 0; i < floors.length; i++) {
+            int floor = floors[i];
+            if (!entrances(i).has(Entrance.FRONT)) {
+                continue;
+            }
             for (int y = floor; y < floor + DoorGeometry.LANDING_FRAME_HEIGHT; y++) {
                 for (int x = leftColumn(); x <= rightColumn(); x++) {
                     cells.add(new Cell(x, y, 0));
@@ -265,14 +326,33 @@ public final class ShaftLayout {
     public List<Cell> controllerCells() {
         List<Cell> cells = new ArrayList<>();
         for (int y = top() - CONTROLLER_HEIGHT; y < top(); y++) {
-            cells.add(new Cell(leftColumn(), y, controllerRow()));
+            cells.add(controllerMount() == ControllerMount.FRONT_WALL
+                    ? new Cell(counterweightColumn(), y, -1)
+                    : new Cell(leftColumn(), y, controllerRow()));
         }
         return cells;
     }
 
+    /** 頂部の制御盤を付ける壁。 */
+    public enum ControllerMount {
+        /** 奥の壁（後ろ落とし。昇降路の左奥の隅）。 */
+        BACK_WALL,
+        /** 左の壁の奥寄り（横落とし）。 */
+        LEFT_WALL,
+        /** 乗場の壁の裏（二方向出入口の前後。重りの列の、設置用ブロックの真後ろ）。 */
+        FRONT_WALL
+    }
+
+    public ControllerMount controllerMount() {
+        if (isThrough()) {
+            return ControllerMount.FRONT_WALL;
+        }
+        return counterweight == CounterweightPosition.SIDE ? ControllerMount.LEFT_WALL : ControllerMount.BACK_WALL;
+    }
+
     /**
      * 頂部の制御盤の形（制御盤からの相対座標）。ブロックごとに、壁に付いた幅 {@value #CONTROLLER_WIDTH_PX}px・厚み {@value #CONTROLLER_DEPTH_PX}px の箱。
-     * 後ろ落としでは奥の壁の中央、横落としでは左の壁の奥寄りに付く。
+     * 後ろ落としでは奥の壁の中央、横落としでは左の壁の奥寄り、二方向出入口では乗場の壁の裏の中央に付く。
      */
     public List<Box> controllerBoxes() {
         double p = CarModel.PIXELS_PER_BLOCK;
@@ -281,9 +361,11 @@ public final class ShaftLayout {
         List<Box> boxes = new ArrayList<>();
         for (Cell cell : controllerCells()) {
             // 横落としでは、左の壁の奥寄り（かご側のロープの固定端を避ける）
-            boxes.add(controllerOnLeftWall()
-                    ? new Box(cell.x() - 0.5, cell.y(), cell.z() - 0.5, cell.x() - 0.5 + depth, cell.y() + 1, cell.z() - 0.5 + halfWidth * 2)
-                    : new Box(cell.x() - halfWidth, cell.y(), cell.z() - 0.5, cell.x() + halfWidth, cell.y() + 1, cell.z() - 0.5 + depth));
+            boxes.add(switch (controllerMount()) {
+                case LEFT_WALL -> new Box(cell.x() - 0.5, cell.y(), cell.z() - 0.5, cell.x() - 0.5 + depth, cell.y() + 1, cell.z() - 0.5 + halfWidth * 2);
+                case BACK_WALL -> new Box(cell.x() - halfWidth, cell.y(), cell.z() - 0.5, cell.x() + halfWidth, cell.y() + 1, cell.z() - 0.5 + depth);
+                case FRONT_WALL -> new Box(cell.x() - halfWidth, cell.y(), cell.z() + 0.5 - depth, cell.x() + halfWidth, cell.y() + 1, cell.z() + 0.5);
+            });
         }
         return boxes;
     }
@@ -301,26 +383,21 @@ public final class ShaftLayout {
         double ropeBand = (6 + 3) / p;
         double railHalf = RAIL_DEPTH_PX / p / 2;
         double railZ = railRowZ() - carZ();
+        // 二方向出入口では、奥の乗場の戸が動く範囲にもかからないようにする
+        double rearDoors = isThrough() ? -DoorGeometry.travelBounds(spec, DoorGeometry.Side.LANDING).minZ() : Double.NEGATIVE_INFINITY;
         for (int row = backRow(); row <= -1; row++) {
             double from = row - 0.5 - carZ();
             double to = from + CONTROLLER_WIDTH_PX / p;
             boolean clearOfRopes = to <= -ropeBand || from >= ropeBand;
             boolean clearOfRail = to <= railZ - railHalf || from >= railZ + railHalf;
-            if (clearOfRopes && clearOfRail) {
+            if (clearOfRopes && clearOfRail && from >= rearDoors - 1e-9) {
                 return row;
             }
         }
         return backRow();
     }
 
-    /**
-     * 頂部の制御盤を付ける壁。後ろ落としでは奥の壁、横落としでは左の壁。
-     *
-     * @return 乗場から見た、制御盤の背面の向き（true なら左の壁）
-     */
-    public boolean controllerOnLeftWall() {
-        return counterweight == CounterweightPosition.SIDE;
-    }
+
 
     public CarSpec spec() {
         return spec;

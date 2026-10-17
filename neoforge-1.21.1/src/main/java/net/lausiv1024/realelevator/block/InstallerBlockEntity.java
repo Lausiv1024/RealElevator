@@ -6,6 +6,7 @@ import java.util.Locale;
 
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.Entrance;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.Cell;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.FloorProblem;
@@ -245,22 +246,32 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
         car.setAnnouncements(plan.announcements());
         car.setLabels(plan.labelArray());
         car.setController(controllerPos);
+        if (plan.isThrough()) {
+            car.setThrough(plan.entranceArray());
+        }
         serverLevel.addFreshEntity(car);
+        // 階ごとに、使う出入口の乗場の扉を出す（二方向出入口なら奥も）
         for (int floorY : floorYs()) {
-            LandingDoorEntity door = ModEntities.LANDING_DOOR.get().create(serverLevel);
-            if (door != null) {
-                door.moveTo(origin.x, floorY, origin.z, 0, 0);
-                door.setup(car);
-                serverLevel.addFreshEntity(door);
+            for (Entrance entrance : plan.entrances(floorY).entrances()) {
+                LandingDoorEntity door = ModEntities.LANDING_DOOR.get().create(serverLevel);
+                if (door != null) {
+                    door.moveTo(origin.x, floorY, origin.z, 0, 0);
+                    door.setup(car, entrance);
+                    serverLevel.addFreshEntity(door);
+                }
             }
         }
 
         // 頂部の制御盤を置き、計画とネザースターを移す
-        // 横落としでは左の壁に付ける（制御盤の背面が乗場から見て左を向く）
-        Direction controllerFacing = layout.controllerOnLeftWall() ? facing().getCounterClockWise() : facing();
+        // 制御盤の背面を、付ける壁に向ける（奥の壁なら乗場の向き、左の壁なら乗場から見て右、乗場の壁の裏なら昇降路の奥の向き）
+        Direction controllerFacing = switch (layout.controllerMount()) {
+            case BACK_WALL -> facing();
+            case LEFT_WALL -> facing().getCounterClockWise();
+            case FRONT_WALL -> facing().getOpposite();
+        };
         BlockState controller = ModBlocks.CONTROLLER.get().defaultBlockState()
                 .setValue(HorizontalDirectionalBlock.FACING, controllerFacing)
-                .setValue(ControllerBlock.CORNER, layout.controllerOnLeftWall());
+                .setValue(ControllerBlock.CORNER, layout.controllerMount() == ShaftLayout.ControllerMount.LEFT_WALL);
         level.setBlock(controllerPos, controller.setValue(ControllerBlock.HALF, DoubleBlockHalf.LOWER), Block.UPDATE_ALL);
         level.setBlock(cellPos(controllerCells.get(1)), controller.setValue(ControllerBlock.HALF, DoubleBlockHalf.UPPER), Block.UPDATE_ALL);
         if (level.getBlockEntity(controllerPos) instanceof ControllerBlockEntity controllerEntity) {

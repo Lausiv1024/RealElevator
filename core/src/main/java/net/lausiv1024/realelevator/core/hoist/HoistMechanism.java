@@ -7,6 +7,7 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.car.FloorEntrances;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.CounterweightPosition;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
@@ -119,9 +120,19 @@ public final class HoistMechanism {
         this(spec, pitMode, CounterweightPosition.REAR, floors);
     }
 
-    /** 扉の方式で、乗場の戸の奥行き（かごの位置）とガイドレールの位置が変わる。 */
     public HoistMechanism(CarSpec spec, PitMode pitMode, CounterweightPosition counterweight, int[] floors) {
+        this(spec, pitMode, counterweight, false, floors);
+    }
+
+    /**
+     * 扉の方式で、乗場の戸の奥行き（かごの位置）とガイドレールの位置が変わる。through（二方向出入口の前後）では、
+     * 昇降路が奥の乗場まで延び、釣合い重りは横落としになる。
+     */
+    public HoistMechanism(CarSpec spec, PitMode pitMode, CounterweightPosition counterweight, boolean through, int[] floors) {
         CarModel model = spec.model();
+        if (through) {
+            counterweight = CounterweightPosition.SIDE;
+        }
         this.side = counterweight == CounterweightPosition.SIDE;
         if (floors.length < 2) {
             throw new IllegalArgumentException("at least two floors are needed");
@@ -147,7 +158,8 @@ public final class HoistMechanism {
         // 軸が X のシーブ（そらせ車・綱車）はかごの横のすき間の上にあるので、ロープもシーブもすき間に収める
         this.ropeSpacing = px(Math.min(MAX_ROPE_SPACING_PX, (gapPx - ROPE_WIDTH_PX) / (ROPE_COUNT - 1)));
         this.sheaveWidth = px(Math.min(MAX_SHEAVE_WIDTH_PX, gapPx));
-        ShaftLayout layout = new ShaftLayout(spec, pitMode, counterweight, new int[] {0, ShaftLayout.MIN_FLOOR_SPACING});
+        ShaftLayout layout = new ShaftLayout(spec, pitMode, counterweight, new int[] {0, ShaftLayout.MIN_FLOOR_SPACING},
+                through ? new FloorEntrances[] {FloorEntrances.BOTH, FloorEntrances.BOTH} : null);
         this.backWallZ = layout.backRow() - 0.5 - layout.carZ();
         this.carRopeZ = carRopeZ(layout.railRowZ() - layout.carZ());
         this.columnX = layout.counterweightColumn() - layout.carX();

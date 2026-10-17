@@ -4,6 +4,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
@@ -18,9 +19,12 @@ import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.DoorType;
+import net.lausiv1024.realelevator.core.car.Entrance;
+import net.lausiv1024.realelevator.core.car.FloorEntrances;
 import net.lausiv1024.realelevator.core.control.CallType;
 import net.lausiv1024.realelevator.core.control.CollectiveControl;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
+import net.lausiv1024.realelevator.core.control.EntranceCalls;
 import net.lausiv1024.realelevator.core.control.OperationTiming;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
@@ -92,6 +96,16 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 停止階の床面のY座標（下から順）。 */
     private int[] floors = new int[0];
+    /** 二方向出入口（前後）か。 */
+    private boolean through;
+    /** 二方向出入口のときの、階ごとの出入口（下から順）。 */
+    private FloorEntrances[] floorEntrances = new FloorEntrances[0];
+    /** 乗場呼びがどちらの側で押されたか（二方向出入口）。 */
+    private final EntranceCalls entranceCalls = new EntranceCalls();
+    /** 今（または最後に）開いた扉の側。戸の開き具合は、この側の扉にだけ効く。 */
+    private final Set<Entrance> openSides = EnumSet.of(Entrance.FRONT);
+    /** 扉が開いているあいだに反対側で呼ばれた側。今の扉が閉まりきったら、発車せずにこの側を開く。サーバーだけで使う。 */
+    private final Set<Entrance> pendingSides = EnumSet.noneOf(Entrance.class);
     /** 頂部の制御盤（下のブロック）の位置。ウィザードで設置したかごだけが持つ。サーバーだけで使う。 */
     @Nullable
     private BlockPos controllerPos;
@@ -171,6 +185,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             tag.putString("Pit", pitMode.name());
             tag.putString("Counterweight", counterweight.name());
         }
+        writeEntrances(tag);
         this.entityData.set(DATA_FLOORS, tag);
         applyFloors(sorted);
         this.speed = speed;
@@ -179,6 +194,56 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         // 停止階が変わったら、付けられない配置を直す
         setFixtures(fixtures);
         setBoundingBox(makeBoundingBox());
+    }
+
+    /**
+     * 二方向出入口（前後）にする（設置したとき）。サーバーで呼ぶ。
+     *
+     * @param entrances 階ごとの出入口（下から順）
+     */
+    public void setThrough(FloorEntrances[] entrances) {
+        this.through = true;
+        this.floorEntrances = entrances.clone();
+        this.hoist = null;
+        CompoundTag tag = this.entityData.get(DATA_FLOORS).copy();
+        writeEntrances(tag);
+        this.entityData.set(DATA_FLOORS, tag);
+        rebuildButtons();
+    }
+
+    private void writeEntrances(CompoundTag tag) {
+        if (!through) {
+            tag.remove("Entrances");
+            return;
+        }
+        byte[] bytes = new byte[floorEntrances.length];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte) floorEntrances[i].ordinal();
+        }
+        tag.putByteArray("Entrances", bytes);
+    }
+
+    private void readEntrances(CompoundTag tag) {
+        through = tag.contains("Entrances");
+        byte[] bytes = tag.getByteArray("Entrances");
+        FloorEntrances[] values = FloorEntrances.values();
+        floorEntrances = new FloorEntrances[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            floorEntrances[i] = values[Math.clamp(bytes[i], 0, values.length - 1)];
+        }
+    }
+
+    /** 二方向出入口（前後）か。 */
+    public boolean isThrough() {
+        return through;
+    }
+
+    /** 停止階 floor で使う出入口。一方向出入口なら正面だけ。 */
+    public Set<Entrance> entrancesAt(int floor) {
+        if (!through || floor < 0 || floor >= floorEntrances.length) {
+            return EnumSet.of(Entrance.FRONT);
+        }
+        return floorEntrances[floor].entrances();
     }
 
     /** 頂部の制御盤の位置を覚える（設置したとき）。 */
@@ -217,7 +282,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     @Nullable
     public HoistMechanism hoist() {
         if (hoist == null && pitMode != null && floors.length >= 2) {
-            hoist = new HoistMechanism(spec(), pitMode, counterweight, floors);
+            hoist = new HoistMechanism(spec(), pitMode, counterweight, through, floors);
         }
         return hoist;
     }
@@ -259,7 +324,17 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     private void rebuildButtons() {
-        this.buttons = ButtonLayout.carPanel(spec(), floors.length, fixtures.panelSides());
+        List<Button> front = ButtonLayout.carPanel(spec(), floors.length, fixtures.panelSides());
+        if (!through) {
+            this.buttons = front;
+            return;
+        }
+        // 奥の出入口の袖壁にも、同じ操作盤を180°回して置く
+        List<Button> both = new ArrayList<>(front);
+        for (Button button : front) {
+            both.add(new Button(button.kind(), button.floor(), button.box().rotateQuarterTurns(Entrance.REAR.quarterTurns())));
+        }
+        this.buttons = List.copyOf(both);
     }
 
     @Override
@@ -349,23 +424,51 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         return result;
     }
 
-    /** 乗場呼び（▲▼ボタン）。かごがその階に止まっていて、その方向へ進めるなら戸を開く。 */
+    /** 正面の乗場の乗場呼び。 */
     public PressResult pressHallCall(int floor, TravelDirection direction) {
+        return pressHallCall(floor, direction, Entrance.FRONT);
+    }
+
+    /** 乗場呼び（▲▼ボタン）。side はボタンを押した乗場の側。かごがその階に止まっていて、その方向へ進めるなら、その側の戸を開く。 */
+    public PressResult pressHallCall(int floor, TravelDirection direction, Entrance side) {
         if (level().isClientSide || control == null) {
             return PressResult.INVALID;
         }
         PressResult result = control.pressHall(floor, direction, currentFloor, trip == null);
-        handlePress(result, CallType.HALL);
+        if (result == PressResult.REGISTERED || result == PressResult.ALREADY_REGISTERED) {
+            entranceCalls.press(floor, direction, side);
+        }
+        handlePress(result, CallType.HALL, EnumSet.of(side));
         return result;
     }
 
     private void handlePress(PressResult result, CallType callType) {
+        handlePress(result, callType, entrancesAt(currentFloor));
+    }
+
+    /** @param sides その場で応えるときに開く扉の側 */
+    private void handlePress(PressResult result, CallType callType, Set<Entrance> sides) {
         if (result == PressResult.SERVED_HERE) {
             if (callType == CallType.HALL) {
                 lanternTick = level().getGameTime();
                 playArrivalChime(currentFloor, control != null ? control.direction() : TravelDirection.NONE);
             }
             boolean alreadyOpen = door.state() == DoorState.OPEN;
+            if (!door.isClosed() && !openSides.containsAll(sides)) {
+                // 反対側の扉は、今の扉が閉まりきってから開く
+                for (Entrance side : sides) {
+                    if (!openSides.contains(side)) {
+                        pendingSides.add(side);
+                    }
+                }
+                if (openSides.stream().noneMatch(sides::contains)) {
+                    syncCalls();
+                    return;
+                }
+            } else if (door.isClosed()) {
+                openSides.clear();
+                openSides.addAll(sides);
+            }
             openDoor(callType);
             // かごがいる階の乗場呼びでは、階の案内はせず、行先方向だけを流す（戸がもう開いていればすぐに）
             if (callType == CallType.HALL && announcements.arrival()) {
@@ -382,10 +485,15 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         }
     }
 
-    /** 開ボタン。走行中は効かない。 */
+    /** 開ボタン。走行中は効かない。閉まっているときは、最後に開いた側の扉を開く。 */
     public boolean openDoor(CallType callType) {
         if (level().isClientSide || trip != null) {
             return false;
+        }
+        Set<Entrance> available = entrancesAt(currentFloor);
+        if (!available.containsAll(openSides) || openSides.isEmpty()) {
+            openSides.clear();
+            openSides.addAll(available);
         }
         door.open(level().getGameTime(), door.timing().dwellTicks(callType));
         syncDoor();
@@ -412,6 +520,14 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     public boolean isHallCallLit(int floor, TravelDirection direction) {
         return control != null && floor >= 0 && floor < floors.length && control.hasHallCall(floor, direction);
+    }
+
+    /** 側 side の乗場の、乗場呼びの応答灯。二方向出入口では、その側で押された呼びだけ点く。 */
+    public boolean isHallCallLit(int floor, TravelDirection direction, Entrance side) {
+        if (!through) {
+            return isHallCallLit(floor, direction);
+        }
+        return isHallCallLit(floor, direction) && entranceCalls.isRegistered(floor, direction, side);
     }
 
     @Override
@@ -498,7 +614,15 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             syncDoor();
         }
 
-        if (trip == null && door.isClosed() && control != null) {
+        if (trip == null && door.isClosed() && !pendingSides.isEmpty()) {
+            // 扉が開いているあいだに反対側で呼ばれていたら、発車せずにその側を開く
+            openSides.clear();
+            openSides.addAll(pendingSides);
+            pendingSides.clear();
+            door.open(now, door.timing().dwellTicks(CallType.HALL));
+            syncDoor();
+            departureTick = -1;
+        } else if (trip == null && door.isClosed() && control != null) {
             TravelDirection before = control.direction();
             int next = control.nextStop(currentFloor);
             if (control.direction() != before) {
@@ -551,7 +675,18 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 今いる階の呼びに応えて戸を開く。走行中に到着チャイムを鳴らしていなければ、ここで鳴らす。 */
     private void serveCurrentFloor(long now) {
+        boolean carCall = control != null && control.hasCarCall(currentFloor);
+        boolean upBefore = control != null && control.hasHallCall(currentFloor, TravelDirection.UP);
+        boolean downBefore = control != null && control.hasHallCall(currentFloor, TravelDirection.DOWN);
         CallType served = control != null ? control.arrive(currentFloor) : CallType.CAR;
+        // 応えた乗場呼びの方向（arrive で消えたほう）
+        TravelDirection hallDirection = upBefore && !control.hasHallCall(currentFloor, TravelDirection.UP) ? TravelDirection.UP
+                : downBefore && control != null && !control.hasHallCall(currentFloor, TravelDirection.DOWN) ? TravelDirection.DOWN
+                : TravelDirection.NONE;
+        Set<Entrance> sides = entranceCalls.arrive(currentFloor, carCall, hallDirection, entrancesAt(currentFloor));
+        openSides.clear();
+        openSides.addAll(sides);
+        pendingSides.clear();
         if (!arrivalAnnounced) {
             lanternTick = now;
             playArrivalChime(currentFloor, control != null ? control.direction() : TravelDirection.NONE);
@@ -701,23 +836,42 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      * 到着して扉が開いている間は、その階のランタンを今の進行方向で点ける。
      */
     public Set<TravelDirection> lanternSections(int floor) {
+        return lanternSections(floor, Entrance.FRONT);
+    }
+
+    /** 側 side の乗場のホールランタン。二方向出入口では、開く（開いている）側の乗場だけ点ける。 */
+    public Set<TravelDirection> lanternSections(int floor, Entrance side) {
         if (trip != null) {
-            return floor == announcedFloor
-                    ? HallLantern.litSections(floor, floors.length, announcedDirection, true)
-                    : Set.of();
+            if (floor != announcedFloor || !lanternSides(floor).contains(side)) {
+                return Set.of();
+            }
+            return HallLantern.litSections(floor, floors.length, announcedDirection, true);
         }
-        boolean doorOpenHere = floorIndexAt(getY()) == floor && door.state() != DoorState.CLOSED;
+        boolean doorOpenHere = floorIndexAt(getY()) == floor && door.state() != DoorState.CLOSED && openSides.contains(side);
         return HallLantern.litSections(floor, floors.length, control != null ? control.direction() : TravelDirection.NONE, doorOpenHere);
+    }
+
+    /** 到着する階 floor で、到着チャイムのあとランタンを点ける側（そこで開く扉の側）。 */
+    private Set<Entrance> lanternSides(int floor) {
+        if (!through || control == null) {
+            return entrancesAt(floor);
+        }
+        return entranceCalls.wouldOpen(floor, control.hasCarCall(floor), announcedDirection, entrancesAt(floor));
     }
 
     /** セーフティシュー：閉まりかけの戸（かごと乗場の両方）に生き物が触れているかどうか。 */
     private boolean isDoorObstructed(long now) {
         double fraction = door.fractionAt(now);
-        List<AABB> panels = new ArrayList<>(4);
-        for (DoorGeometry.Side side : DoorGeometry.Side.values()) {
-            for (Box box : CarShapes.doorPanels(spec(), facing(), side, fraction)) {
-                panels.add(CarShapes.toAabb(box, getX(), getY(), getZ()).inflate(SAFETY_SHOE_MARGIN));
+        List<AABB> panels = new ArrayList<>(8);
+        for (Entrance entrance : openSides) {
+            for (DoorGeometry.Side side : DoorGeometry.Side.values()) {
+                for (Box box : CarShapes.doorPanels(spec(), facing(), side, fraction, entrance)) {
+                    panels.add(CarShapes.toAabb(box, getX(), getY(), getZ()).inflate(SAFETY_SHOE_MARGIN));
+                }
             }
+        }
+        if (panels.isEmpty()) {
+            return false;
         }
         AABB search = panels.stream().reduce(AABB::minmax).orElseThrow();
         return !level().getEntitiesOfClass(LivingEntity.class, search,
@@ -818,6 +972,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         return door.fractionAt(tick);
     }
 
+    /** 出入口 entrance の戸の開き具合。今開いている側でなければ全閉。 */
+    public double doorFractionAt(double tick, Entrance entrance) {
+        return openSides.contains(entrance) ? door.fractionAt(tick) : 0;
+    }
+
     /**
      * 描画に使うゲーム時刻。バニラの補間と同じく、直前のtickと最新のtickの間を partialTick で表す。
      */
@@ -837,21 +996,30 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         for (Part part : parts()) {
             boxes.add(CarShapes.toAabb(part.box(), getX(), y, getZ()));
         }
-        for (Box panel : CarShapes.doorPanels(spec(), facing(), DoorGeometry.Side.CAR, door.fractionAt(tick))) {
-            boxes.add(CarShapes.toAabb(panel, getX(), y, getZ()));
+        for (Entrance entrance : entrances()) {
+            for (Box panel : CarShapes.doorPanels(spec(), facing(), DoorGeometry.Side.CAR, doorFractionAt(tick, entrance), entrance)) {
+                boxes.add(CarShapes.toAabb(panel, getX(), y, getZ()));
+            }
         }
         return boxes;
     }
 
     public List<Part> parts() {
-        return CarShapes.parts(spec(), facing());
+        return CarShapes.parts(spec(), facing(), through);
+    }
+
+    /** かごの出入口（二方向出入口なら正面と奥）。 */
+    public List<Entrance> entrances() {
+        return through ? List.of(Entrance.FRONT, Entrance.REAR) : List.of(Entrance.FRONT);
     }
 
     /** かご全体の外形（ワールド座標）。床面のY座標 y の位置に置いたもの。戸が袖壁の外へはみ出す分を含む。 */
     public AABB exteriorAt(double y) {
         AABB exterior = CarShapes.toAabb(CarShapes.exterior(spec(), facing()), getX(), y, getZ());
-        AABB door = CarShapes.toAabb(CarShapes.doorTravelBounds(spec(), facing(), DoorGeometry.Side.CAR), getX(), y, getZ());
-        return exterior.minmax(door);
+        for (Entrance entrance : entrances()) {
+            exterior = exterior.minmax(CarShapes.toAabb(CarShapes.doorTravelBounds(spec(), facing(), DoorGeometry.Side.CAR, entrance), getX(), y, getZ()));
+        }
+        return exterior;
     }
 
     /**
@@ -930,6 +1098,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             CompoundTag floorTag = this.entityData.get(DATA_FLOORS);
             pitMode = floorTag.contains("Pit") ? parseEnum(PitMode.class, floorTag.getString("Pit"), PitMode.REAL) : null;
             counterweight = parseEnum(CounterweightPosition.class, floorTag.getString("Counterweight"), CounterweightPosition.REAR);
+            readEntrances(floorTag);
+            hoist = null;
             applyFloors(floorTag.getIntArray("Floors"));
             labels = readLabels(floorTag);
             readCalls(this.entityData.get(DATA_CALLS));
@@ -983,7 +1153,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         tag.putString("Model", model().name());
-        tag.putString("Door", spec().door().name());
+        // 戸の状態（"Door"）と別のキーにする
+        tag.putString("DoorType", spec().door().name());
         tag.putString("Facing", facing().getSerializedName());
         tag.putIntArray("Floors", floors);
         tag.putString("Speed", speed.spec().name());
@@ -996,6 +1167,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             tag.putString("Pit", pitMode.name());
             tag.putString("Counterweight", counterweight.name());
         }
+        writeEntrances(tag);
+        tag.putByte("PendingSides", sideMask(pendingSides));
         if (trip != null) {
             tag.put("Trip", writeTrip(trip));
         }
@@ -1025,7 +1198,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (tag.contains("Acceleration")) {
             speed = speed.withAcceleration(tag.getDouble("Acceleration")).withJerk(tag.getDouble("Jerk"));
         }
-        DoorType door = parseEnum(DoorType.class, tag.getString("Door"), DoorType.CENTER);
+        DoorType door = parseEnum(DoorType.class, tag.getString("DoorType"), DoorType.CENTER);
+        readEntrances(tag);
+        pendingSides.clear();
+        pendingSides.addAll(sides(tag.getByte("PendingSides")));
         setup(new CarSpec(model, door), facing, tag.getIntArray("Floors"), speed);
         setFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")));
         setLabels(readLabels(tag));
@@ -1078,6 +1254,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     private void readDoorState(CompoundTag tag) {
         readDoor(tag, door);
+        openSides.clear();
+        openSides.addAll(tag.contains("Sides") ? sides(tag.getByte("Sides")) : EnumSet.of(Entrance.FRONT));
         lanternTick = tag.getLong("LanternTick");
         announcedFloor = tag.contains("AnnouncedFloor") ? tag.getInt("AnnouncedFloor") : -1;
         announcedDirection = parseEnum(TravelDirection.class, tag.getString("AnnouncedDirection"), TravelDirection.NONE);
@@ -1085,6 +1263,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     private CompoundTag writeDoorState() {
         CompoundTag tag = writeDoor(door);
+        tag.putByte("Sides", sideMask(openSides));
         tag.putLong("LanternTick", lanternTick);
         tag.putInt("AnnouncedFloor", announcedFloor);
         tag.putString("AnnouncedDirection", announcedDirection.name());
@@ -1096,7 +1275,34 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                 tag.getLong("StartTick"), tag.getDouble("StartFraction"), tag.getInt("Dwell"));
     }
 
-    private static CompoundTag writeCalls(CollectiveControl control) {
+    private static byte sideMask(Set<Entrance> sides) {
+        int mask = 0;
+        for (Entrance side : sides) {
+            mask |= 1 << side.ordinal();
+        }
+        return (byte) mask;
+    }
+
+    private static Set<Entrance> sides(int mask) {
+        Set<Entrance> sides = EnumSet.noneOf(Entrance.class);
+        for (Entrance side : Entrance.values()) {
+            if ((mask & 1 << side.ordinal()) != 0) {
+                sides.add(side);
+            }
+        }
+        return sides;
+    }
+
+    private CompoundTag writeCalls(CollectiveControl control) {
+        CompoundTag tag = writeCallsOnly(control);
+        long[][] sideCalls = entranceCalls.snapshot();
+        for (int i = 0; i < sideCalls.length; i++) {
+            tag.putLongArray("Side" + i, sideCalls[i]);
+        }
+        return tag;
+    }
+
+    private static CompoundTag writeCallsOnly(CollectiveControl control) {
         long[][] snapshot = control.snapshot();
         CompoundTag tag = new CompoundTag();
         tag.putLongArray("Car", snapshot[0]);
@@ -1111,6 +1317,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             control.restore(tag.getLongArray("Car"), tag.getLongArray("Up"), tag.getLongArray("Down"),
                     parseEnum(TravelDirection.class, tag.getString("Direction"), TravelDirection.NONE));
         }
+        long[][] sideCalls = new long[Entrance.values().length * 2][];
+        for (int i = 0; i < sideCalls.length; i++) {
+            sideCalls[i] = tag.getLongArray("Side" + i);
+        }
+        entranceCalls.restore(sideCalls);
     }
 
     private static <E extends Enum<E>> E parseEnum(Class<E> type, String name, E fallback) {

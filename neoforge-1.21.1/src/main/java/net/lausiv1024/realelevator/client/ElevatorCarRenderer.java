@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
 import net.lausiv1024.realelevator.core.car.CarGeometry.PartType;
+import net.lausiv1024.realelevator.core.car.Entrance;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.entity.CarShapes;
@@ -45,16 +46,21 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
         for (Part part : car.parts()) {
             BoxRenderer.renderBox(pose, consumer, part.box(), sprite(part.type()), packedLight);
         }
-        double fraction = car.doorFractionAt(car.renderTick(partialTick));
+        double tick = car.renderTick(partialTick);
         TextureAtlasSprite door = BoxRenderer.blockSprite(DOOR);
-        for (Box panel : CarShapes.doorPanels(car.spec(), car.facing(), DoorGeometry.Side.CAR, fraction)) {
-            BoxRenderer.renderBox(pose, consumer, panel, door, packedLight);
+        for (Entrance entrance : car.entrances()) {
+            double fraction = car.doorFractionAt(tick, entrance);
+            for (Box panel : CarShapes.doorPanels(car.spec(), car.facing(), DoorGeometry.Side.CAR, fraction, entrance)) {
+                BoxRenderer.renderBox(pose, consumer, panel, door, packedLight);
+            }
         }
         BoxRenderer.renderButtons(pose, consumer, car, car.facing().get2DDataValue(), packedLight);
-        double tick = car.renderTick(partialTick);
-        for (FloorIndicator.Frame indicator : FloorIndicator.car(car.spec(), car.floorCount(), car.fixtures(),
-                car.indicatorLabel(tick), car.indicatorDirection())) {
-            BoxRenderer.renderIndicator(pose, consumer, indicator, car.facing().get2DDataValue(), packedLight);
+        // 二方向出入口では、奥の出入口にも同じ表示器を180°回して付ける
+        for (Entrance entrance : car.entrances()) {
+            for (FloorIndicator.Frame indicator : FloorIndicator.car(car.spec(), car.floorCount(), car.fixtures(),
+                    car.indicatorLabel(tick), car.indicatorDirection())) {
+                BoxRenderer.renderIndicator(pose, consumer, indicator, car.facing().get2DDataValue() + entrance.quarterTurns(), packedLight);
+            }
         }
         poseStack.popPose();
         // シーブの側面は向きを気にせず描けるよう、裏面も描く

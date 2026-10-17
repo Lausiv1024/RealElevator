@@ -104,11 +104,16 @@ public final class HallLantern {
     }
 
     public static List<Section> sections(CarSpec model, FixtureConfig config, boolean terminal) {
+        return sections(model, config, terminal, 0);
+    }
+
+    /** 乗場の面を faceOffset だけずらしたランタン（二方向出入口の奥の乗場）。 */
+    public static List<Section> sections(CarSpec model, FixtureConfig config, boolean terminal, double faceOffset) {
         if (config.hallLantern() == FixtureConfig.HallLanternPlacement.NONE) {
             return List.of();
         }
         double px = 1.0 / CarModel.PIXELS_PER_BLOCK;
-        double face = DoorGeometry.landingFace(model);
+        double face = DoorGeometry.landingFace(model, faceOffset);
         if (config.hallLantern() == FixtureConfig.HallLanternPlacement.BESIDE_DOOR) {
             // 左側の脇の、幅の中央
             double minX = (DoorGeometry.frameJambCenter2Px(model, false) - BESIDE_WIDTH_PX) / 2 * px;
@@ -126,7 +131,7 @@ public final class HallLantern {
         }
         Box entrance = CarGeometry.entrance(model);
         double base = config.hallIndicator() == FixtureConfig.HallIndicator.OVER_DOOR
-                ? FloorIndicator.hall(model, config, "", TravelDirection.NONE).face().maxY()
+                ? FloorIndicator.hall(model, config, "", TravelDirection.NONE, faceOffset).face().maxY()
                 : entrance.maxY();
         double bottom = base + OVER_GAP_PX * px;
         double middle = bottom + OVER_SECTION_HEIGHT_PX * px;

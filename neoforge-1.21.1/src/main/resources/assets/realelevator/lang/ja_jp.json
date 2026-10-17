@@ -79,5 +79,10 @@
   "gui.realelevator.door.four_center": "4枚中央開き（4CO）",
   "gui.realelevator.panel.counterweight": "釣合い重り",
   "gui.realelevator.counterweight.rear": "後ろ落とし",
-  "gui.realelevator.counterweight.side": "横落とし（右）"
+  "gui.realelevator.counterweight.side": "横落とし（右）",
+  "gui.realelevator.panel.through": "二方向出入口（前後）",
+  "gui.realelevator.panel.entrances": "出入口",
+  "gui.realelevator.entrance.front": "前",
+  "gui.realelevator.entrance.rear": "後",
+  "gui.realelevator.entrance.both": "両"
 }

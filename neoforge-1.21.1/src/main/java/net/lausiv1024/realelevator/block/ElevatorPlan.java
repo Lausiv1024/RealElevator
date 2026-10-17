@@ -8,6 +8,7 @@ import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.DoorType;
+import net.lausiv1024.realelevator.core.car.FloorEntrances;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.Cell;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.CounterweightPosition;
@@ -44,6 +45,10 @@ public final class ElevatorPlan {
     private SpeedSetting speed = SpeedSetting.standard(SpeedSpec.NORMAL_LOW);
     private PitMode pitMode = PitMode.REAL;
     private CounterweightPosition counterweight = CounterweightPosition.REAR;
+    /** 二方向出入口（前後）か。 */
+    private boolean through;
+    /** 二方向出入口のときの、停止階のY座標ごとの出入口。書かれていない階は前だけ。 */
+    private final Map<Integer, FloorEntrances> entrances = new HashMap<>();
     private FixtureConfig fixtures = FixtureConfig.DEFAULT;
     private AnnouncementConfig announcements = AnnouncementConfig.DEFAULT;
 
@@ -102,9 +107,28 @@ public final class ElevatorPlan {
         return pitMode;
     }
 
-    /** 釣合い重りの位置（後ろ落とし／横落とし）。 */
+    /** 釣合い重りの位置（後ろ落とし／横落とし）。二方向出入口では横落としに決まる。 */
     public CounterweightPosition counterweight() {
-        return counterweight;
+        return through ? CounterweightPosition.SIDE : counterweight;
+    }
+
+    /** 二方向出入口（前後）か。 */
+    public boolean isThrough() {
+        return through;
+    }
+
+    /** 停止階 floorY で使う出入口。一方向出入口なら前だけ。最下階（設置用ブロックの階）は前を必ず使う。 */
+    public FloorEntrances entrances(int floorY) {
+        if (!through) {
+            return FloorEntrances.FRONT;
+        }
+        FloorEntrances value = entrances.getOrDefault(floorY, FloorEntrances.FRONT);
+        return floorY == origin.getY() && !value.allowedOnLowestFloor() ? FloorEntrances.FRONT : value;
+    }
+
+    /** 停止階ごとの出入口（下から順）。 */
+    public FloorEntrances[] entranceArray() {
+        return floors.stream().map(this::entrances).toArray(FloorEntrances[]::new);
     }
 
     public FixtureConfig fixtures() {
@@ -134,6 +158,7 @@ public final class ElevatorPlan {
         }
         if (floors.remove(y)) {
             labels.remove(y);
+            entrances.remove(y);
             return new FloorChange(true, Component.translatable("message.realelevator.floor.removed", y, floors.size()));
         }
         for (int floor : floors) {
@@ -162,6 +187,8 @@ public final class ElevatorPlan {
         }
         pitMode = ConfigTags.parseEnum(PitMode.class, tag.getString("Pit"), pitMode);
         counterweight = ConfigTags.parseEnum(CounterweightPosition.class, tag.getString("Counterweight"), counterweight);
+        through = tag.getBoolean("Through");
+        readEntrances(tag.getCompound("Entrances"));
     }
 
     /** 設置したあとも変えられる設定（配置・アナウンス・階名）を反映する。 */
@@ -188,6 +215,10 @@ public final class ElevatorPlan {
         tag.putDouble("Jerk", speed.jerk());
         tag.putString("Pit", pitMode.name());
         tag.putString("Counterweight", counterweight.name());
+        tag.putBoolean("Through", through);
+        CompoundTag entranceTag = new CompoundTag();
+        entrances.forEach((y, value) -> entranceTag.putString(Integer.toString(y), value.name()));
+        tag.put("Entrances", entranceTag);
         tag.put("Fixtures", ConfigTags.writeFixtures(fixtures));
         tag.put("Announcements", ConfigTags.writeAnnouncements(announcements));
         CompoundTag labelTag = new CompoundTag();
@@ -195,6 +226,20 @@ public final class ElevatorPlan {
         tag.put("Labels", labelTag);
         tag.putIntArray("Floors", floorYs());
         return tag;
+    }
+
+    private void readEntrances(CompoundTag tag) {
+        entrances.clear();
+        for (String key : tag.getAllKeys()) {
+            try {
+                int y = Integer.parseInt(key);
+                if (floors.contains(y)) {
+                    entrances.put(y, ConfigTags.parseEnum(FloorEntrances.class, tag.getString(key), FloorEntrances.FRONT));
+                }
+            } catch (NumberFormatException ignored) {
+                // 壊れた階は読み飛ばす
+            }
+        }
     }
 
     /** 速度の仕様 spec と、tag に書かれた加速度・ジャーク（なければ標準の値）。 */
@@ -210,7 +255,7 @@ public final class ElevatorPlan {
 
     public ShaftLayout layout() {
         int[] relative = floors.stream().mapToInt(y -> y - origin.getY()).toArray();
-        return new ShaftLayout(spec(), pitMode, counterweight, relative);
+        return new ShaftLayout(spec(), pitMode, counterweight(), relative, through ? entranceArray() : null);
     }
 
     /** 設置用ブロックからの相対位置 cell のワールドの位置。 */
@@ -266,8 +311,10 @@ public final class ElevatorPlan {
         plan.speed = readSpeed(ConfigTags.parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW), tag);
         plan.pitMode = ConfigTags.parseEnum(PitMode.class, tag.getString("Pit"), PitMode.REAL);
         plan.counterweight = ConfigTags.parseEnum(CounterweightPosition.class, tag.getString("Counterweight"), CounterweightPosition.REAR);
+        plan.through = tag.getBoolean("Through");
         plan.fixtures = ConfigTags.readFixtures(tag.getCompound("Fixtures"));
         plan.announcements = ConfigTags.readAnnouncements(tag.getCompound("Announcements"));
+        plan.readEntrances(tag.getCompound("Entrances"));
         CompoundTag labelTag = tag.getCompound("Labels");
         for (String key : labelTag.getAllKeys()) {
             try {
