@@ -20,8 +20,9 @@ class CarGeometryTest {
     @Test
     void dimensionsMatchSpec() {
         assertEquals(2.125, CarGeometry.interior(CarModel.P9).sizeX());
-        assertEquals(1.25, CarGeometry.interior(CarModel.P9).sizeZ());
-        assertEquals(1.625, CarGeometry.interior(CarModel.P11).sizeZ());
+        assertEquals(1.25, CarGeometry.interior(CarModel.P6).sizeZ());
+        assertEquals(1.625, CarGeometry.interior(CarModel.P9).sizeZ());
+        assertEquals(2.0, CarGeometry.interior(CarModel.P11).sizeZ());
         assertEquals(2.375, CarGeometry.interior(CarModel.P13).sizeX());
         assertEquals(2.0, CarGeometry.interior(CarModel.P13).sizeZ());
         assertEquals(3.4375, CarGeometry.interior(CarModel.P11).sizeY());

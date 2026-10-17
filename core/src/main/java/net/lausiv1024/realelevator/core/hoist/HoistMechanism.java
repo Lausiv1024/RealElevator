@@ -17,7 +17,8 @@ import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
  *
  * <p>ロープの経路（乗場から見て）：左上の固定端 → かごの左側のすき間を下りる → かご下の2つのシーブで左から右へくぐる →
  * かごの右側のすき間を上る → 頂部のそらせ車で奥へ向きを変える → 頂部の奥右にある巻上機の綱車 → 奥の釣合い重りの上のシーブ →
- * 頂部の固定端。かご側のロープとシーブは、かごが傾かないよう奥行きの中央に置く。
+ * 頂部の固定端。かご側のロープとシーブは、かごが傾かないよう奥行きの中央に置く。ただし、ガイドレールが中央の近くにある機種では、
+ * レールに当たらないよう、中央からレールと反対の向きへ少しずらす。
  * 巻上機の周速はかごの速度の2倍、釣合い重りはかごと逆向きに同じ速さで動く。
  */
 public final class HoistMechanism {
@@ -27,8 +28,6 @@ public final class HoistMechanism {
     private static final double MAX_ROPE_SPACING_PX = 2;
     /** ロープの太さ [px]。 */
     public static final double ROPE_WIDTH_PX = 1;
-    /** 昇降路の幅の半分 [px]。 */
-    private static final double SHAFT_HALF_WIDTH_PX = 24;
 
     /** かご下のシーブの、ロープが通る半径 [px]。 */
     private static final double CAR_SHEAVE_RADIUS_PX = 4;
@@ -85,8 +84,12 @@ public final class HoistMechanism {
     private final int bottomFloor;
     private final int topFloor;
 
+    /** 昇降路の幅の半分 [px]。 */
+    private final double shaftHalfWidthPx;
     /** かごの左右のすき間の中央の X の絶対値。かご側のロープ、そらせ車、巻上機の綱車がここに並ぶ。 */
     private final double ropeX;
+    /** かご側のロープ・シーブ・固定端の Z。かごの奥行きの中央か、ガイドレールを避けてずらした位置。 */
+    private final double carRopeZ;
     /** ロープの間隔とシーブの幅。 */
     private final double ropeSpacing;
     private final double sheaveWidth;
@@ -117,8 +120,10 @@ public final class HoistMechanism {
         Box exterior = CarGeometry.exterior(model);
         double halfWidthPx = exterior.maxX() * CarModel.PIXELS_PER_BLOCK;
         double carBackPx = exterior.minZ() * CarModel.PIXELS_PER_BLOCK;
-        double gapPx = SHAFT_HALF_WIDTH_PX - halfWidthPx;
-        this.ropeX = px(halfWidthPx + gapPx / 2);
+        this.shaftHalfWidthPx = model.shaftWidth() * CarModel.PIXELS_PER_BLOCK / 2.0;
+        double gapPx = shaftHalfWidthPx - halfWidthPx;
+        // ロープはすき間の中央（1pxの格子にそろえる）
+        this.ropeX = px(halfWidthPx + Math.floor(gapPx / 2));
         // 軸が X のシーブ（そらせ車・綱車）はかごの横のすき間の上にあるので、ロープもシーブもすき間に収める
         this.ropeSpacing = px(Math.min(MAX_ROPE_SPACING_PX, (gapPx - ROPE_WIDTH_PX) / (ROPE_COUNT - 1)));
         this.sheaveWidth = px(Math.min(MAX_SHEAVE_WIDTH_PX, gapPx));
@@ -127,6 +132,19 @@ public final class HoistMechanism {
         this.counterweightSheaveX = ropeX - px(COUNTERWEIGHT_SHEAVE_RADIUS_PX);
         ShaftLayout layout = new ShaftLayout(model, pitMode, new int[] {0, ShaftLayout.MIN_FLOOR_SPACING});
         this.backWallZ = layout.backRow() - 0.5 - layout.carZ();
+        this.carRopeZ = carRopeZ(layout.railRowZ() - layout.carZ());
+    }
+
+    /** ガイドレールの奥行きの半分と、かご側のロープ・シーブ・金具のうち一番太いものの半分 [px]。この和だけレールから離す。 */
+    private double carRopeZ(double railZ) {
+        double band = ropeSpacing * (ROPE_COUNT - 1) / 2 + px(ROPE_WIDTH_PX) / 2;
+        double clearance = px(ShaftLayout.RAIL_DEPTH_PX) / 2
+                + Math.max(band, Math.max(sheaveWidth / 2 + px(1), ropeSpacing + px(1)));
+        if (Math.abs(railZ) >= clearance - 1e-9) {
+            return 0;
+        }
+        // 中央に近いほうへ、レールの前か後ろに置く
+        return railZ >= 0 ? railZ - clearance : railZ + clearance;
     }
 
     private static double px(double pixels) {
@@ -153,7 +171,7 @@ public final class HoistMechanism {
 
     /** 昇降路の内側の全体（描画の範囲を決めるのに使う）。 */
     public Box shaftBounds() {
-        double half = px(SHAFT_HALF_WIDTH_PX);
+        double half = px(shaftHalfWidthPx);
         double front = CarGeometry.exterior(model).maxZ();
         return new Box(-half, bottom(), backWallZ, half, top(), front);
     }
@@ -199,7 +217,7 @@ public final class HoistMechanism {
         double bottom = carY + px(CAR_SHEAVE_Y_PX - 1);
         double top = carY - px(CarGeometry.FLOOR_PX);
         for (double x : new double[] {-carSheaveX(), carSheaveX()}) {
-            boxes.addAll(sheaveBrackets(x, bottom, top, 0));
+            boxes.addAll(sheaveBrackets(x, bottom, top, carRopeZ));
         }
         return boxes;
     }
@@ -223,7 +241,7 @@ public final class HoistMechanism {
     /** 頂部のそらせ車の中心。かごの右側を上ってきたロープを、上端から奥へ水平に送る。 */
     private Point deflectorCentre() {
         double r = px(DEFLECTOR_RADIUS_PX);
-        return new Point(ropeX, topRopeY() - r, -r);
+        return new Point(ropeX, topRopeY() - r, carRopeZ - r);
     }
 
     /** 巻上機の綱車の中心。 */
@@ -258,7 +276,7 @@ public final class HoistMechanism {
         double halfX = px(1.5);
         double halfZ = ropeSpacing + px(1);
         return List.of(
-                new Box(-ropeX - halfX, y0, -halfZ, -ropeX + halfX, top(), halfZ),
+                new Box(-ropeX - halfX, y0, carRopeZ - halfZ, -ropeX + halfX, top(), carRopeZ + halfZ),
                 new Box(counterweightDeadEndX() - halfX, y0, counterweightZ - halfZ,
                         counterweightDeadEndX() + halfX, top(), counterweightZ + halfZ));
     }
@@ -285,8 +303,8 @@ public final class HoistMechanism {
         double carSheaveY = carY + px(CAR_SHEAVE_Y_PX);
         return List.of(
                 // ロープはかご下を左から右へ進む（下端が +X へ動く）
-                new Sheave(new Point(-carSheaveX(), carSheaveY, 0), carR - ropeHalf, sheaveWidth, Axis.Z, d / carR),
-                new Sheave(new Point(carSheaveX(), carSheaveY, 0), carR - ropeHalf, sheaveWidth, Axis.Z, d / carR),
+                new Sheave(new Point(-carSheaveX(), carSheaveY, carRopeZ), carR - ropeHalf, sheaveWidth, Axis.Z, d / carR),
+                new Sheave(new Point(carSheaveX(), carSheaveY, carRopeZ), carR - ropeHalf, sheaveWidth, Axis.Z, d / carR),
                 // かご側から上ってきたロープが、上端を奥（−Z）へ進む
                 new Sheave(deflectorCentre(), deflectorR - ropeHalf, sheaveWidth, Axis.X, -2 * d / deflectorR),
                 new Sheave(machineCentre(), machineR - ropeHalf, sheaveWidth, Axis.X, -2 * d / machineR),
@@ -320,11 +338,11 @@ public final class HoistMechanism {
         for (int i = 0; i < ROPE_COUNT; i++) {
             double o = (i - (ROPE_COUNT - 1) / 2.0) * ropeSpacing;
             List<Point> rope = new ArrayList<>();
-            rope.add(new Point(-ropeX, hitchY, o));
+            rope.add(new Point(-ropeX, hitchY, carRopeZ + o));
             // かご下の左のシーブ：左端（180°）から下端（270°）へ
-            arcXY(rope, -carSheaveX(), carSheaveY, o, carR, 180, 270);
+            arcXY(rope, -carSheaveX(), carSheaveY, carRopeZ + o, carR, 180, 270);
             // かご下の右のシーブ：下端（270°）から右端（360°）へ
-            arcXY(rope, carSheaveX(), carSheaveY, o, carR, 270, 360);
+            arcXY(rope, carSheaveX(), carSheaveY, carRopeZ + o, carR, 270, 360);
             // そらせ車：手前（+Z）から上端へ。ここからロープは軸（X）の方向に並ぶ
             arcZY(rope, deflector.x() + o, deflector.y(), deflector.z(), deflectorR, 0, 90);
             // 巻上機の綱車：上端から奥へ

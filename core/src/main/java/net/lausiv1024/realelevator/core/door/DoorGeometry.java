@@ -14,7 +14,7 @@ import net.lausiv1024.realelevator.core.car.CarModel;
  * 開くと、戸は出入口の両脇の袖壁（乗場では三方枠）の裏へ滑り込む。
  *
  * <p>乗場の壁は1ブロックの厚みの列で、乗場の戸はその列の昇降路側の面に付く。壁の列のうち、出入口のまわり
- * （幅3ブロック、高さ{@value #LANDING_FRAME_HEIGHT}ブロック）は三方枠で、出入口だけが開いている。
+ * （昇降路と同じ幅3または4ブロック、高さ{@value #LANDING_FRAME_HEIGHT}ブロック）は三方枠で、出入口だけが開いている。
  * 乗場のボタン・階床表示器・ホールランタンは、三方枠の乗場側の面（{@link #landingFace}）に付ける。
  */
 public final class DoorGeometry {
@@ -22,8 +22,6 @@ public final class DoorGeometry {
     public static final int PANEL_THICKNESS_PX = 1;
     /** かごの敷居と乗場の敷居のすき間（実機 約30 mm）。 */
     public static final int SILL_GAP_PX = 1;
-    /** 三方枠の幅の半分 [ブロック]。かごの中心の列と、その左右の列で3ブロック。 */
-    public static final double LANDING_FRAME_HALF_WIDTH = 1.5;
     /** 三方枠の高さ [ブロック]。 */
     public static final int LANDING_FRAME_HEIGHT = 4;
 
@@ -33,6 +31,11 @@ public final class DoorGeometry {
     }
 
     private DoorGeometry() {
+    }
+
+    /** 三方枠の幅の半分 [ブロック]。三方枠は昇降路と同じ幅で、かごの中心がその中央に来る。 */
+    public static double landingFrameHalfWidth(CarModel model) {
+        return model.shaftWidth() / 2.0;
     }
 
     /**
@@ -59,7 +62,7 @@ public final class DoorGeometry {
      */
     public static int frameJambCenter2Px(CarModel model, boolean right) {
         int entranceEdge = (int) Math.round(CarGeometry.entrance(model).maxX() * CarModel.PIXELS_PER_BLOCK);
-        int frameEdge = (int) Math.round(LANDING_FRAME_HALF_WIDTH * CarModel.PIXELS_PER_BLOCK);
+        int frameEdge = (int) Math.round(landingFrameHalfWidth(model) * CarModel.PIXELS_PER_BLOCK);
         int center2 = entranceEdge + frameEdge;
         return right ? center2 : -center2;
     }
@@ -77,7 +80,7 @@ public final class DoorGeometry {
         Box entrance = CarGeometry.entrance(model);
         double back = travelBounds(model, Side.LANDING).maxZ();
         double face = landingFace(model);
-        double half = LANDING_FRAME_HALF_WIDTH;
+        double half = landingFrameHalfWidth(model);
         double top = LANDING_FRAME_HEIGHT;
         return List.of(
                 new Box(-half, 0, back, entrance.minX(), top, face),

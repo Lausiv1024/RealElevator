@@ -6,6 +6,7 @@ import net.lausiv1024.realelevator.RealElevator;
 import net.lausiv1024.realelevator.block.ControllerBlockEntity;
 import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.block.InstallerBlockEntity;
+import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
@@ -111,7 +112,7 @@ public class InstallGameTests {
     public static void installIsRefusedWhileTheShaftIsBlocked(GameTestHelper helper) {
         InstallerBlockEntity panel = placePanel(helper);
         // 昇降路の中に石を1つ置く
-        BlockPos blocker = panel.cellPos(new ShaftLayout.Cell(ShaftLayout.CAR_COLUMN, 2, -1));
+        BlockPos blocker = panel.cellPos(new ShaftLayout.Cell(-2, 2, -1));
         helper.getLevel().setBlockAndUpdate(blocker, Blocks.STONE.defaultBlockState());
         helper.assertTrue(panel.obstructions(helper.getLevel()).equals(List.of(blocker)), "the stone should be reported");
         panel.install();
@@ -255,5 +256,28 @@ public class InstallGameTests {
         panel.starContainer().setItem(0, new ItemStack(Items.NETHER_STAR));
         helper.setBlock(PANEL, Blocks.AIR);
         helper.succeedWhen(() -> helper.assertItemEntityPresent(Items.NETHER_STAR, PANEL, 2.0));
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 400)
+    public static void aWideP24InstallsInAFourBlockShaft(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        CompoundTag settings = panel.settingsTag();
+        settings.putString("Model", CarModel.P24.name());
+        panel.applySettings(settings);
+        ElevatorPlan plan = panel.plan();
+        ShaftLayout layout = plan.layout();
+        helper.assertTrue(layout.leftColumn() == -4, "the shaft should be four blocks wide");
+        helper.assertTrue(panel.obstructions(helper.getLevel()).isEmpty(), "the shaft should be clear: " + panel.obstructions(helper.getLevel()));
+        panel.install();
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        BlockPos panelPos = helper.absolutePos(PANEL);
+        // 出入口の中心は、設置用ブロックの左の4ブロックの中央（ブロックの境目）
+        helper.assertTrue(Math.abs(car.getX() - (panelPos.getX() + 0.5 - 2.5)) < 1e-9, "x: " + car.getX());
+        helper.assertTrue(car.model() == CarModel.P24, "model");
+        for (ShaftLayout.Rail rail : layout.rails()) {
+            helper.assertTrue(helper.getLevel().getBlockState(plan.cellPos(rail.cell())).is(ModBlocks.GUIDE_RAIL.get()), "rail at " + rail);
+        }
+        helper.assertTrue(car.pressCarCall(1) == PressResult.REGISTERED, "the call should be registered");
+        helper.succeedWhen(() -> helper.assertTrue(!car.isMoving() && car.getY() == panelPos.getY() + RISE, "not arrived yet"));
     }
 }

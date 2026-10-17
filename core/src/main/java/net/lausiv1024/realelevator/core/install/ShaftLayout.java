@@ -17,16 +17,14 @@ import net.lausiv1024.realelevator.core.panel.FixtureConfig;
  * ブロックは中心の座標（整数）で表す。高さは制御盤（最下階の床面）からのブロック数。
  *
  * <ul>
- * <li>制御盤は乗場の壁の列（Z=0）にある。出入口は乗場から見て制御盤の2ブロック左（X=−2）が中心で、
- * 三方枠は X=−3〜−1 の3ブロック、高さ{@value DoorGeometry#LANDING_FRAME_HEIGHT}ブロック。</li>
- * <li>乗場の戸は壁の列の昇降路側の面（Z=−0.5）に付き、かごはその奥（−Z 側）にある。昇降路は X=−3〜−1 の幅3ブロックで、
- * かごの奥行きに釣合い重りの1列を足した奥行き。</li>
+ * <li>制御盤は乗場の壁の列（Z=0）にある。昇降路と三方枠は、制御盤の左隣から左へ、機種で決まる幅（3または4ブロック）だけ並ぶ
+ * （幅3ブロックなら X=−3〜−1、4ブロックなら X=−4〜−1）。出入口はその中央で、三方枠の高さは{@value DoorGeometry#LANDING_FRAME_HEIGHT}ブロック。</li>
+ * <li>乗場の戸は壁の列の昇降路側の面（Z=−0.5）に付き、かごはその奥（−Z 側）にある。昇降路の奥行きは、
+ * かごの奥行きに釣合い重りの1列を足した分。</li>
  * <li>ガイドレールは、かごの中心の列で、昇降路の左右の端のブロックに置く。</li>
  * </ul>
  */
 public final class ShaftLayout {
-    /** 出入口の中心（かごの中心）の、制御盤からの X。 */
-    public static final int CAR_COLUMN = -2;
     /** 停止階の間隔の最小値。かごの外形の高さ（約3.7ブロック）より広くする。 */
     public static final int MIN_FLOOR_SPACING = 4;
     /**
@@ -116,9 +114,19 @@ public final class ShaftLayout {
         return allowsOverDoorHallFixtures(floors) ? config : config.withoutOverDoorHallFixtures();
     }
 
-    /** かごの原点（かご内の床面の中心）の X。 */
+    /** 昇降路の左端の列の X。 */
+    public int leftColumn() {
+        return -model.shaftWidth();
+    }
+
+    /** 昇降路の右端の列の X（制御盤の左隣）。 */
+    public int rightColumn() {
+        return -1;
+    }
+
+    /** かごの原点（かご内の床面の中心）の X。昇降路の幅の中央（幅4ブロックならブロックの境目）。 */
     public double carX() {
-        return CAR_COLUMN;
+        return (leftColumn() + rightColumn()) / 2.0;
     }
 
     /** かごの原点の Z。乗場の戸が壁の列の昇降路側の面（Z=−0.5）に来るように置く。 */
@@ -149,7 +157,7 @@ public final class ShaftLayout {
     public List<Cell> requiredClearCells() {
         List<Cell> cells = new ArrayList<>();
         for (int y = bottom(); y < top(); y++) {
-            for (int x = CAR_COLUMN - 1; x <= CAR_COLUMN + 1; x++) {
+            for (int x = leftColumn(); x <= rightColumn(); x++) {
                 for (int z = backRow(); z <= -1; z++) {
                     cells.add(new Cell(x, y, z));
                 }
@@ -157,7 +165,7 @@ public final class ShaftLayout {
         }
         for (int floor : floors) {
             for (int y = floor; y < floor + DoorGeometry.LANDING_FRAME_HEIGHT; y++) {
-                for (int x = CAR_COLUMN - 1; x <= CAR_COLUMN + 1; x++) {
+                for (int x = leftColumn(); x <= rightColumn(); x++) {
                     cells.add(new Cell(x, y, 0));
                 }
             }
@@ -186,13 +194,18 @@ public final class ShaftLayout {
      * ガイドレール。左右とも、ピットの底から天井まで。ただし右のレールは、頂部のそらせ車（昇降路の機構）と重ならないよう、
      * 天井の1ブロック下で止める。
      */
+    /** ガイドレールの列（かごの中心の列）の Z。 */
+    public int railRowZ() {
+        return (int) Math.floor(carZ() + 0.5);
+    }
+
     public List<Rail> rails() {
-        int row = (int) Math.floor(carZ() + 0.5);
+        int row = railRowZ();
         List<Rail> rails = new ArrayList<>();
         for (int y = bottom(); y < top(); y++) {
-            rails.add(new Rail(new Cell(CAR_COLUMN - 1, y, row), true));
+            rails.add(new Rail(new Cell(leftColumn(), y, row), true));
             if (y < top() - 1) {
-                rails.add(new Rail(new Cell(CAR_COLUMN + 1, y, row), false));
+                rails.add(new Rail(new Cell(rightColumn(), y, row), false));
             }
         }
         return rails;
@@ -208,7 +221,7 @@ public final class ShaftLayout {
     public List<Cell> controllerCells() {
         List<Cell> cells = new ArrayList<>();
         for (int y = top() - CONTROLLER_HEIGHT; y < top(); y++) {
-            cells.add(new Cell(CAR_COLUMN - 1, y, backRow()));
+            cells.add(new Cell(leftColumn(), y, backRow()));
         }
         return cells;
     }

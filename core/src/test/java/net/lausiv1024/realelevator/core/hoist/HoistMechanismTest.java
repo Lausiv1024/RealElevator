@@ -136,8 +136,9 @@ class HoistMechanismTest {
     void carSheavesSitUnderTheMiddleOfTheCar() {
         for (HoistMechanism hoist : all()) {
             List<Sheave> sheaves = hoist.sheaves(70);
-            assertEquals(0, sheaves.get(0).centre().z(), EPS);
-            assertEquals(0, sheaves.get(1).centre().z(), EPS);
+            // 中央か、レールを避けて6pxまでずらした位置
+            assertTrue(Math.abs(sheaves.get(0).centre().z()) <= 6.0 / CarModel.PIXELS_PER_BLOCK + EPS, hoist.model() + " " + sheaves.get(0).centre());
+            assertEquals(sheaves.get(0).centre().z(), sheaves.get(1).centre().z(), EPS);
             assertEquals(-sheaves.get(0).centre().x(), sheaves.get(1).centre().x(), EPS);
         }
     }
@@ -191,6 +192,25 @@ class HoistMechanismTest {
                 for (Box box : hoist.hitches()) {
                     for (Box rail : rails) {
                         assertFalse(box.intersects(rail), model + " " + pit + " hitch hits a rail");
+                    }
+                }
+                double half = HoistMechanism.ROPE_WIDTH_PX / CarModel.PIXELS_PER_BLOCK / 2;
+                for (List<Point> rope : hoist.ropes(y)) {
+                    for (int i = 1; i < rope.size(); i++) {
+                        Point a = rope.get(i - 1);
+                        Point b = rope.get(i);
+                        for (int k = 0; k <= 32; k++) {
+                            double t = k / 32.0;
+                            double px = a.x() + (b.x() - a.x()) * t;
+                            double py = a.y() + (b.y() - a.y()) * t;
+                            double pz = a.z() + (b.z() - a.z()) * t;
+                            for (Box rail : rails) {
+                                boolean in = px > rail.minX() - half + EPS && px < rail.maxX() + half - EPS
+                                        && py > rail.minY() && py < rail.maxY()
+                                        && pz > rail.minZ() - half + EPS && pz < rail.maxZ() + half - EPS;
+                                assertFalse(in, model + " " + pit + " a rope passes through a rail at y=" + y + " (" + px + ", " + pz + ")");
+                            }
+                        }
                     }
                 }
             }

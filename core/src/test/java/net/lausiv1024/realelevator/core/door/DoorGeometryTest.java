@@ -98,7 +98,7 @@ class DoorGeometryTest {
             assertFalse(box.intersects(new Box(entrance.minX(), 0, travel.maxZ(), entrance.maxX(), entrance.maxY(), face)));
             area += box.sizeX() * box.sizeY();
         }
-        // 幅3ブロック・高さ4ブロックから出入口を除いた面積をちょうど埋める
-        assertEquals(3 * 4 - entrance.sizeX() * entrance.maxY(), area, EPS);
+        // 昇降路と同じ幅・高さ4ブロックから出入口を除いた面積をちょうど埋める
+        assertEquals(model.shaftWidth() * 4 - entrance.sizeX() * entrance.maxY(), area, EPS);
     }
 }

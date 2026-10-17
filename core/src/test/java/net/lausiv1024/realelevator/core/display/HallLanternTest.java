@@ -100,7 +100,7 @@ class HallLanternTest {
         assertTrue(up.minY() > down.maxY());
         assertEquals(up.minX(), down.minX(), EPS);
         // 左側（ボタンと反対側）の三方枠の脇
-        assertTrue(up.minX() >= -DoorGeometry.LANDING_FRAME_HALF_WIDTH && up.maxX() <= CarGeometry.entrance(model).minX());
+        assertTrue(up.minX() >= -DoorGeometry.landingFrameHalfWidth(model) && up.maxX() <= CarGeometry.entrance(model).minX());
         assertTrue(up.maxX() < ButtonLayout.hallButtons(model, 1, 3).get(0).box().minX());
         assertEquals(DoorGeometry.landingFace(model), up.minZ(), EPS);
     }
@@ -130,7 +130,7 @@ class HallLanternTest {
     @ParameterizedTest
     @EnumSource(CarModel.class)
     void everyHallFixtureFitsOnTheFrameFace(CarModel model) {
-        double half = DoorGeometry.LANDING_FRAME_HALF_WIDTH;
+        double half = DoorGeometry.landingFrameHalfWidth(model);
         double top = DoorGeometry.LANDING_FRAME_HEIGHT;
         for (FixtureConfig.HallIndicator indicator : FixtureConfig.HallIndicator.values()) {
             for (FixtureConfig.HallLanternPlacement lantern : FixtureConfig.HallLanternPlacement.values()) {

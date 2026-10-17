@@ -41,7 +41,8 @@ class ShaftLayoutTest {
         assertEquals(-0.5, landingDoorBack, EPS);
         // 三方枠の乗場側の面は、壁の列（制御盤の列）の乗場側の面とそろう
         assertEquals(0.5, layout.carZ() + DoorGeometry.landingFace(model), EPS);
-        assertEquals(ShaftLayout.CAR_COLUMN, layout.carX(), EPS);
+        assertEquals((layout.leftColumn() + layout.rightColumn()) / 2.0, layout.carX(), EPS);
+        assertEquals(-model.shaftWidth(), layout.leftColumn());
     }
 
     @ParameterizedTest
@@ -135,7 +136,7 @@ class ShaftLayoutTest {
             for (Cell cell : cells) {
                 assertTrue(clear.contains(cell), "the controller should be inside the shaft: " + cell);
                 assertFalse(rails.contains(cell), "the controller should not replace a rail: " + cell);
-                assertEquals(ShaftLayout.CAR_COLUMN - 1, cell.x());
+                assertEquals(layout.leftColumn(), cell.x());
                 assertEquals(layout.backRow(), cell.z());
             }
             assertEquals(layout.top() - 1, cells.get(cells.size() - 1).y());
