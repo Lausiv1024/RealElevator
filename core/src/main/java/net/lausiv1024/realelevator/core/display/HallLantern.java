@@ -7,6 +7,7 @@ import java.util.Set;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
@@ -99,6 +100,10 @@ public final class HallLantern {
      * @param terminal 最上階または最下階か
      */
     public static List<Section> sections(CarModel model, FixtureConfig config, boolean terminal) {
+        return sections(CarSpec.of(model), config, terminal);
+    }
+
+    public static List<Section> sections(CarSpec model, FixtureConfig config, boolean terminal) {
         if (config.hallLantern() == FixtureConfig.HallLanternPlacement.NONE) {
             return List.of();
         }

@@ -10,6 +10,8 @@ import javax.annotation.Nullable;
 
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.display.HallLantern;
@@ -53,7 +55,7 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
 
     public void setup(ElevatorCarEntity car) {
         this.entityData.set(DATA_CAR, Optional.of(car.getUUID()));
-        this.entityData.set(DATA_MODEL, (byte) car.model().ordinal());
+        this.entityData.set(DATA_MODEL, CarShapes.encode(car.spec()));
         this.entityData.set(DATA_FACING, car.facing());
         setBoundingBox(makeBoundingBox());
     }
@@ -61,13 +63,17 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         builder.define(DATA_CAR, Optional.empty());
-        builder.define(DATA_MODEL, (byte) CarModel.P11.ordinal());
+        builder.define(DATA_MODEL, CarShapes.encode(CarSpec.of(CarModel.P11)));
         builder.define(DATA_FACING, Direction.SOUTH);
     }
 
     public CarModel model() {
-        CarModel[] models = CarModel.values();
-        return models[Mth.clamp(this.entityData.get(DATA_MODEL), 0, models.length - 1)];
+        return spec().model();
+    }
+
+    /** 機種と扉の方式（かごと同じ）。 */
+    public CarSpec spec() {
+        return CarShapes.decode(this.entityData.get(DATA_MODEL));
     }
 
     public Direction facing() {
@@ -109,10 +115,10 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     /** 当たり判定の箱（ワールド座標）。戸と三方枠。 */
     public List<AABB> collisionBoxesAt(long tick) {
         List<AABB> boxes = new ArrayList<>();
-        for (Box box : CarShapes.doorPanels(model(), facing(), DoorGeometry.Side.LANDING, fractionAt(tick))) {
+        for (Box box : CarShapes.doorPanels(spec(), facing(), DoorGeometry.Side.LANDING, fractionAt(tick))) {
             boxes.add(CarShapes.toAabb(box, getX(), getY(), getZ()));
         }
-        for (Box box : CarShapes.landingFrame(model(), facing())) {
+        for (Box box : CarShapes.landingFrame(spec(), facing())) {
             boxes.add(CarShapes.toAabb(box, getX(), getY(), getZ()));
         }
         return boxes;
@@ -138,7 +144,7 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     public List<Button> buttons() {
         ElevatorCarEntity car = car();
         int floor = floorIndex();
-        return car != null && floor >= 0 ? ButtonLayout.hallButtons(model(), floor, car.floorCount()) : List.of();
+        return car != null && floor >= 0 ? ButtonLayout.hallButtons(spec(), floor, car.floorCount()) : List.of();
     }
 
     @Override
@@ -180,21 +186,21 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     @Override
     protected AABB makeBoundingBox() {
         // 描画のカリングに使うので、戸が動く範囲、三方枠、ボタン（中間階の▲▼）、階床表示器、ホールランタンを含める
-        AABB bounds = CarShapes.toAabb(CarShapes.doorTravelBounds(model(), facing(), DoorGeometry.Side.LANDING), getX(), getY(), getZ());
-        for (Box box : CarShapes.landingFrame(model(), facing())) {
+        AABB bounds = CarShapes.toAabb(CarShapes.doorTravelBounds(spec(), facing(), DoorGeometry.Side.LANDING), getX(), getY(), getZ());
+        for (Box box : CarShapes.landingFrame(spec(), facing())) {
             bounds = bounds.minmax(CarShapes.toAabb(box, getX(), getY(), getZ()));
         }
         int turns = facing().get2DDataValue();
-        for (Button button : ButtonLayout.hallButtons(model(), 1, 3)) {
+        for (Button button : ButtonLayout.hallButtons(spec(), 1, 3)) {
             bounds = bounds.minmax(CarShapes.toAabb(button.box().rotateQuarterTurns(turns), getX(), getY(), getZ()));
         }
         // 階床表示器とホールランタンは、どの位置に付けても入るようにする
         for (FixtureConfig.HallIndicator indicatorPlacement : FixtureConfig.HallIndicator.values()) {
             for (FixtureConfig.HallLanternPlacement lanternPlacement : FixtureConfig.HallLanternPlacement.values()) {
                 FixtureConfig config = FixtureConfig.DEFAULT.withHallIndicator(indicatorPlacement).withHallLantern(lanternPlacement);
-                Box indicator = FloorIndicator.hall(model(), config, "", TravelDirection.NONE).face();
+                Box indicator = FloorIndicator.hall(spec(), config, "", TravelDirection.NONE).face();
                 bounds = bounds.minmax(CarShapes.toAabb(indicator.rotateQuarterTurns(turns), getX(), getY(), getZ()));
-                for (HallLantern.Section section : HallLantern.sections(model(), config, false)) {
+                for (HallLantern.Section section : HallLantern.sections(spec(), config, false)) {
                     bounds = bounds.minmax(CarShapes.toAabb(section.box().rotateQuarterTurns(turns), getX(), getY(), getZ()));
                 }
             }
@@ -223,6 +229,7 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     protected void addAdditionalSaveData(CompoundTag tag) {
         carUuid().ifPresent(uuid -> tag.putUUID("Car", uuid));
         tag.putString("Model", model().name());
+        tag.putString("Door", spec().door().name());
         tag.putString("Facing", facing().getSerializedName());
     }
 
@@ -235,7 +242,13 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         } catch (IllegalArgumentException e) {
             model = CarModel.P11;
         }
-        this.entityData.set(DATA_MODEL, (byte) model.ordinal());
+        DoorType door;
+        try {
+            door = DoorType.valueOf(tag.getString("Door"));
+        } catch (IllegalArgumentException e) {
+            door = DoorType.CENTER;
+        }
+        this.entityData.set(DATA_MODEL, CarShapes.encode(new CarSpec(model, door)));
         Direction facing = Direction.byName(tag.getString("Facing"));
         this.entityData.set(DATA_FACING, facing != null && facing.getAxis().isHorizontal() ? facing : Direction.SOUTH);
         setBoundingBox(makeBoundingBox());

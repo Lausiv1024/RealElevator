@@ -47,12 +47,12 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
         }
         double fraction = car.doorFractionAt(car.renderTick(partialTick));
         TextureAtlasSprite door = BoxRenderer.blockSprite(DOOR);
-        for (Box panel : CarShapes.doorPanels(car.model(), car.facing(), DoorGeometry.Side.CAR, fraction)) {
+        for (Box panel : CarShapes.doorPanels(car.spec(), car.facing(), DoorGeometry.Side.CAR, fraction)) {
             BoxRenderer.renderBox(pose, consumer, panel, door, packedLight);
         }
         BoxRenderer.renderButtons(pose, consumer, car, car.facing().get2DDataValue(), packedLight);
         double tick = car.renderTick(partialTick);
-        for (FloorIndicator.Frame indicator : FloorIndicator.car(car.model(), car.floorCount(), car.fixtures(),
+        for (FloorIndicator.Frame indicator : FloorIndicator.car(car.spec(), car.floorCount(), car.fixtures(),
                 car.indicatorLabel(tick), car.indicatorDirection())) {
             BoxRenderer.renderIndicator(pose, consumer, indicator, car.facing().get2DDataValue(), packedLight);
         }

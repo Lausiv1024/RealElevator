@@ -7,6 +7,8 @@ import net.lausiv1024.realelevator.block.ControllerBlockEntity;
 import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.block.InstallerBlockEntity;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
@@ -279,5 +281,46 @@ public class InstallGameTests {
         }
         helper.assertTrue(car.pressCarCall(1) == PressResult.REGISTERED, "the call should be registered");
         helper.succeedWhen(() -> helper.assertTrue(!car.isMoving() && car.getY() == panelPos.getY() + RISE, "not arrived yet"));
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 600)
+    public static void sideOpeningAndFourPanelDoorsOpenAndClose(GameTestHelper helper) {
+        for (CarSpec spec : List.of(new CarSpec(CarModel.P11, DoorType.SIDE_LEFT), new CarSpec(CarModel.P24, DoorType.FOUR_CENTER))) {
+            helper.assertTrue(spec.door() != DoorType.CENTER, "the door type should be available: " + spec);
+        }
+        InstallerBlockEntity panel = placePanel(helper);
+        CompoundTag settings = panel.settingsTag();
+        settings.putString("Model", CarModel.P24.name());
+        settings.putString("Door", DoorType.FOUR_CENTER.name());
+        panel.applySettings(settings);
+        ElevatorPlan plan = panel.plan();
+        helper.assertTrue(plan.spec().door() == DoorType.FOUR_CENTER, "4CO should be chosen for P-24");
+        panel.install();
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        helper.assertTrue(car.spec().equals(new CarSpec(CarModel.P24, DoorType.FOUR_CENTER)), "the car should keep the door type: " + car.spec());
+        long doors = ElevatorTracker.landingDoors(helper.getLevel()).stream()
+                .filter(door -> door.carUuid().filter(car.getUUID()::equals).isPresent())
+                .filter(door -> door.spec().equals(car.spec())).count();
+        helper.assertTrue(doors == 2, "the landing doors should share the door type: " + doors);
+        // 4枚の戸で当たり判定ができ、開いて閉じる
+        helper.assertTrue(car.collisionBoxesAt(helper.getLevel().getGameTime()).size() == car.parts().size() + 4, "four car door panels");
+        car.pressCarCall(1);
+        BlockPos panelPos = helper.absolutePos(PANEL);
+        helper.succeedWhen(() -> helper.assertTrue(!car.isMoving() && car.getY() == panelPos.getY() + RISE
+                && car.doorFractionAt(helper.getLevel().getGameTime()) > 0.99, "the car should arrive and open"));
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void fourPanelDoorsAreNotOfferedForSmallModels(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        CompoundTag settings = panel.settingsTag();
+        settings.putString("Model", CarModel.P13.name());
+        settings.putString("Door", DoorType.FOUR_CENTER.name());
+        panel.applySettings(settings);
+        helper.assertTrue(panel.plan().spec().door() == DoorType.CENTER, "P-13 should fall back to CO");
+        settings.putString("Door", DoorType.SIDE_RIGHT.name());
+        panel.applySettings(settings);
+        helper.assertTrue(panel.plan().spec().door() == DoorType.SIDE_RIGHT, "2S should be chosen for P-13");
+        helper.succeed();
     }
 }

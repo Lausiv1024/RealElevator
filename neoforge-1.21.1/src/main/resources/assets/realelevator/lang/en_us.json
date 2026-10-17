@@ -71,5 +71,10 @@
   "gui.realelevator.renewal.confirm.title": "Dismantle this elevator?",
   "gui.realelevator.renewal.confirm.message": "The car, hall doors, guide rails and controller are removed, and the installer and Nether Star are returned.",
   "message.realelevator.wrench.no_controller": "This elevator has no controller (spawned by a command, or installed by an old version)",
-  "message.realelevator.wrench.dismantled": "The elevator was dismantled"
+  "message.realelevator.wrench.dismantled": "The elevator was dismantled",
+  "gui.realelevator.panel.door": "Doors",
+  "gui.realelevator.door.center": "2-panel center (CO)",
+  "gui.realelevator.door.side_left": "2-panel side, left (2S)",
+  "gui.realelevator.door.side_right": "2-panel side, right (2S)",
+  "gui.realelevator.door.four_center": "4-panel center (4CO)"
 }

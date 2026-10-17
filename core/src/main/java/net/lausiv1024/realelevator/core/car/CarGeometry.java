@@ -28,19 +28,24 @@ public final class CarGeometry {
     private CarGeometry() {
     }
 
+    /** 中央開き（CO）のかごの部位。 */
+    public static List<Part> parts(CarModel model) {
+        return parts(CarSpec.of(model));
+    }
+
     /**
      * かごを構成する部位。正面の袖壁は出入口の分を空け、左右の袖壁とトランサムに分ける。
-     * 出入口は正面の中央に置く。左右の袖壁の幅が1px異なる場合は、+X 側を広くする。
+     * 出入口の位置は扉の方式で決まる（{@link CarSpec}）。
      */
-    public static List<Part> parts(CarModel model) {
+    public static List<Part> parts(CarSpec model) {
         int halfWidth = model.interiorWidthPx() / 2;
         int halfDepth = model.interiorDepthPx() / 2;
         int height = CarModel.CEILING_HEIGHT_PX;
         int outerX = halfWidth + WALL_PX;
         int outerZ = halfDepth + WALL_PX;
 
-        int entranceMinX = entranceMinXPx(model);
-        int entranceMaxX = entranceMinX + model.entranceWidthPx();
+        int entranceMinX = model.entranceMinXPx();
+        int entranceMaxX = model.entranceMaxXPx();
 
         return List.of(
                 new Part(PartType.FLOOR, Box.ofPixels(-outerX, -FLOOR_PX, -outerZ, outerX, 0, outerZ)),
@@ -57,15 +62,23 @@ public final class CarGeometry {
                         entranceMaxX, height, outerZ)));
     }
 
-    /** 出入口（正面の袖壁の開口部）。奥行は袖壁の厚みの分。 */
+    /** 中央開き（CO）のかごの出入口。 */
     public static Box entrance(CarModel model) {
-        int halfDepth = model.interiorDepthPx() / 2;
-        int minX = entranceMinXPx(model);
-        return Box.ofPixels(minX, 0, halfDepth, minX + model.entranceWidthPx(), CarModel.ENTRANCE_HEIGHT_PX, halfDepth + WALL_PX);
+        return entrance(CarSpec.of(model));
     }
 
-    private static int entranceMinXPx(CarModel model) {
-        return -model.interiorWidthPx() / 2 + (model.interiorWidthPx() - model.entranceWidthPx()) / 2;
+    /** 出入口（正面の袖壁の開口部）。奥行は袖壁の厚みの分。 */
+    public static Box entrance(CarSpec spec) {
+        int halfDepth = spec.interiorDepthPx() / 2;
+        return Box.ofPixels(spec.entranceMinXPx(), 0, halfDepth, spec.entranceMaxXPx(), CarModel.ENTRANCE_HEIGHT_PX, halfDepth + WALL_PX);
+    }
+
+    public static Box interior(CarSpec spec) {
+        return interior(spec.model());
+    }
+
+    public static Box exterior(CarSpec spec) {
+        return exterior(spec.model());
     }
 
     /** かご内の空間。 */

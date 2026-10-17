@@ -41,27 +41,27 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
         VertexConsumer consumer = bufferSource.getBuffer(RenderType.entityCutout(TextureAtlas.LOCATION_BLOCKS));
         TextureAtlasSprite sprite = BoxRenderer.blockSprite(ElevatorCarRenderer.DOOR);
         double fraction = door.renderFraction(partialTick);
-        for (Box panel : CarShapes.doorPanels(door.model(), door.facing(), DoorGeometry.Side.LANDING, fraction)) {
+        for (Box panel : CarShapes.doorPanels(door.spec(), door.facing(), DoorGeometry.Side.LANDING, fraction)) {
             BoxRenderer.renderBox(pose, consumer, panel, sprite, packedLight);
         }
         TextureAtlasSprite frame = BoxRenderer.blockSprite(FRAME);
-        for (Box box : CarShapes.landingFrame(door.model(), door.facing())) {
+        for (Box box : CarShapes.landingFrame(door.spec(), door.facing())) {
             BoxRenderer.renderBox(pose, consumer, box, frame, packedLight);
         }
         BoxRenderer.renderButtons(pose, consumer, door, door.facing().get2DDataValue(), packedLight);
         // かごが読み込まれていなければ、表示器は消灯したままにする
         ElevatorCarEntity car = door.car();
         FloorIndicator.Frame indicator = car != null
-                ? FloorIndicator.hall(door.model(), car.fixtures(), car.indicatorLabel(car.renderTick(partialTick)),
+                ? FloorIndicator.hall(door.spec(), car.fixtures(), car.indicatorLabel(car.renderTick(partialTick)),
                         car.indicatorDirection())
-                : FloorIndicator.hall(door.model(), FixtureConfig.DEFAULT, "", TravelDirection.NONE);
+                : FloorIndicator.hall(door.spec(), FixtureConfig.DEFAULT, "", TravelDirection.NONE);
         BoxRenderer.renderIndicator(pose, consumer, indicator, door.facing().get2DDataValue(), packedLight);
         FixtureConfig fixtures = car != null ? car.fixtures() : FixtureConfig.DEFAULT;
         // 点灯する段は、点滅の消灯中は消す
         Set<TravelDirection> lit = car != null && HallLantern.isBlinkOn(car.lanternTicks(car.renderTick(partialTick)))
                 ? door.litLanternSections() : Set.of();
         boolean terminal = car != null && door.floorIndex() >= 0 && car.isTerminalFloor(door.floorIndex());
-        BoxRenderer.renderLantern(pose, consumer, HallLantern.sections(door.model(), fixtures, terminal), lit,
+        BoxRenderer.renderLantern(pose, consumer, HallLantern.sections(door.spec(), fixtures, terminal), lit,
                 door.facing().get2DDataValue(), packedLight);
         super.render(door, entityYaw, partialTick, poseStack, bufferSource, packedLight);
     }

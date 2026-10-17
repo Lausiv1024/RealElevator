@@ -10,6 +10,8 @@ import org.lwjgl.glfw.GLFW;
 
 import net.lausiv1024.realelevator.block.InstallerBlockEntity;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.FloorProblem;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
 import net.lausiv1024.realelevator.core.motion.SpeedSetting;
@@ -52,6 +54,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
     private static final int LABEL = 0x404040;
 
     private CarModel model;
+    private DoorType door;
     private SpeedSetting speed;
     private PitMode pitMode;
     private boolean preview;
@@ -87,6 +90,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
         }
         if (form == null) {
             model = installer.model();
+            door = installer.plan().spec().door();
             speed = installer.speed();
             pitMode = installer.pitMode();
             preview = installer.isPreviewing();
@@ -116,6 +120,21 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
                 .withValues(CarModel.values()).withInitialValue(model)
                 .create(0, 0, SettingsForm.MAX_SETTING_WIDTH, 20, Component.translatable("gui.realelevator.panel.model"), (b, v) -> {
                     model = v;
+                    // 機種で選べない扉の方式は CO に戻す
+                    door = new CarSpec(model, door).door();
+                    send();
+                    rebuildWidgets();
+                }));
+        List<DoorType> doors = new ArrayList<>();
+        for (DoorType type : DoorType.values()) {
+            if (type.isAvailable(model)) {
+                doors.add(type);
+            }
+        }
+        settings.add(CycleButton.<DoorType>builder(d -> Component.translatable("gui.realelevator.door." + d.name().toLowerCase(Locale.ROOT)))
+                .withValues(doors).withInitialValue(door)
+                .create(0, 0, SettingsForm.MAX_SETTING_WIDTH, 20, Component.translatable("gui.realelevator.panel.door"), (b, v) -> {
+                    door = v;
                     send();
                 }));
         // 高速仕様は、ネザースターがはまっているときだけ出す
@@ -233,6 +252,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
         }
         CompoundTag tag = new CompoundTag();
         tag.putString("Model", model.name());
+        tag.putString("Door", door.name());
         tag.putString("Speed", speed.spec().name());
         tag.putDouble("Acceleration", speed.acceleration());
         tag.putDouble("Jerk", speed.jerk());

@@ -7,6 +7,7 @@ import java.util.function.IntFunction;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
@@ -121,6 +122,11 @@ public final class FloorIndicator {
 
     /** かごの表示器。設定によって1つまたは2つ。 */
     public static List<Frame> car(CarModel model, int floorCount, FixtureConfig config, String label, TravelDirection direction) {
+        return car(CarSpec.of(model), floorCount, config, label, direction);
+    }
+
+    /** かごの表示器。操作盤の上なら、操作盤ごとに（2つ目は設定による）。片開き（2S）では操作盤が1つなので1つ。 */
+    public static List<Frame> car(CarSpec model, int floorCount, FixtureConfig config, String label, TravelDirection direction) {
         int face = px(CarGeometry.interior(model).maxZ());
         if (config.carIndicator() == FixtureConfig.CarIndicator.OVER_DOOR) {
             Box entrance = CarGeometry.entrance(model);
@@ -131,22 +137,28 @@ public final class FloorIndicator {
                     label, direction));
         }
         int bottom = Math.max(CAR_PANEL_BOTTOM_PX, ButtonLayout.carPanelTopPx(floorCount) + 2);
+        List<Boolean> jambs = ButtonLayout.panelJambs(model, config.panelSides());
         List<Frame> frames = new ArrayList<>(2);
-        frames.add(overPanel(model, true, bottom, face, label, direction));
-        if (config.panelSides() == FixtureConfig.PanelSides.BOTH && config.leftPanelIndicator()) {
-            frames.add(overPanel(model, false, bottom, face, label, direction));
+        frames.add(overPanel(model, jambs.get(0), bottom, face, label, direction));
+        if (jambs.size() > 1 && config.leftPanelIndicator()) {
+            frames.add(overPanel(model, jambs.get(1), bottom, face, label, direction));
         }
         return frames;
     }
 
-    private static Frame overPanel(CarModel model, boolean right, int bottom, int face, String label, TravelDirection direction) {
-        int minX = ButtonLayout.jambMinPx(model, right) + (ButtonLayout.jambWidthPx(model) - Arrangement.VERTICAL.width) / 2;
+    private static Frame overPanel(CarSpec model, boolean right, int bottom, int face, String label, TravelDirection direction) {
+        int minX = ButtonLayout.jambMinPx(model, right) + (ButtonLayout.jambWidthPx(model, right) - Arrangement.VERTICAL.width) / 2;
         return build(Arrangement.VERTICAL, Viewer.INSIDE_CAR, minX + Arrangement.VERTICAL.width, bottom, 0, face, 1.0 / PX,
                 label, direction);
     }
 
     /** 乗場の表示器。 */
     public static Frame hall(CarModel model, FixtureConfig config, String label, TravelDirection direction) {
+        return hall(CarSpec.of(model), config, label, direction);
+    }
+
+    /** 乗場の表示器。扉の上なら出入口の中央に合わせる。 */
+    public static Frame hall(CarSpec model, FixtureConfig config, String label, TravelDirection direction) {
         int face = px(DoorGeometry.landingFace(model));
         if (config.hallIndicator() == FixtureConfig.HallIndicator.OVER_BUTTONS) {
             // ボタンの列の中央に合わせる
@@ -156,7 +168,9 @@ public final class FloorIndicator {
                     label, direction);
         }
         int width = Arrangement.HORIZONTAL.width + 2;
-        return build(Arrangement.HORIZONTAL, Viewer.LANDING, -width / 2, px(CarGeometry.entrance(model).maxY()) + HALL_GAP_PX, 1,
+        Box entrance = CarGeometry.entrance(model);
+        int left = (px(entrance.minX()) + px(entrance.maxX()) - width) / 2;
+        return build(Arrangement.HORIZONTAL, Viewer.LANDING, left, px(entrance.maxY()) + HALL_GAP_PX, 1,
                 face, 1.0 / PX, label, direction);
     }
 

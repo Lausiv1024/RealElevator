@@ -7,6 +7,7 @@ import java.util.List;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 
@@ -65,6 +66,7 @@ public final class ShaftLayout {
         BELOW_PANEL
     }
 
+    private final CarSpec spec;
     private final CarModel model;
     private final PitMode pitMode;
     private final int[] floors;
@@ -73,7 +75,12 @@ public final class ShaftLayout {
      * @param floors 停止階の床面の高さ（制御盤からの相対、0 が最下階）
      */
     public ShaftLayout(CarModel model, PitMode pitMode, int[] floors) {
-        this.model = model;
+        this(CarSpec.of(model), pitMode, floors);
+    }
+
+    public ShaftLayout(CarSpec spec, PitMode pitMode, int[] floors) {
+        this.spec = spec;
+        this.model = spec.model();
         this.pitMode = pitMode;
         this.floors = floors.clone();
         Arrays.sort(this.floors);
@@ -131,7 +138,7 @@ public final class ShaftLayout {
 
     /** かごの原点の Z。乗場の戸が壁の列の昇降路側の面（Z=−0.5）に来るように置く。 */
     public double carZ() {
-        double landingDoorFromCar = DoorGeometry.travelBounds(model, DoorGeometry.Side.LANDING).minZ();
+        double landingDoorFromCar = DoorGeometry.travelBounds(spec, DoorGeometry.Side.LANDING).minZ();
         return -0.5 - landingDoorFromCar;
     }
 
@@ -224,6 +231,10 @@ public final class ShaftLayout {
             cells.add(new Cell(leftColumn(), y, backRow()));
         }
         return cells;
+    }
+
+    public CarSpec spec() {
+        return spec;
     }
 
     public CarModel model() {

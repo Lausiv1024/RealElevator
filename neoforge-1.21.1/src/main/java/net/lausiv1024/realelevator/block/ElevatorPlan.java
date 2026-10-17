@@ -6,6 +6,8 @@ import java.util.TreeSet;
 
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.Cell;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
@@ -36,6 +38,8 @@ public final class ElevatorPlan {
     /** 停止階のY座標ごとの階名。空なら初期値（下から 1、2、3…）。 */
     private final Map<Integer, String> labels = new HashMap<>();
     private CarModel model = CarModel.P11;
+    /** 扉の方式。機種で選べない方式は、使うときに CO になる（{@link CarSpec}）。 */
+    private DoorType door = DoorType.CENTER;
     private SpeedSetting speed = SpeedSetting.standard(SpeedSpec.NORMAL_LOW);
     private PitMode pitMode = PitMode.REAL;
     private FixtureConfig fixtures = FixtureConfig.DEFAULT;
@@ -77,6 +81,11 @@ public final class ElevatorPlan {
 
     public CarModel model() {
         return model;
+    }
+
+    /** 機種と扉の方式。 */
+    public CarSpec spec() {
+        return new CarSpec(model, door);
     }
 
     public SpeedSetting speed() {
@@ -139,6 +148,7 @@ public final class ElevatorPlan {
      */
     public void applyInstallSettings(CompoundTag tag, boolean hasNetherStar) {
         model = ConfigTags.parseEnum(CarModel.class, tag.getString("Model"), model);
+        door = new CarSpec(model, ConfigTags.parseEnum(DoorType.class, tag.getString("Door"), door)).door();
         SpeedSpec requested = ConfigTags.parseEnum(SpeedSpec.class, tag.getString("Speed"), speed.spec());
         if (!requested.isHighSpeed() || hasNetherStar) {
             speed = readSpeed(requested, tag);
@@ -164,6 +174,7 @@ public final class ElevatorPlan {
     public CompoundTag settingsTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString("Model", model.name());
+        tag.putString("Door", spec().door().name());
         tag.putString("Speed", speed.spec().name());
         tag.putDouble("Acceleration", speed.acceleration());
         tag.putDouble("Jerk", speed.jerk());
@@ -190,7 +201,7 @@ public final class ElevatorPlan {
 
     public ShaftLayout layout() {
         int[] relative = floors.stream().mapToInt(y -> y - origin.getY()).toArray();
-        return new ShaftLayout(model, pitMode, relative);
+        return new ShaftLayout(spec(), pitMode, relative);
     }
 
     /** 設置用ブロックからの相対位置 cell のワールドの位置。 */
@@ -242,6 +253,7 @@ public final class ElevatorPlan {
             }
         }
         plan.model = ConfigTags.parseEnum(CarModel.class, tag.getString("Model"), CarModel.P11);
+        plan.door = ConfigTags.parseEnum(DoorType.class, tag.getString("Door"), DoorType.CENTER);
         plan.speed = readSpeed(ConfigTags.parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW), tag);
         plan.pitMode = ConfigTags.parseEnum(PitMode.class, tag.getString("Pit"), PitMode.REAL);
         plan.fixtures = ConfigTags.readFixtures(tag.getCompound("Fixtures"));

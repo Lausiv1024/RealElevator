@@ -239,7 +239,7 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
             return Component.empty();
         }
         car.moveTo(origin.x, origin.y, origin.z, 0, 0);
-        car.setup(plan.model(), facing(), floorYs(), plan.speed());
+        car.setup(plan.spec(), facing(), floorYs(), plan.speed());
         car.setHoistway(plan.pitMode());
         car.setFixtures(plan.fixtures());
         car.setAnnouncements(plan.announcements());

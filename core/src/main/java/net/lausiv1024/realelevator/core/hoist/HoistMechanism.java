@@ -6,6 +6,7 @@ import java.util.List;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
 
@@ -103,6 +104,12 @@ public final class HoistMechanism {
      * @param floors 停止階の床面のY座標（ワールド座標）
      */
     public HoistMechanism(CarModel model, PitMode pitMode, int[] floors) {
+        this(CarSpec.of(model), pitMode, floors);
+    }
+
+    /** 扉の方式で、乗場の戸の奥行き（かごの位置）とガイドレールの位置が変わる。 */
+    public HoistMechanism(CarSpec spec, PitMode pitMode, int[] floors) {
+        CarModel model = spec.model();
         if (floors.length < 2) {
             throw new IllegalArgumentException("at least two floors are needed");
         }
@@ -130,7 +137,7 @@ public final class HoistMechanism {
         this.machineZ = px(carBackPx - 1 - MACHINE_SHEAVE_RADIUS_PX);
         this.counterweightZ = machineZ - px(MACHINE_SHEAVE_RADIUS_PX);
         this.counterweightSheaveX = ropeX - px(COUNTERWEIGHT_SHEAVE_RADIUS_PX);
-        ShaftLayout layout = new ShaftLayout(model, pitMode, new int[] {0, ShaftLayout.MIN_FLOOR_SPACING});
+        ShaftLayout layout = new ShaftLayout(spec, pitMode, new int[] {0, ShaftLayout.MIN_FLOOR_SPACING});
         this.backWallZ = layout.backRow() - 0.5 - layout.carZ();
         this.carRopeZ = carRopeZ(layout.railRowZ() - layout.carZ());
     }

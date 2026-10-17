@@ -14,6 +14,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism.Point;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism.Sheave;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
@@ -82,7 +84,8 @@ class HoistMechanismTest {
     @EnumSource(CarModel.class)
     void nothingHitsTheCarOrLeavesTheShaft(CarModel model) {
         for (PitMode pit : PitMode.values()) {
-            HoistMechanism hoist = new HoistMechanism(model, pit, FLOORS);
+          for (CarSpec spec : specs(model)) {
+            HoistMechanism hoist = new HoistMechanism(spec, pit, FLOORS);
             Box shaft = hoist.shaftBounds();
             List<Box> fixed = new ArrayList<>();
             fixed.add(hoist.motor());
@@ -117,6 +120,7 @@ class HoistMechanismTest {
                     }
                 }
             }
+          }
         }
     }
 
@@ -148,7 +152,8 @@ class HoistMechanismTest {
     void ropesNeverPassThroughTheCar(CarModel model) {
         double half = HoistMechanism.ROPE_WIDTH_PX / CarModel.PIXELS_PER_BLOCK / 2;
         for (PitMode pit : PitMode.values()) {
-            HoistMechanism hoist = new HoistMechanism(model, pit, FLOORS);
+          for (CarSpec spec : specs(model)) {
+            HoistMechanism hoist = new HoistMechanism(spec, pit, FLOORS);
             for (double y = 64; y <= 80; y += 0.5) {
                 Box e = CarGeometry.exterior(model).move(0, y, 0);
                 Box car = new Box(e.minX() - half, e.minY() - half, e.minZ() - half, e.maxX() + half, e.maxY() + half, e.maxZ() + half);
@@ -168,6 +173,7 @@ class HoistMechanismTest {
                     }
                 }
             }
+          }
         }
     }
 
@@ -176,8 +182,9 @@ class HoistMechanismTest {
     void sheavesAndRopesClearTheGuideRails(CarModel model) {
         for (PitMode pit : PitMode.values()) {
             // 制御盤を Y=64 に置いた昇降路
-            ShaftLayout layout = new ShaftLayout(model, pit, new int[] {0, 5, 9, 16});
-            HoistMechanism hoist = new HoistMechanism(model, pit, FLOORS);
+          for (CarSpec spec : specs(model)) {
+            ShaftLayout layout = new ShaftLayout(spec, pit, new int[] {0, 5, 9, 16});
+            HoistMechanism hoist = new HoistMechanism(spec, pit, FLOORS);
             List<Box> rails = new ArrayList<>();
             for (ShaftLayout.Rail rail : layout.rails()) {
                 rails.add(rail.box().move(-layout.carX(), 64, -layout.carZ()));
@@ -214,6 +221,7 @@ class HoistMechanismTest {
                     }
                 }
             }
+          }
         }
     }
 
@@ -222,8 +230,9 @@ class HoistMechanismTest {
     void nothingMovesThroughTheController(CarModel model) {
         for (PitMode pit : PitMode.values()) {
             // 制御盤を Y=64 に置いた昇降路
-            ShaftLayout layout = new ShaftLayout(model, pit, new int[] {0, 5, 9, 16});
-            HoistMechanism hoist = new HoistMechanism(model, pit, FLOORS);
+          for (CarSpec spec : specs(model)) {
+            ShaftLayout layout = new ShaftLayout(spec, pit, new int[] {0, 5, 9, 16});
+            HoistMechanism hoist = new HoistMechanism(spec, pit, FLOORS);
             List<Box> controller = new ArrayList<>();
             for (ShaftLayout.Cell cell : layout.controllerCells()) {
                 controller.add(new Box(cell.x() - 0.5, cell.y(), cell.z() - 0.5, cell.x() + 0.5, cell.y() + 1, cell.z() + 0.5)
@@ -254,7 +263,19 @@ class HoistMechanismTest {
                     }
                 }
             }
+          }
         }
+    }
+
+    /** 機種 model で選べるすべての扉の方式。 */
+    private static List<CarSpec> specs(CarModel model) {
+        List<CarSpec> specs = new ArrayList<>();
+        for (DoorType door : DoorType.values()) {
+            if (door.isAvailable(model)) {
+                specs.add(new CarSpec(model, door));
+            }
+        }
+        return specs;
     }
 
     private static boolean inside(Box box, Box shaft) {

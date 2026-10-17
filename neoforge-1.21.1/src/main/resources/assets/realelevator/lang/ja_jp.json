@@ -71,5 +71,10 @@
   "gui.realelevator.renewal.confirm.title": "エレベーターを解体しますか？",
   "gui.realelevator.renewal.confirm.message": "かご・乗場の扉・ガイドレール・制御盤を撤去し、設置ブロックとネザースターを返します。",
   "message.realelevator.wrench.no_controller": "このエレベーターには制御盤がありません（コマンドで出したかごか、古い設置です）",
-  "message.realelevator.wrench.dismantled": "エレベーターを解体しました"
+  "message.realelevator.wrench.dismantled": "エレベーターを解体しました",
+  "gui.realelevator.panel.door": "扉",
+  "gui.realelevator.door.center": "2枚中央開き（CO）",
+  "gui.realelevator.door.side_left": "2枚片開き・左（2S）",
+  "gui.realelevator.door.side_right": "2枚片開き・右（2S）",
+  "gui.realelevator.door.four_center": "4枚中央開き（4CO）"
 }

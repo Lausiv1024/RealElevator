@@ -40,7 +40,7 @@ public class InstallerRenderer implements BlockEntityRenderer<InstallerBlockEnti
 
         Vec3 car = panel.carOrigin();
         for (int floorY : panel.floorYs()) {
-            AABB box = CarShapes.toAabb(CarShapes.exterior(panel.model(), panel.facing()), car.x, floorY, car.z);
+            AABB box = CarShapes.toAabb(CarShapes.exterior(panel.plan().spec(), panel.facing()), car.x, floorY, car.z);
             LevelRenderer.renderLineBox(poseStack, lines, box.move(-origin.getX(), -origin.getY(), -origin.getZ()), 1.0F, 1.0F, 1.0F, 1.0F);
         }
 

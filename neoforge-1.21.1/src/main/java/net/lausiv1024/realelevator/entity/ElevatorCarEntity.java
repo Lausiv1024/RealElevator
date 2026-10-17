@@ -16,6 +16,8 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.control.CallType;
 import net.lausiv1024.realelevator.core.control.CollectiveControl;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
@@ -148,11 +150,15 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 速度の仕様の標準の加速度とジャークで設定する。 */
     public void setup(CarModel model, Direction facing, int[] floors, SpeedSpec speedSpec) {
-        setup(model, facing, floors, SpeedSetting.standard(speedSpec));
+        setup(CarSpec.of(model), facing, floors, SpeedSetting.standard(speedSpec));
     }
 
     public void setup(CarModel model, Direction facing, int[] floors, SpeedSetting speed) {
-        this.entityData.set(DATA_MODEL, (byte) model.ordinal());
+        setup(CarSpec.of(model), facing, floors, speed);
+    }
+
+    public void setup(CarSpec spec, Direction facing, int[] floors, SpeedSetting speed) {
+        this.entityData.set(DATA_MODEL, CarShapes.encode(spec));
         this.entityData.set(DATA_FACING, facing);
         int[] sorted = floors.clone();
         Arrays.sort(sorted);
@@ -200,7 +206,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     @Nullable
     public HoistMechanism hoist() {
         if (hoist == null && pitMode != null && floors.length >= 2) {
-            hoist = new HoistMechanism(model(), pitMode, floors);
+            hoist = new HoistMechanism(spec(), pitMode, floors);
         }
         return hoist;
     }
@@ -242,12 +248,12 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     private void rebuildButtons() {
-        this.buttons = ButtonLayout.carPanel(model(), floors.length, fixtures.panelSides());
+        this.buttons = ButtonLayout.carPanel(spec(), floors.length, fixtures.panelSides());
     }
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
-        builder.define(DATA_MODEL, (byte) CarModel.P11.ordinal());
+        builder.define(DATA_MODEL, CarShapes.encode(CarSpec.of(CarModel.P11)));
         builder.define(DATA_FACING, Direction.SOUTH);
         builder.define(DATA_FLOORS, new CompoundTag());
         builder.define(DATA_TRIP, new CompoundTag());
@@ -257,8 +263,12 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     public CarModel model() {
-        CarModel[] models = CarModel.values();
-        return models[Mth.clamp(this.entityData.get(DATA_MODEL), 0, models.length - 1)];
+        return spec().model();
+    }
+
+    /** 機種と扉の方式。 */
+    public CarSpec spec() {
+        return CarShapes.decode(this.entityData.get(DATA_MODEL));
     }
 
     /** 出入口のある正面の向き。 */
@@ -639,7 +649,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     /** 停止階 floor のホールランタンの中心（ワールド座標）。 */
     private Vec3 lanternCenter(int floor) {
         AABB bounds = null;
-        for (HallLantern.Section section : HallLantern.sections(model(), fixtures, isTerminalFloor(floor))) {
+        for (HallLantern.Section section : HallLantern.sections(spec(), fixtures, isTerminalFloor(floor))) {
             AABB box = CarShapes.toAabb(section.box().rotateQuarterTurns(facing().get2DDataValue()), getX(), floors[floor], getZ());
             bounds = bounds == null ? box : bounds.minmax(box);
         }
@@ -647,8 +657,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             return bounds.getCenter();
         }
         // ホールランタンを付けないときは、出入口の上の中央から鳴らす
-        Box entrance = CarGeometry.entrance(model());
-        Box above = new Box(0, entrance.maxY(), DoorGeometry.landingFace(model()), 0, entrance.maxY(), DoorGeometry.landingFace(model()))
+        Box entrance = CarGeometry.entrance(spec());
+        Box above = new Box(0, entrance.maxY(), DoorGeometry.landingFace(spec()), 0, entrance.maxY(), DoorGeometry.landingFace(spec()))
                 .rotateQuarterTurns(facing().get2DDataValue());
         return new Vec3(getX() + above.minX(), floors[floor] + above.minY(), getZ() + above.minZ());
     }
@@ -694,7 +704,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         double fraction = door.fractionAt(now);
         List<AABB> panels = new ArrayList<>(4);
         for (DoorGeometry.Side side : DoorGeometry.Side.values()) {
-            for (Box box : CarShapes.doorPanels(model(), facing(), side, fraction)) {
+            for (Box box : CarShapes.doorPanels(spec(), facing(), side, fraction)) {
                 panels.add(CarShapes.toAabb(box, getX(), getY(), getZ()).inflate(SAFETY_SHOE_MARGIN));
             }
         }
@@ -816,20 +826,20 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         for (Part part : parts()) {
             boxes.add(CarShapes.toAabb(part.box(), getX(), y, getZ()));
         }
-        for (Box panel : CarShapes.doorPanels(model(), facing(), DoorGeometry.Side.CAR, door.fractionAt(tick))) {
+        for (Box panel : CarShapes.doorPanels(spec(), facing(), DoorGeometry.Side.CAR, door.fractionAt(tick))) {
             boxes.add(CarShapes.toAabb(panel, getX(), y, getZ()));
         }
         return boxes;
     }
 
     public List<Part> parts() {
-        return CarShapes.parts(model(), facing());
+        return CarShapes.parts(spec(), facing());
     }
 
     /** かご全体の外形（ワールド座標）。床面のY座標 y の位置に置いたもの。戸が袖壁の外へはみ出す分を含む。 */
     public AABB exteriorAt(double y) {
-        AABB exterior = CarShapes.toAabb(CarShapes.exterior(model(), facing()), getX(), y, getZ());
-        AABB door = CarShapes.toAabb(CarShapes.doorTravelBounds(model(), facing(), DoorGeometry.Side.CAR), getX(), y, getZ());
+        AABB exterior = CarShapes.toAabb(CarShapes.exterior(spec(), facing()), getX(), y, getZ());
+        AABB door = CarShapes.toAabb(CarShapes.doorTravelBounds(spec(), facing(), DoorGeometry.Side.CAR), getX(), y, getZ());
         return exterior.minmax(door);
     }
 
@@ -838,7 +848,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      * 足元が床面（少し下まで許す）から屋根の少し上までの間にあれば運ぶ。
      */
     public boolean carries(Entity entity, double carY) {
-        Box exterior = CarShapes.exterior(model(), facing());
+        Box exterior = CarShapes.exterior(spec(), facing());
         double localX = entity.getX() - getX();
         double localZ = entity.getZ() - getZ();
         double feet = entity.getY() - carY;
@@ -961,6 +971,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     @Override
     protected void addAdditionalSaveData(CompoundTag tag) {
         tag.putString("Model", model().name());
+        tag.putString("Door", spec().door().name());
         tag.putString("Facing", facing().getSerializedName());
         tag.putIntArray("Floors", floors);
         tag.putString("Speed", speed.spec().name());
@@ -1000,7 +1011,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (tag.contains("Acceleration")) {
             speed = speed.withAcceleration(tag.getDouble("Acceleration")).withJerk(tag.getDouble("Jerk"));
         }
-        setup(model, facing, tag.getIntArray("Floors"), speed);
+        DoorType door = parseEnum(DoorType.class, tag.getString("Door"), DoorType.CENTER);
+        setup(new CarSpec(model, door), facing, tag.getIntArray("Floors"), speed);
         setFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")));
         setLabels(readLabels(tag));
         setAnnouncements(ConfigTags.readAnnouncements(tag.getCompound("Announcements")));
