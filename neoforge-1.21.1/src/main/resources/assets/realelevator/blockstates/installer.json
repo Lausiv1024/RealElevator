@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "realelevator:block/installer",
+      "y": 0
+    },
+    "facing=east": {
+      "model": "realelevator:block/installer",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "realelevator:block/installer",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "realelevator:block/installer",
+      "y": 270
+    }
+  }
+}

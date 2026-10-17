@@ -2,7 +2,7 @@ package net.lausiv1024.realelevator.item;
 
 import java.util.List;
 
-import net.lausiv1024.realelevator.block.ControlPanelBlockEntity;
+import net.lausiv1024.realelevator.block.InstallerBlockEntity;
 import net.lausiv1024.realelevator.registry.ModDataComponents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -29,7 +29,7 @@ public class FloorMarkerItem extends Item {
 
     /** 制御盤 pos につなぐ。 */
     public static void link(ItemStack stack, Level level, BlockPos pos, Player player) {
-        stack.set(ModDataComponents.LINKED_PANEL.get(), GlobalPos.of(level.dimension(), pos));
+        stack.set(ModDataComponents.LINKED_INSTALLER.get(), GlobalPos.of(level.dimension(), pos));
         player.displayClientMessage(Component.translatable("message.realelevator.marker.linked", pos.getX(), pos.getY(), pos.getZ()), true);
     }
 
@@ -39,7 +39,7 @@ public class FloorMarkerItem extends Item {
         if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         }
-        GlobalPos linked = stack.get(ModDataComponents.LINKED_PANEL.get());
+        GlobalPos linked = stack.get(ModDataComponents.LINKED_INSTALLER.get());
         if (linked == null || !linked.dimension().equals(level.dimension())) {
             player.displayClientMessage(Component.translatable("message.realelevator.marker.not_linked"), true);
             return InteractionResultHolder.fail(stack);
@@ -51,7 +51,7 @@ public class FloorMarkerItem extends Item {
             player.displayClientMessage(Component.translatable("message.realelevator.marker.too_far"), true);
             return InteractionResultHolder.fail(stack);
         }
-        if (!level.isLoaded(panelPos) || !(level.getBlockEntity(panelPos) instanceof ControlPanelBlockEntity panel)) {
+        if (!level.isLoaded(panelPos) || !(level.getBlockEntity(panelPos) instanceof InstallerBlockEntity panel)) {
             player.displayClientMessage(Component.translatable("message.realelevator.marker.missing"), true);
             return InteractionResultHolder.fail(stack);
         }
@@ -62,7 +62,7 @@ public class FloorMarkerItem extends Item {
 
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        GlobalPos linked = stack.get(ModDataComponents.LINKED_PANEL.get());
+        GlobalPos linked = stack.get(ModDataComponents.LINKED_INSTALLER.get());
         if (linked != null) {
             BlockPos pos = linked.pos();
             tooltip.add(Component.translatable("tooltip.realelevator.marker.linked", pos.getX(), pos.getY(), pos.getZ()));

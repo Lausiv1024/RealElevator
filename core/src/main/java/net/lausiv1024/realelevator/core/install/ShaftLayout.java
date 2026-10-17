@@ -198,6 +198,21 @@ public final class ShaftLayout {
         return rails;
     }
 
+    /** 頂部の制御盤の高さ [ブロック]。 */
+    public static final int CONTROLLER_HEIGHT = 2;
+
+    /**
+     * 頂部の制御盤のブロック（下から順）。昇降路の左奥の隅の、天井から下 {@value #CONTROLLER_HEIGHT} ブロック。
+     * この列は、かご・釣合い重り・巻上機・ロープ・ガイドレールのどれとも重ならない。
+     */
+    public List<Cell> controllerCells() {
+        List<Cell> cells = new ArrayList<>();
+        for (int y = top() - CONTROLLER_HEIGHT; y < top(); y++) {
+            cells.add(new Cell(CAR_COLUMN - 1, y, backRow()));
+        }
+        return cells;
+    }
+
     public CarModel model() {
         return model;
     }

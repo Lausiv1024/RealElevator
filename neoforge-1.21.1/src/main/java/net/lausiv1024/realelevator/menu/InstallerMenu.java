@@ -1,6 +1,6 @@
 package net.lausiv1024.realelevator.menu;
 
-import net.lausiv1024.realelevator.block.ControlPanelBlockEntity;
+import net.lausiv1024.realelevator.block.InstallerBlockEntity;
 import net.lausiv1024.realelevator.registry.ModBlocks;
 import net.lausiv1024.realelevator.registry.ModMenus;
 import net.minecraft.core.BlockPos;
@@ -20,7 +20,7 @@ import net.minecraft.world.item.Items;
  *
  * <p>設定画面は「設定」と「動力」の表示を切り替え、スロットは「動力」の表示のときだけ出す（クライアントだけで切り替える）。
  */
-public class ControlPanelMenu extends AbstractContainerMenu {
+public class InstallerMenu extends AbstractContainerMenu {
     /** ネザースターのスロットの位置（画面の枠の左上から）。 */
     public static final int STAR_X = 80;
     public static final int STAR_Y = 30;
@@ -35,24 +35,22 @@ public class ControlPanelMenu extends AbstractContainerMenu {
 
     private final BlockPos pos;
     private final ContainerLevelAccess access;
-    private final Player player;
     /** スロットを出すか。クライアントの画面が切り替える。サーバーでは常に出している扱い。 */
     private boolean slotsVisible = true;
 
     /** サーバーで開くとき。 */
-    public ControlPanelMenu(int containerId, Inventory inventory, ControlPanelBlockEntity panel) {
+    public InstallerMenu(int containerId, Inventory inventory, InstallerBlockEntity panel) {
         this(containerId, inventory, panel.getBlockPos(), panel.starContainer());
     }
 
     /** クライアントで開くとき。スロットの中身はサーバーから同期される。 */
-    public ControlPanelMenu(int containerId, Inventory inventory, RegistryFriendlyByteBuf buf) {
+    public InstallerMenu(int containerId, Inventory inventory, RegistryFriendlyByteBuf buf) {
         this(containerId, inventory, buf.readBlockPos(), new SimpleContainer(1));
     }
 
-    private ControlPanelMenu(int containerId, Inventory inventory, BlockPos pos, Container star) {
-        super(ModMenus.CONTROL_PANEL.get(), containerId);
+    private InstallerMenu(int containerId, Inventory inventory, BlockPos pos, Container star) {
+        super(ModMenus.INSTALLER.get(), containerId);
         this.pos = pos;
-        this.player = inventory.player;
         this.access = ContainerLevelAccess.create(inventory.player.level(), pos);
         addSlot(new StarSlot(star, STAR_X, STAR_Y));
         for (int row = 0; row < 3; row++) {
@@ -71,11 +69,6 @@ public class ControlPanelMenu extends AbstractContainerMenu {
 
     public void setSlotsVisible(boolean visible) {
         this.slotsVisible = visible;
-    }
-
-    /** ネザースターを取り出せないか。 */
-    private boolean isStarLocked() {
-        return player.level().getBlockEntity(pos) instanceof ControlPanelBlockEntity panel && panel.isStarLocked();
     }
 
     @Override
@@ -107,7 +100,7 @@ public class ControlPanelMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        return stillValid(access, player, ModBlocks.CONTROL_PANEL.get());
+        return stillValid(access, player, ModBlocks.INSTALLER.get());
     }
 
     /** 「動力」の表示のときだけ出すスロット。 */
@@ -122,7 +115,7 @@ public class ControlPanelMenu extends AbstractContainerMenu {
         }
     }
 
-    /** ネザースターを1個だけはめるスロット。高速仕様で設置しているあいだは取り出せない。 */
+    /** ネザースターを1個だけはめるスロット。 */
     private class StarSlot extends HideableSlot {
         StarSlot(Container container, int x, int y) {
             super(container, 0, x, y);
@@ -136,11 +129,6 @@ public class ControlPanelMenu extends AbstractContainerMenu {
         @Override
         public int getMaxStackSize() {
             return 1;
-        }
-
-        @Override
-        public boolean mayPickup(Player player) {
-            return !isStarLocked();
         }
     }
 }

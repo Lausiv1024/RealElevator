@@ -5,7 +5,7 @@ import java.util.List;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
-import net.lausiv1024.realelevator.block.ControlPanelBlockEntity;
+import net.lausiv1024.realelevator.block.InstallerBlockEntity;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.Cell;
 import net.lausiv1024.realelevator.entity.CarShapes;
@@ -21,12 +21,12 @@ import net.minecraft.world.phys.Vec3;
 /**
  * 制御盤のプレビュー。設置する昇降路の範囲（水色）、各階に来るかごの外形（白）、邪魔なブロック（赤）を線で描く。
  */
-public class ControlPanelRenderer implements BlockEntityRenderer<ControlPanelBlockEntity> {
-    public ControlPanelRenderer(BlockEntityRendererProvider.Context context) {
+public class InstallerRenderer implements BlockEntityRenderer<InstallerBlockEntity> {
+    public InstallerRenderer(BlockEntityRendererProvider.Context context) {
     }
 
     @Override
-    public void render(ControlPanelBlockEntity panel, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource,
+    public void render(InstallerBlockEntity panel, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource,
                        int packedLight, int packedOverlay) {
         if (!panel.isPreviewing() || panel.getLevel() == null) {
             return;
@@ -51,7 +51,7 @@ public class ControlPanelRenderer implements BlockEntityRenderer<ControlPanelBlo
     }
 
     /** 設置する範囲（昇降路と三方枠）を囲む箱（ワールド座標）。 */
-    private static AABB shaftBounds(ControlPanelBlockEntity panel, ShaftLayout layout) {
+    private static AABB shaftBounds(InstallerBlockEntity panel, ShaftLayout layout) {
         List<Cell> cells = layout.requiredClearCells();
         AABB bounds = new AABB(panel.cellPos(cells.get(0)));
         for (Cell cell : cells) {
@@ -61,7 +61,7 @@ public class ControlPanelRenderer implements BlockEntityRenderer<ControlPanelBlo
     }
 
     @Override
-    public boolean shouldRenderOffScreen(ControlPanelBlockEntity panel) {
+    public boolean shouldRenderOffScreen(InstallerBlockEntity panel) {
         return panel.isPreviewing();
     }
 
@@ -71,7 +71,7 @@ public class ControlPanelRenderer implements BlockEntityRenderer<ControlPanelBlo
     }
 
     @Override
-    public AABB getRenderBoundingBox(ControlPanelBlockEntity panel) {
+    public AABB getRenderBoundingBox(InstallerBlockEntity panel) {
         if (!panel.isPreviewing()) {
             return new AABB(panel.getBlockPos());
         }

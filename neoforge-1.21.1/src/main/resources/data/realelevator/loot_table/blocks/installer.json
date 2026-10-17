@@ -6,7 +6,7 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "realelevator:control_panel"
+          "name": "realelevator:installer"
         }
       ],
       "conditions": [

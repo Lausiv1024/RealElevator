@@ -39,9 +39,11 @@ import net.lausiv1024.realelevator.registry.ModSounds;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -87,6 +89,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 停止階の床面のY座標（下から順）。 */
     private int[] floors = new int[0];
+    /** 頂部の制御盤（下のブロック）の位置。ウィザードで設置したかごだけが持つ。サーバーだけで使う。 */
+    @Nullable
+    private BlockPos controllerPos;
     /** 昇降路のピットの方式。ウィザードで設置したかごだけが持ち、昇降路の機構を描く。 */
     @Nullable
     private PitMode pitMode;
@@ -164,6 +169,17 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         // 停止階が変わったら、付けられない配置を直す
         setFixtures(fixtures);
         setBoundingBox(makeBoundingBox());
+    }
+
+    /** 頂部の制御盤の位置を覚える（設置したとき）。 */
+    public void setController(BlockPos pos) {
+        this.controllerPos = pos.immutable();
+    }
+
+    /** 頂部の制御盤（下のブロック）の位置。ウィザードで設置していないかごは null。 */
+    @Nullable
+    public BlockPos controllerPos() {
+        return controllerPos;
     }
 
     /** 速度の設定。 */
@@ -943,6 +959,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.putString("Facing", facing().getSerializedName());
         tag.putIntArray("Floors", floors);
         tag.putString("Speed", speed.spec().name());
+        if (controllerPos != null) {
+            tag.put("Controller", NbtUtils.writeBlockPos(controllerPos));
+        }
         tag.putDouble("Acceleration", speed.acceleration());
         tag.putDouble("Jerk", speed.jerk());
         if (pitMode != null) {
@@ -971,6 +990,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             facing = Direction.SOUTH;
         }
         pitMode = tag.contains("Pit") ? parseEnum(PitMode.class, tag.getString("Pit"), PitMode.REAL) : null;
+        controllerPos = NbtUtils.readBlockPos(tag, "Controller").orElse(null);
         SpeedSetting speed = SpeedSetting.standard(parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW));
         if (tag.contains("Acceleration")) {
             speed = speed.withAcceleration(tag.getDouble("Acceleration")).withJerk(tag.getDouble("Jerk"));

@@ -121,4 +121,24 @@ class ShaftLayoutTest {
         assertFalse(AnnouncementConfig.DEFAULT.chime());
         assertTrue(AnnouncementConfig.DEFAULT.arrival());
     }
+
+    @ParameterizedTest
+    @EnumSource(CarModel.class)
+    void theControllerSitsInTheBackLeftCornerUnderTheCeiling(CarModel model) {
+        for (PitMode pit : PitMode.values()) {
+            ShaftLayout layout = new ShaftLayout(model, pit, new int[] {0, 5, 12});
+            List<Cell> cells = layout.controllerCells();
+            assertEquals(ShaftLayout.CONTROLLER_HEIGHT, cells.size());
+            Set<Cell> clear = new HashSet<>(layout.requiredClearCells());
+            Set<Cell> rails = new HashSet<>();
+            layout.rails().forEach(rail -> rails.add(rail.cell()));
+            for (Cell cell : cells) {
+                assertTrue(clear.contains(cell), "the controller should be inside the shaft: " + cell);
+                assertFalse(rails.contains(cell), "the controller should not replace a rail: " + cell);
+                assertEquals(ShaftLayout.CAR_COLUMN - 1, cell.x());
+                assertEquals(layout.backRow(), cell.z());
+            }
+            assertEquals(layout.top() - 1, cells.get(cells.size() - 1).y());
+        }
+    }
 }

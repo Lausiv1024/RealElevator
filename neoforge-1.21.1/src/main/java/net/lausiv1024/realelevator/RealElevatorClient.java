@@ -1,7 +1,7 @@
 package net.lausiv1024.realelevator;
 
-import net.lausiv1024.realelevator.client.ControlPanelRenderer;
-import net.lausiv1024.realelevator.client.ControlPanelScreen;
+import net.lausiv1024.realelevator.client.InstallerRenderer;
+import net.lausiv1024.realelevator.client.InstallerScreen;
 import net.lausiv1024.realelevator.client.ElevatorCarRenderer;
 import net.lausiv1024.realelevator.client.LandingDoorRenderer;
 import net.lausiv1024.realelevator.registry.ModBlockEntities;
@@ -19,12 +19,12 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 public class RealElevatorClient {
     public RealElevatorClient(IEventBus modEventBus, ModContainer container) {
         modEventBus.addListener(RealElevatorClient::registerRenderers);
-        modEventBus.addListener((RegisterMenuScreensEvent event) -> event.register(ModMenus.CONTROL_PANEL.get(), ControlPanelScreen::new));
+        modEventBus.addListener((RegisterMenuScreensEvent event) -> event.register(ModMenus.INSTALLER.get(), InstallerScreen::new));
     }
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.ELEVATOR_CAR.get(), ElevatorCarRenderer::new);
         event.registerEntityRenderer(ModEntities.LANDING_DOOR.get(), LandingDoorRenderer::new);
-        event.registerBlockEntityRenderer(ModBlockEntities.CONTROL_PANEL.get(), ControlPanelRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.INSTALLER.get(), InstallerRenderer::new);
     }
 }

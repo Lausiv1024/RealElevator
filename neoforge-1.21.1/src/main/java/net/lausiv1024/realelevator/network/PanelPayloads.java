@@ -3,7 +3,7 @@ package net.lausiv1024.realelevator.network;
 import javax.annotation.Nullable;
 
 import net.lausiv1024.realelevator.RealElevator;
-import net.lausiv1024.realelevator.block.ControlPanelBlockEntity;
+import net.lausiv1024.realelevator.block.InstallerBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -35,7 +35,7 @@ public final class PanelPayloads {
         }
 
         public static void handle(Settings payload, IPayloadContext context) {
-            ControlPanelBlockEntity panel = panelNear(context, payload.pos());
+            InstallerBlockEntity panel = panelNear(context, payload.pos());
             if (panel != null) {
                 panel.applySettings(payload.settings());
             }
@@ -55,7 +55,7 @@ public final class PanelPayloads {
         }
 
         public static void handle(Install payload, IPayloadContext context) {
-            ControlPanelBlockEntity panel = panelNear(context, payload.pos());
+            InstallerBlockEntity panel = panelNear(context, payload.pos());
             if (panel != null) {
                 context.player().displayClientMessage(panel.install(), false);
             }
@@ -63,14 +63,14 @@ public final class PanelPayloads {
     }
 
     @Nullable
-    private static ControlPanelBlockEntity panelNear(IPayloadContext context, BlockPos pos) {
+    private static InstallerBlockEntity panelNear(IPayloadContext context, BlockPos pos) {
         if (!(context.player() instanceof ServerPlayer player) || player.isSpectator()) {
             return null;
         }
-        double distance = ControlPanelBlockEntity.MAX_USE_DISTANCE;
+        double distance = InstallerBlockEntity.MAX_USE_DISTANCE;
         if (player.distanceToSqr(pos.getCenter()) > distance * distance || !player.level().isLoaded(pos)) {
             return null;
         }
-        return player.level().getBlockEntity(pos) instanceof ControlPanelBlockEntity panel ? panel : null;
+        return player.level().getBlockEntity(pos) instanceof InstallerBlockEntity panel ? panel : null;
     }
 }

@@ -25,15 +25,15 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.BlockHitResult;
 
 /**
- * 制御盤。最下階の乗場の壁に置く。正面（FACING）は置いたプレイヤーの方、つまり乗場側を向く。
+ * 設置用ブロック。最下階の乗場の壁に置く。正面（FACING）は置いたプレイヤーの方、つまり乗場側を向く。
  *
- * <p>右クリックで設定画面を開く（ネザースターのスロットがあるので、サーバーから開く）。階床登録ツールで右クリックすると、ツールをこの制御盤につなぐ。
- * 壊すと、設置したかご・乗場の扉・ガイドレールも撤去し、ネザースターを落とす。
+ * <p>右クリックで設定画面を開く（ネザースターのスロットがあるので、サーバーから開く）。階床登録ツールで右クリックすると、ツールをこの設置用ブロックにつなぐ。
+ * 壊すと、はめていたネザースターを落とす。設置すると、このブロックは消える（解体すると戻る）。
  */
-public class ControlPanelBlock extends HorizontalDirectionalBlock implements EntityBlock {
-    public static final MapCodec<ControlPanelBlock> CODEC = simpleCodec(ControlPanelBlock::new);
+public class InstallerBlock extends HorizontalDirectionalBlock implements EntityBlock {
+    public static final MapCodec<InstallerBlock> CODEC = simpleCodec(InstallerBlock::new);
 
-    public ControlPanelBlock(Properties properties) {
+    public InstallerBlock(Properties properties) {
         super(properties);
         registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH));
     }
@@ -56,7 +56,7 @@ public class ControlPanelBlock extends HorizontalDirectionalBlock implements Ent
     @Nullable
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        return new ControlPanelBlockEntity(pos, state);
+        return new InstallerBlockEntity(pos, state);
     }
 
     @Override
@@ -73,7 +73,7 @@ public class ControlPanelBlock extends HorizontalDirectionalBlock implements Ent
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
-        if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof ControlPanelBlockEntity panel) {
+        if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof InstallerBlockEntity panel) {
             serverPlayer.openMenu(panel, pos);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
@@ -81,8 +81,7 @@ public class ControlPanelBlock extends HorizontalDirectionalBlock implements Ent
 
     @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
-        if (!level.isClientSide && !state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof ControlPanelBlockEntity panel) {
-            panel.uninstall();
+        if (!level.isClientSide && !state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof InstallerBlockEntity panel) {
             Containers.dropContents(level, pos, panel.starContainer());
         }
         super.onRemove(state, level, pos, newState, movedByPiston);

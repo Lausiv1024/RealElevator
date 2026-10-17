@@ -197,6 +197,46 @@ class HoistMechanismTest {
         }
     }
 
+    @ParameterizedTest
+    @EnumSource(CarModel.class)
+    void nothingMovesThroughTheController(CarModel model) {
+        for (PitMode pit : PitMode.values()) {
+            // 制御盤を Y=64 に置いた昇降路
+            ShaftLayout layout = new ShaftLayout(model, pit, new int[] {0, 5, 9, 16});
+            HoistMechanism hoist = new HoistMechanism(model, pit, FLOORS);
+            List<Box> controller = new ArrayList<>();
+            for (ShaftLayout.Cell cell : layout.controllerCells()) {
+                controller.add(new Box(cell.x() - 0.5, cell.y(), cell.z() - 0.5, cell.x() + 0.5, cell.y() + 1, cell.z() + 0.5)
+                        .move(-layout.carX(), 64, -layout.carZ()));
+            }
+            List<Box> fixed = new ArrayList<>(hoist.counterweightRails());
+            fixed.add(hoist.motor());
+            fixed.addAll(hoist.hitches());
+            for (double y = 64; y <= 80; y += 0.25) {
+                List<Box> moving = new ArrayList<>(fixed);
+                moving.add(CarGeometry.exterior(model).move(0, y, 0));
+                moving.add(hoist.counterweight(y));
+                moving.addAll(hoist.counterweightSheaveBrackets(y));
+                hoist.sheaves(y).forEach(sheave -> moving.add(bounds(sheave)));
+                for (Box box : moving) {
+                    for (Box c : controller) {
+                        assertFalse(box.intersects(c), model + " " + pit + " " + box + " hits the controller at " + y);
+                    }
+                }
+                double half = HoistMechanism.ROPE_WIDTH_PX / CarModel.PIXELS_PER_BLOCK / 2;
+                for (List<Point> rope : hoist.ropes(y)) {
+                    for (Point p : rope) {
+                        for (Box c : controller) {
+                            boolean in = p.x() > c.minX() - half && p.x() < c.maxX() + half && p.y() > c.minY() - half
+                                    && p.y() < c.maxY() + half && p.z() > c.minZ() - half && p.z() < c.maxZ() + half;
+                            assertFalse(in, model + " " + pit + " a rope passes through the controller");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private static boolean inside(Box box, Box shaft) {
         return box.minX() >= shaft.minX() - EPS && box.maxX() <= shaft.maxX() + EPS
                 && box.minY() >= shaft.minY() - EPS && box.maxY() <= shaft.maxY() + EPS
