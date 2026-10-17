@@ -30,7 +30,9 @@ import net.lausiv1024.realelevator.core.door.DoorTiming;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
+import net.lausiv1024.realelevator.core.motion.SpeedSetting;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
+import net.lausiv1024.realelevator.core.motion.TravelLimits;
 import net.lausiv1024.realelevator.core.motion.Trip;
 import net.lausiv1024.realelevator.network.AnnouncePayload;
 import net.lausiv1024.realelevator.registry.ModSounds;
@@ -108,7 +110,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     /** 停止階が2つ以上あるときだけ作る。 */
     @Nullable
     private CollectiveControl control;
-    private SpeedSpec speedSpec = SpeedSpec.NORMAL_LOW;
+    private SpeedSetting speed = SpeedSetting.standard(SpeedSpec.NORMAL_LOW);
     @Nullable
     private Trip trip;
     private final DoorController door = new DoorController(DoorTiming.STANDARD);
@@ -139,7 +141,12 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         setAnnouncements(AnnouncementConfig.DEFAULT);
     }
 
+    /** 速度の仕様の標準の加速度とジャークで設定する。 */
     public void setup(CarModel model, Direction facing, int[] floors, SpeedSpec speedSpec) {
+        setup(model, facing, floors, SpeedSetting.standard(speedSpec));
+    }
+
+    public void setup(CarModel model, Direction facing, int[] floors, SpeedSetting speed) {
         this.entityData.set(DATA_MODEL, (byte) model.ordinal());
         this.entityData.set(DATA_FACING, facing);
         int[] sorted = floors.clone();
@@ -151,12 +158,17 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         }
         this.entityData.set(DATA_FLOORS, tag);
         applyFloors(sorted);
-        this.speedSpec = speedSpec;
+        this.speed = speed;
         this.currentFloor = nearestFloor(getY());
         this.targetFloor = currentFloor;
         // 停止階が変わったら、付けられない配置を直す
         setFixtures(fixtures);
         setBoundingBox(makeBoundingBox());
+    }
+
+    /** 速度の設定。 */
+    public SpeedSetting speed() {
+        return speed;
     }
 
     /** 昇降路の機構を付ける（ウィザードで設置したとき）。サーバーで呼ぶ。 */
@@ -467,7 +479,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                 if (now >= departureTick) {
                     departureTick = -1;
                     targetFloor = next;
-                    setTrip(new Trip(now, getY(), floors[next], speedSpec));
+                    setTrip(new Trip(now, getY(), floors[next], speed.limits()));
                 }
             } else {
                 departureTick = -1;
@@ -930,7 +942,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.putString("Model", model().name());
         tag.putString("Facing", facing().getSerializedName());
         tag.putIntArray("Floors", floors);
-        tag.putString("Speed", speedSpec.name());
+        tag.putString("Speed", speed.spec().name());
+        tag.putDouble("Acceleration", speed.acceleration());
+        tag.putDouble("Jerk", speed.jerk());
         if (pitMode != null) {
             tag.putString("Pit", pitMode.name());
         }
@@ -957,7 +971,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             facing = Direction.SOUTH;
         }
         pitMode = tag.contains("Pit") ? parseEnum(PitMode.class, tag.getString("Pit"), PitMode.REAL) : null;
-        setup(model, facing, tag.getIntArray("Floors"), parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW));
+        SpeedSetting speed = SpeedSetting.standard(parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW));
+        if (tag.contains("Acceleration")) {
+            speed = speed.withAcceleration(tag.getDouble("Acceleration")).withJerk(tag.getDouble("Jerk"));
+        }
+        setup(model, facing, tag.getIntArray("Floors"), speed);
         setFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")));
         setLabels(readLabels(tag));
         setAnnouncements(ConfigTags.readAnnouncements(tag.getCompound("Announcements")));
@@ -979,7 +997,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.putLong("StartTick", trip.startTick());
         tag.putDouble("From", trip.from());
         tag.putDouble("To", trip.to());
-        tag.putString("Speed", trip.speedSpec().name());
+        TravelLimits limits = trip.limits();
+        tag.putDouble("MaxVelocity", limits.maxVelocity());
+        tag.putDouble("MaxAcceleration", limits.maxAcceleration());
+        tag.putDouble("MaxJerk", limits.maxJerk());
         return tag;
     }
 
@@ -988,8 +1009,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (!tag.contains("StartTick")) {
             return null;
         }
-        return new Trip(tag.getLong("StartTick"), tag.getDouble("From"), tag.getDouble("To"),
-                parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW));
+        // 上限値を持たない古い保存データは、速度の仕様の標準の値で走る
+        TravelLimits limits = tag.contains("MaxVelocity")
+                ? new TravelLimits(tag.getDouble("MaxVelocity"), tag.getDouble("MaxAcceleration"), tag.getDouble("MaxJerk"))
+                : parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW).limits();
+        return new Trip(tag.getLong("StartTick"), tag.getDouble("From"), tag.getDouble("To"), limits);
     }
 
     private static CompoundTag writeDoor(DoorController door) {

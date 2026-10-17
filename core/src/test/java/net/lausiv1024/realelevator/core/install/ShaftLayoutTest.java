@@ -90,7 +90,8 @@ class ShaftLayoutTest {
     void railsRunTheWholeHeightOnBothSides() {
         ShaftLayout layout = new ShaftLayout(CarModel.P11, PitMode.REAL, new int[] {0, 5});
         List<ShaftLayout.Rail> rails = layout.rails();
-        assertEquals((layout.top() - layout.bottom()) * 2, rails.size());
+        // 右のレールは天井の1ブロック下で止める
+        assertEquals((layout.top() - layout.bottom()) * 2 - 1, rails.size());
         Set<Cell> clear = new HashSet<>(layout.requiredClearCells());
         for (ShaftLayout.Rail rail : rails) {
             assertTrue(clear.contains(rail.cell()));

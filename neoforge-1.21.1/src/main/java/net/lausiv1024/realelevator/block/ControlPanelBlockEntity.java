@@ -16,12 +16,14 @@ import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.Cell;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.FloorProblem;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
+import net.lausiv1024.realelevator.core.motion.SpeedSetting;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.ConfigTags;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.ElevatorTracker;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
+import net.lausiv1024.realelevator.menu.ControlPanelMenu;
 import net.lausiv1024.realelevator.registry.ModBlockEntities;
 import net.lausiv1024.realelevator.registry.ModBlocks;
 import net.lausiv1024.realelevator.registry.ModEntities;
@@ -34,6 +36,14 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Container;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -48,8 +58,11 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>停止階は階床登録ツールで登録し、制御盤の高さ（最下階）は常に含む。機種・速度・ピットは設置する前だけ変えられ、
  * 階名・配置・アナウンスの設定は設置したあとも変えられる（リニューアル）。
+ *
+ * <p>高速仕様（高速・超高速）は、ネザースターを1個はめると選べるようになる。ネザースターは消費しない。
+ * 高速仕様で設置しているあいだは、ネザースターを取り出せない。
  */
-public class ControlPanelBlockEntity extends BlockEntity {
+public class ControlPanelBlockEntity extends BlockEntity implements MenuProvider {
     /** 階名の文字数の上限。階床表示器には先頭の2文字が出る。 */
     public static final int MAX_LABEL_LENGTH = 3;
     /** 設定画面から操作できる距離。 */
@@ -60,7 +73,19 @@ public class ControlPanelBlockEntity extends BlockEntity {
     /** 停止階のY座標ごとの階名。空なら初期値（下から 1、2、3…）。 */
     private final Map<Integer, String> labels = new HashMap<>();
     private CarModel model = CarModel.P11;
-    private SpeedSpec speed = SpeedSpec.NORMAL_LOW;
+    private SpeedSetting speed = SpeedSetting.standard(SpeedSpec.NORMAL_LOW);
+    /** ネザースターをはめるスロット。 */
+    private final SimpleContainer star = new SimpleContainer(1) {
+        @Override
+        public int getMaxStackSize() {
+            return 1;
+        }
+
+        @Override
+        public boolean canPlaceItem(int slot, ItemStack stack) {
+            return stack.is(Items.NETHER_STAR);
+        }
+    };
     private PitMode pitMode = PitMode.REAL;
     private FixtureConfig fixtures = FixtureConfig.DEFAULT;
     private AnnouncementConfig announcements = AnnouncementConfig.DEFAULT;
@@ -72,6 +97,7 @@ public class ControlPanelBlockEntity extends BlockEntity {
     public ControlPanelBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.CONTROL_PANEL.get(), pos, state);
         floors.add(pos.getY());
+        star.addListener(container -> onStarChanged());
     }
 
     // ---- 設定 ----
@@ -101,8 +127,31 @@ public class ControlPanelBlockEntity extends BlockEntity {
         return model;
     }
 
-    public SpeedSpec speed() {
+    public SpeedSetting speed() {
         return speed;
+    }
+
+    /** ネザースターのスロット。 */
+    public Container starContainer() {
+        return star;
+    }
+
+    /** ネザースターがはまっているか（高速仕様を選べるか）。 */
+    public boolean hasNetherStar() {
+        return star.getItem(0).is(Items.NETHER_STAR);
+    }
+
+    /** ネザースターを取り出せないか。高速仕様で設置しているあいだは取り出せない。 */
+    public boolean isStarLocked() {
+        return isInstalled() && speed.spec().isHighSpeed();
+    }
+
+    /** ネザースターを取り出したら、設置する前の高速仕様の設定は普通（高）に戻す。 */
+    private void onStarChanged() {
+        if (!hasNetherStar() && !isInstalled() && speed.spec().isHighSpeed()) {
+            speed = SpeedSetting.standard(SpeedSpec.NORMAL_HIGH);
+        }
+        sync();
     }
 
     public PitMode pitMode() {
@@ -135,9 +184,11 @@ public class ControlPanelBlockEntity extends BlockEntity {
     public void applySettings(CompoundTag tag) {
         if (!isInstalled()) {
             model = ConfigTags.parseEnum(CarModel.class, tag.getString("Model"), model);
-            SpeedSpec requested = ConfigTags.parseEnum(SpeedSpec.class, tag.getString("Speed"), speed);
-            // 高速仕様はネザースターで解放する（未実装）ので、今は普通仕様だけ選べる
-            speed = requested.isHighSpeed() ? speed : requested;
+            SpeedSpec requested = ConfigTags.parseEnum(SpeedSpec.class, tag.getString("Speed"), speed.spec());
+            // 高速仕様は、ネザースターがはまっているときだけ選べる
+            if (!requested.isHighSpeed() || hasNetherStar()) {
+                speed = readSpeed(requested, tag);
+            }
             pitMode = ConfigTags.parseEnum(PitMode.class, tag.getString("Pit"), pitMode);
         }
         fixtures = ShaftLayout.fitFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")), floorYs());
@@ -164,7 +215,9 @@ public class ControlPanelBlockEntity extends BlockEntity {
     public CompoundTag settingsTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString("Model", model.name());
-        tag.putString("Speed", speed.name());
+        tag.putString("Speed", speed.spec().name());
+        tag.putDouble("Acceleration", speed.acceleration());
+        tag.putDouble("Jerk", speed.jerk());
         tag.putString("Pit", pitMode.name());
         tag.put("Fixtures", ConfigTags.writeFixtures(fixtures));
         tag.put("Announcements", ConfigTags.writeAnnouncements(announcements));
@@ -173,6 +226,15 @@ public class ControlPanelBlockEntity extends BlockEntity {
         labels.forEach((y, label) -> labelTag.putString(Integer.toString(y), label));
         tag.put("Labels", labelTag);
         return tag;
+    }
+
+    /** 速度の仕様 spec と、tag に書かれた加速度・ジャーク（なければ標準の値）。 */
+    private static SpeedSetting readSpeed(SpeedSpec spec, CompoundTag tag) {
+        SpeedSetting setting = SpeedSetting.standard(spec);
+        if (tag.contains("Acceleration")) {
+            setting = setting.withAcceleration(tag.getDouble("Acceleration")).withJerk(tag.getDouble("Jerk"));
+        }
+        return setting;
     }
 
     private String[] labelArray() {
@@ -363,6 +425,9 @@ public class ControlPanelBlockEntity extends BlockEntity {
         super.saveAdditional(tag, registries);
         tag.putIntArray("Floors", floorYs());
         tag.put("Settings", settingsTag());
+        if (!star.getItem(0).isEmpty()) {
+            tag.put("Star", star.getItem(0).save(registries));
+        }
         if (carUuid != null) {
             tag.putUUID("Car", carUuid);
         }
@@ -379,7 +444,9 @@ public class ControlPanelBlockEntity extends BlockEntity {
         carUuid = tag.hasUUID("Car") ? tag.getUUID("Car") : null;
         CompoundTag settings = tag.getCompound("Settings");
         model = ConfigTags.parseEnum(CarModel.class, settings.getString("Model"), CarModel.P11);
-        speed = ConfigTags.parseEnum(SpeedSpec.class, settings.getString("Speed"), SpeedSpec.NORMAL_LOW);
+        speed = readSpeed(ConfigTags.parseEnum(SpeedSpec.class, settings.getString("Speed"), SpeedSpec.NORMAL_LOW), settings);
+        // 読み込みでは変更を知らせない（同期や設定の戻しを起こさない）よう、中身を直接入れ替える
+        star.getItems().set(0, ItemStack.parseOptional(registries, tag.getCompound("Star")));
         pitMode = ConfigTags.parseEnum(PitMode.class, settings.getString("Pit"), PitMode.REAL);
         fixtures = ConfigTags.readFixtures(settings.getCompound("Fixtures"));
         announcements = ConfigTags.readAnnouncements(settings.getCompound("Announcements"));
@@ -393,6 +460,18 @@ public class ControlPanelBlockEntity extends BlockEntity {
                 // 壊れた階名は読み飛ばす
             }
         }
+    }
+
+    // ---- 設定画面 ----
+
+    @Override
+    public Component getDisplayName() {
+        return Component.translatable("gui.realelevator.panel.title");
+    }
+
+    @Override
+    public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
+        return new ControlPanelMenu(containerId, inventory, this);
     }
 
     @Override

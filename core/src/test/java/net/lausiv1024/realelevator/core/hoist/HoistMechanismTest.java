@@ -16,6 +16,7 @@ import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism.Point;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism.Sheave;
+import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
 
 class HoistMechanismTest {
@@ -163,6 +164,33 @@ class HoistMechanismTest {
                                     && py < car.maxY() - EPS && pz > car.minZ() + EPS && pz < car.maxZ() - EPS;
                             assertFalse(in, model + " " + pit + " rope passes through the car at y=" + y + " (" + px + ", " + py + ", " + pz + ")");
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(CarModel.class)
+    void sheavesAndRopesClearTheGuideRails(CarModel model) {
+        for (PitMode pit : PitMode.values()) {
+            // 制御盤を Y=64 に置いた昇降路
+            ShaftLayout layout = new ShaftLayout(model, pit, new int[] {0, 5, 9, 16});
+            HoistMechanism hoist = new HoistMechanism(model, pit, FLOORS);
+            List<Box> rails = new ArrayList<>();
+            for (ShaftLayout.Rail rail : layout.rails()) {
+                rails.add(rail.box().move(-layout.carX(), 64, -layout.carZ()));
+            }
+            for (double y = 64; y <= 80; y += 0.5) {
+                for (Sheave sheave : hoist.sheaves(y)) {
+                    Box b = bounds(sheave);
+                    for (Box rail : rails) {
+                        assertFalse(b.intersects(rail), model + " " + pit + " sheave " + sheave.centre() + " hits a rail at " + y);
+                    }
+                }
+                for (Box box : hoist.hitches()) {
+                    for (Box rail : rails) {
+                        assertFalse(box.intersects(rail), model + " " + pit + " hitch hits a rail");
                     }
                 }
             }

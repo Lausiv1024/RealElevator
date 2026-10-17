@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
@@ -164,16 +165,35 @@ public final class ShaftLayout {
         return cells;
     }
 
+    /** ガイドレールの断面 [px]。ブロックのかごと反対側の端にあり、奥行きはブロックの中央。 */
+    public static final int RAIL_WIDTH_PX = 4;
+    public static final int RAIL_DEPTH_PX = 4;
+
     /** ガイドレールのブロック。left は乗場から見て左（−X）側のレールか。 */
     public record Rail(Cell cell, boolean left) {
+        /** レールの形（制御盤からの相対座標）。 */
+        public Box box() {
+            double p = CarModel.PIXELS_PER_BLOCK;
+            double outer = left ? cell.x() - 0.5 : cell.x() + 0.5;
+            double inner = left ? outer + RAIL_WIDTH_PX / p : outer - RAIL_WIDTH_PX / p;
+            double halfDepth = RAIL_DEPTH_PX / p / 2;
+            return new Box(Math.min(outer, inner), cell.y(), cell.z() - halfDepth,
+                    Math.max(outer, inner), cell.y() + 1, cell.z() + halfDepth);
+        }
     }
 
+    /**
+     * ガイドレール。左右とも、ピットの底から天井まで。ただし右のレールは、頂部のそらせ車（昇降路の機構）と重ならないよう、
+     * 天井の1ブロック下で止める。
+     */
     public List<Rail> rails() {
         int row = (int) Math.floor(carZ() + 0.5);
         List<Rail> rails = new ArrayList<>();
         for (int y = bottom(); y < top(); y++) {
             rails.add(new Rail(new Cell(CAR_COLUMN - 1, y, row), true));
-            rails.add(new Rail(new Cell(CAR_COLUMN + 1, y, row), false));
+            if (y < top() - 1) {
+                rails.add(new Rail(new Cell(CAR_COLUMN + 1, y, row), false));
+            }
         }
         return rails;
     }

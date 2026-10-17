@@ -14,6 +14,7 @@ import net.lausiv1024.realelevator.registry.ModBlocks;
 import net.lausiv1024.realelevator.registry.ModDataComponents;
 import net.lausiv1024.realelevator.registry.ModEntities;
 import net.lausiv1024.realelevator.registry.ModItems;
+import net.lausiv1024.realelevator.registry.ModMenus;
 import net.lausiv1024.realelevator.registry.ModSounds;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -37,6 +38,7 @@ public class RealElevator {
         ModDataComponents.DATA_COMPONENTS.register(modEventBus);
         ModEntities.ENTITY_TYPES.register(modEventBus);
         ModSounds.SOUND_EVENTS.register(modEventBus);
+        ModMenus.MENU_TYPES.register(modEventBus);
         modEventBus.addListener(RealElevator::registerPayloads);
         modEventBus.addListener(RealElevator::addCreativeTabItems);
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> DebugCommands.register(event.getDispatcher()));

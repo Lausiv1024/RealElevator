@@ -7,8 +7,11 @@ import net.lausiv1024.realelevator.block.ControlPanelBlockEntity;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
+import net.lausiv1024.realelevator.core.motion.SpeedSetting;
+import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.ElevatorTracker;
+import net.lausiv1024.realelevator.menu.ControlPanelMenu;
 import net.lausiv1024.realelevator.registry.ModBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -16,6 +19,10 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.level.block.Blocks;
@@ -129,5 +136,58 @@ public class InstallGameTests {
                     "should stand on the counterweight at " + counterweight.maxY + " but is at " + stand.getY());
             helper.succeed();
         });
+    }
+
+    private static void requestSpeed(ControlPanelBlockEntity panel, SpeedSpec spec, double acceleration, double jerk) {
+        CompoundTag settings = panel.settingsTag();
+        settings.putString("Speed", spec.name());
+        settings.putDouble("Acceleration", acceleration);
+        settings.putDouble("Jerk", jerk);
+        panel.applySettings(settings);
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void highSpeedNeedsANetherStarAndLocksItOnceInstalled(GameTestHelper helper) {
+        ControlPanelBlockEntity panel = placePanel(helper);
+        requestSpeed(panel, SpeedSpec.HIGH, 1.8, 2.5);
+        helper.assertTrue(!panel.speed().spec().isHighSpeed(), "high speed should need a nether star");
+
+        panel.starContainer().setItem(0, new ItemStack(Items.NETHER_STAR));
+        requestSpeed(panel, SpeedSpec.HIGH, 1.8, 2.5);
+        helper.assertTrue(panel.speed().equals(new SpeedSetting(SpeedSpec.HIGH, 1.8, 2.5)), "speed: " + panel.speed());
+
+        Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        ControlPanelMenu menu = new ControlPanelMenu(0, player.getInventory(), panel);
+        helper.assertTrue(menu.getSlot(0).mayPickup(player), "the star can be taken out before installing");
+        panel.install();
+        ElevatorCarEntity car = ElevatorTracker.cars(helper.getLevel()).stream()
+                .filter(c -> c.position().distanceToSqr(panel.carOrigin()) < 1e-6).findFirst().orElseThrow();
+        helper.assertTrue(car.speed().equals(panel.speed()), "the car should get the speed: " + car.speed());
+        helper.assertTrue(panel.isStarLocked() && !menu.getSlot(0).mayPickup(player), "the star should be locked");
+        menu.quickMoveStack(player, 0);
+        helper.assertTrue(panel.hasNetherStar(), "shift-clicking should not take the star out");
+        // 設置したあとは、速度を変えられない
+        requestSpeed(panel, SpeedSpec.NORMAL_LOW, 1.5, 1.5);
+        helper.assertTrue(panel.speed().spec() == SpeedSpec.HIGH, "the speed should not change after installing");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void takingTheStarOutBeforeInstallingFallsBackToANormalSpeed(GameTestHelper helper) {
+        ControlPanelBlockEntity panel = placePanel(helper);
+        panel.starContainer().setItem(0, new ItemStack(Items.NETHER_STAR));
+        requestSpeed(panel, SpeedSpec.ULTRA_HIGH, 2.0, 3.0);
+        helper.assertTrue(panel.speed().spec() == SpeedSpec.ULTRA_HIGH, "ultra high should be chosen");
+        panel.starContainer().setItem(0, ItemStack.EMPTY);
+        helper.assertTrue(panel.speed().equals(SpeedSetting.standard(SpeedSpec.NORMAL_HIGH)), "speed: " + panel.speed());
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 40)
+    public static void breakingThePanelDropsTheStar(GameTestHelper helper) {
+        ControlPanelBlockEntity panel = placePanel(helper);
+        panel.starContainer().setItem(0, new ItemStack(Items.NETHER_STAR));
+        helper.setBlock(PANEL, Blocks.AIR);
+        helper.succeedWhen(() -> helper.assertItemEntityPresent(Items.NETHER_STAR, PANEL, 2.0));
     }
 }

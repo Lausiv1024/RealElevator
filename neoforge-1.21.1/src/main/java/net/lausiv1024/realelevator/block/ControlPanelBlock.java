@@ -4,10 +4,11 @@ import javax.annotation.Nullable;
 
 import com.mojang.serialization.MapCodec;
 
-import net.lausiv1024.realelevator.client.ControlPanelScreen;
 import net.lausiv1024.realelevator.item.FloorMarkerItem;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
@@ -26,8 +27,8 @@ import net.minecraft.world.phys.BlockHitResult;
 /**
  * 制御盤。最下階の乗場の壁に置く。正面（FACING）は置いたプレイヤーの方、つまり乗場側を向く。
  *
- * <p>右クリックで設定画面を開く。階床登録ツールで右クリックすると、ツールをこの制御盤につなぐ。
- * 壊すと、設置したかご・乗場の扉・ガイドレールも撤去する。
+ * <p>右クリックで設定画面を開く（ネザースターのスロットがあるので、サーバーから開く）。階床登録ツールで右クリックすると、ツールをこの制御盤につなぐ。
+ * 壊すと、設置したかご・乗場の扉・ガイドレールも撤去し、ネザースターを落とす。
  */
 public class ControlPanelBlock extends HorizontalDirectionalBlock implements EntityBlock {
     public static final MapCodec<ControlPanelBlock> CODEC = simpleCodec(ControlPanelBlock::new);
@@ -72,9 +73,8 @@ public class ControlPanelBlock extends HorizontalDirectionalBlock implements Ent
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
-        if (level.isClientSide) {
-            // 画面のクラスはクライアントにしかないので、クライアントで実行されたときだけ参照する
-            ControlPanelScreen.open(pos);
+        if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof ControlPanelBlockEntity panel) {
+            serverPlayer.openMenu(panel, pos);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
@@ -83,6 +83,7 @@ public class ControlPanelBlock extends HorizontalDirectionalBlock implements Ent
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
         if (!level.isClientSide && !state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof ControlPanelBlockEntity panel) {
             panel.uninstall();
+            Containers.dropContents(level, pos, panel.starContainer());
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
     }

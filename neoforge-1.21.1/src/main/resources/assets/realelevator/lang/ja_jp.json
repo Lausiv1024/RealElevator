@@ -58,5 +58,12 @@
   "gui.realelevator.hall_lantern.beside_door": "扉の横",
   "gui.realelevator.panel.chime": "到着チャイム",
   "gui.realelevator.hall_lantern.none": "なし",
-  "gui.realelevator.panel.no_over_door": "停止階の間隔が5ブロック未満なので、乗場の表示器とランタンは扉の上に付けられません（上の階の床で隠れるため）"
+  "gui.realelevator.panel.no_over_door": "停止階の間隔が5ブロック未満なので、乗場の表示器とランタンは扉の上に付けられません（上の階の床で隠れるため）",
+  "gui.realelevator.panel.acceleration": "加速度: %s ブロック/s²",
+  "gui.realelevator.panel.jerk": "ジャーク: %s ブロック/s³",
+  "gui.realelevator.panel.power": "動力",
+  "gui.realelevator.panel.back": "設定に戻る",
+  "gui.realelevator.panel.star": "ネザースター",
+  "gui.realelevator.panel.star_hint": "ネザースターをはめると、高速と超高速を選べ、加速度とジャークを上げられます。ネザースターは消費しません。",
+  "gui.realelevator.panel.star_locked": "高速仕様で設置しているので、ネザースターは取り出せません。"
 }

@@ -12,15 +12,20 @@ public final class Trip {
     private final long startTick;
     private final double from;
     private final double to;
-    private final SpeedSpec speedSpec;
+    private final TravelLimits limits;
     private final TravelCurve curve;
 
-    public Trip(long startTick, double from, double to, SpeedSpec speedSpec) {
+    public Trip(long startTick, double from, double to, TravelLimits limits) {
         this.startTick = startTick;
         this.from = from;
         this.to = to;
-        this.speedSpec = speedSpec;
-        this.curve = TravelCurve.plan(from, to, speedSpec.limits());
+        this.limits = limits;
+        this.curve = TravelCurve.plan(from, to, limits);
+    }
+
+    /** 速度の仕様の標準の加速度とジャークで走る。 */
+    public Trip(long startTick, double from, double to, SpeedSpec speedSpec) {
+        this(startTick, from, to, speedSpec.limits());
     }
 
     /** ゲーム時刻 tick（partialTickを含めてよい）でのかごの位置。 */
@@ -55,7 +60,7 @@ public final class Trip {
         if (direction == 0 || (newTo - current) * direction <= 0 || (to - newTo) * direction <= 0) {
             return null;
         }
-        Trip candidate = new Trip(startTick, from, newTo, speedSpec);
+        Trip candidate = new Trip(startTick, from, newTo, limits);
         double t = (tick - startTick) / TravelCurve.TICKS_PER_SECOND;
         boolean sameState = Math.abs(candidate.curve.position(t) - curve.position(t)) < STATE_TOLERANCE
                 && Math.abs(candidate.curve.velocity(t) - curve.velocity(t)) < STATE_TOLERANCE
@@ -75,8 +80,9 @@ public final class Trip {
         return to;
     }
 
-    public SpeedSpec speedSpec() {
-        return speedSpec;
+    /** この走行の運転曲線の上限値。 */
+    public TravelLimits limits() {
+        return limits;
     }
 
     public TravelCurve curve() {

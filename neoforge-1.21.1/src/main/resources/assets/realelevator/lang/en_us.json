@@ -58,5 +58,12 @@
   "gui.realelevator.hall_lantern.beside_door": "Beside the door",
   "gui.realelevator.panel.chime": "Arrival chime",
   "gui.realelevator.hall_lantern.none": "None",
-  "gui.realelevator.panel.no_over_door": "Floors are less than 5 blocks apart, so hall fixtures cannot go above the door (the floor above would hide them)"
+  "gui.realelevator.panel.no_over_door": "Floors are less than 5 blocks apart, so hall fixtures cannot go above the door (the floor above would hide them)",
+  "gui.realelevator.panel.acceleration": "Acceleration: %s blocks/s²",
+  "gui.realelevator.panel.jerk": "Jerk: %s blocks/s³",
+  "gui.realelevator.panel.power": "Power",
+  "gui.realelevator.panel.back": "Back to settings",
+  "gui.realelevator.panel.star": "Nether Star",
+  "gui.realelevator.panel.star_hint": "Insert a Nether Star to unlock High and Ultra-high speeds, and to raise the acceleration and jerk. The star is not used up.",
+  "gui.realelevator.panel.star_locked": "This elevator is installed with a high speed, so the Nether Star cannot be taken out."
 }
