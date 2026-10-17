@@ -79,8 +79,9 @@ class ButtonLayoutTest {
         assertEquals(List.of(Kind.HALL_UP, Kind.HALL_DOWN), middle.stream().map(Button::kind).toList());
         assertTrue(middle.get(0).box().minY() > middle.get(1).box().maxY());
         for (Button button : middle) {
-            assertTrue(button.box().minX() > travel.maxX(), "overlaps the door pocket");
-            assertEquals(travel.maxZ(), button.box().minZ(), EPS);
+            assertTrue(button.box().minX() >= CarGeometry.entrance(model).maxX() && button.box().maxX() <= DoorGeometry.LANDING_FRAME_HALF_WIDTH,
+                    "should be on the right jamb of the frame");
+            assertEquals(DoorGeometry.landingFace(model), button.box().minZ(), EPS);
             assertEquals(1, button.floor());
         }
     }

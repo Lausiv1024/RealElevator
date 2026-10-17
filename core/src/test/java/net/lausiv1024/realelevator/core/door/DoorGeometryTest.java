@@ -75,4 +75,30 @@ class DoorGeometryTest {
             }
         }
     }
+
+    @ParameterizedTest
+    @EnumSource(CarModel.class)
+    void landingFrameFillsTheWallAroundTheEntrance(CarModel model) {
+        Box entrance = CarGeometry.entrance(model);
+        Box travel = DoorGeometry.travelBounds(model, Side.LANDING);
+        List<Box> frame = DoorGeometry.landingFrame(model);
+        double face = DoorGeometry.landingFace(model);
+        // 乗場の壁の列は1ブロックの厚みで、乗場の戸はその昇降路側の面にある
+        assertEquals(travel.minZ() + 1, face, EPS);
+        double area = 0;
+        for (Box box : frame) {
+            assertEquals(travel.maxZ(), box.minZ(), EPS);
+            assertEquals(face, box.maxZ(), EPS);
+            // 戸（全閉から全開まで）とも出入口とも重ならない
+            for (int i = 0; i <= 10; i++) {
+                for (Box panel : DoorGeometry.panels(model, Side.LANDING, i / 10.0)) {
+                    assertFalse(box.intersects(panel));
+                }
+            }
+            assertFalse(box.intersects(new Box(entrance.minX(), 0, travel.maxZ(), entrance.maxX(), entrance.maxY(), face)));
+            area += box.sizeX() * box.sizeY();
+        }
+        // 幅3ブロック・高さ4ブロックから出入口を除いた面積をちょうど埋める
+        assertEquals(3 * 4 - entrance.sizeX() * entrance.maxY(), area, EPS);
+    }
 }

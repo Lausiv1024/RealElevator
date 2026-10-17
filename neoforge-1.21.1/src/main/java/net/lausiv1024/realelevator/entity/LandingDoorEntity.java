@@ -1,5 +1,6 @@
 package net.lausiv1024.realelevator.entity;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -35,7 +36,7 @@ import net.minecraft.world.phys.AABB;
  * 開き具合は自分では持たず、かごがこの階に着床しているときだけ、かごの戸と同じ開き具合で動く。
  * そのため、かごとの間で追加の同期はいらない。
  *
- * <p>乗場の▲▼ボタンもこのエンティティが持つ。応答灯はかごに登録された乗場呼びを表示する。
+ * <p>乗場の▲▼ボタン、階床表示器、ホールランタン、三方枠（仮）もこのエンティティが持つ。応答灯はかごに登録された乗場呼びを表示する。
  */
 public class LandingDoorEntity extends Entity implements ButtonHost {
     private static final EntityDataAccessor<Optional<UUID>> DATA_CAR = SynchedEntityData.defineId(LandingDoorEntity.class, EntityDataSerializers.OPTIONAL_UUID);
@@ -105,10 +106,16 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         return isCarHere() && car != null ? car.doorFractionAt(car.renderTick(partialTick)) : 0;
     }
 
+    /** 当たり判定の箱（ワールド座標）。戸と三方枠。 */
     public List<AABB> collisionBoxesAt(long tick) {
-        return CarShapes.doorPanels(model(), facing(), DoorGeometry.Side.LANDING, fractionAt(tick)).stream()
-                .map(box -> CarShapes.toAabb(box, getX(), getY(), getZ()))
-                .toList();
+        List<AABB> boxes = new ArrayList<>();
+        for (Box box : CarShapes.doorPanels(model(), facing(), DoorGeometry.Side.LANDING, fractionAt(tick))) {
+            boxes.add(CarShapes.toAabb(box, getX(), getY(), getZ()));
+        }
+        for (Box box : CarShapes.landingFrame(model(), facing())) {
+            boxes.add(CarShapes.toAabb(box, getX(), getY(), getZ()));
+        }
+        return boxes;
     }
 
     /** この扉の階の番号。かごが読み込まれていないか、停止階でなければ −1。 */
@@ -172,8 +179,11 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
 
     @Override
     protected AABB makeBoundingBox() {
-        // 描画のカリングに使うので、戸が動く範囲、ボタン（中間階の▲▼）、階床表示器、ホールランタンを含める
+        // 描画のカリングに使うので、戸が動く範囲、三方枠、ボタン（中間階の▲▼）、階床表示器、ホールランタンを含める
         AABB bounds = CarShapes.toAabb(CarShapes.doorTravelBounds(model(), facing(), DoorGeometry.Side.LANDING), getX(), getY(), getZ());
+        for (Box box : CarShapes.landingFrame(model(), facing())) {
+            bounds = bounds.minmax(CarShapes.toAabb(box, getX(), getY(), getZ()));
+        }
         int turns = facing().get2DDataValue();
         for (Button button : ButtonLayout.hallButtons(model(), 1, 3)) {
             bounds = bounds.minmax(CarShapes.toAabb(button.box().rotateQuarterTurns(turns), getX(), getY(), getZ()));

@@ -605,6 +605,21 @@ public class ElevatorCarGameTests {
         });
     }
 
+    /** 停止階の間隔が5ブロック未満のかごでは、乗場の器具を出入口の上に付けられず、横へ移す。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void overDoorHallFixturesNeedFiveBlockFloors(GameTestHelper helper) {
+        FixtureConfig overDoor = FixtureConfig.DEFAULT.withHallIndicator(FixtureConfig.HallIndicator.OVER_DOOR)
+                .withHallLantern(FixtureConfig.HallLanternPlacement.OVER_DOOR);
+        ElevatorCarEntity low = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, 4, 8).car();
+        low.setFixtures(overDoor);
+        helper.assertTrue(low.fixtures().hallIndicator() == FixtureConfig.HallIndicator.OVER_BUTTONS, "the indicator should move beside the door");
+        helper.assertTrue(low.fixtures().hallLantern() == FixtureConfig.HallLanternPlacement.BESIDE_DOOR, "the lantern should move beside the door");
+        ElevatorCarEntity tall = spawnCarOnly(helper, helper.absolutePos(LOWER).getX() + 3.5);
+        tall.setFixtures(overDoor);
+        helper.assertTrue(tall.fixtures().equals(overDoor), "with 7-block floors the door top is fine");
+        helper.succeed();
+    }
+
     /** 戸が開き始めるたびに、その階を記録する。 */
     private static List<Integer> recordStops(GameTestHelper helper, ElevatorCarEntity car) {
         List<Integer> stops = new ArrayList<>();

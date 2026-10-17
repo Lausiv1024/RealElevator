@@ -23,7 +23,7 @@ import net.lausiv1024.realelevator.core.panel.FixtureConfig;
  * <p>位置は {@link FixtureConfig.HallLanternPlacement} で選ぶ。
  * <ul>
  * <li>扉の上：出入口と同じ幅の横長の棒。各段の高さ2px。乗場の階床表示器が扉の上にあるときは、その上に置く。</li>
- * <li>扉の横：乗場から見て出入口の左（ボタンと反対側）、戸袋の外側に縦長の棒。幅2px、各段7px、段の間1px。
+ * <li>扉の横：乗場から見て出入口の左（ボタンと反対側）の三方枠の脇の、幅の中央に縦長の棒。幅2px、各段7px、段の間1px。
  * 最上階と最下階では上下の段をつなげて1本にする。</li>
  * </ul>
  */
@@ -37,16 +37,14 @@ public final class HallLantern {
 
     /** 扉の上：1段の高さ [px]。 */
     private static final int OVER_SECTION_HEIGHT_PX = 2;
-    /** 扉の上：出入口（または階床表示器）の上端からのすき間 [px]。 */
-    private static final int OVER_GAP_PX = 2;
+    /** 扉の上：出入口（または階床表示器）の上端からのすき間 [px]。三方枠の高さに収まるよう、1px。 */
+    private static final int OVER_GAP_PX = 1;
     /** 扉の横：棒の幅 [px]。 */
     private static final int BESIDE_WIDTH_PX = 2;
     /** 扉の横：1段の高さ [px]。 */
     private static final int BESIDE_SECTION_HEIGHT_PX = 7;
     /** 扉の横：下の段の下端の高さ [px]（中心が実機の約1800 mm）。 */
     private static final int BESIDE_BOTTOM_PX = 36;
-    /** 扉の横：戸袋の外側からのすき間 [px]。 */
-    private static final int BESIDE_GAP_PX = 2;
 
     private static final Set<TravelDirection> UP_ONLY = Set.of(TravelDirection.UP);
     private static final Set<TravelDirection> DOWN_ONLY = Set.of(TravelDirection.DOWN);
@@ -96,16 +94,20 @@ public final class HallLantern {
     }
 
     /**
-     * ランプの段。上の段（上り）、下の段（下り）の順。扉の横で最上階・最下階のときは、上下をつなげた1段だけ。
+     * ランプの段。上の段（上り）、下の段（下り）の順。扉の横で最上階・最下階のときは、上下をつなげた1段だけ。付けないときは空。
      *
      * @param terminal 最上階または最下階か
      */
     public static List<Section> sections(CarModel model, FixtureConfig config, boolean terminal) {
+        if (config.hallLantern() == FixtureConfig.HallLanternPlacement.NONE) {
+            return List.of();
+        }
         double px = 1.0 / CarModel.PIXELS_PER_BLOCK;
-        double face = DoorGeometry.travelBounds(model, DoorGeometry.Side.LANDING).maxZ();
+        double face = DoorGeometry.landingFace(model);
         if (config.hallLantern() == FixtureConfig.HallLanternPlacement.BESIDE_DOOR) {
-            double maxX = DoorGeometry.travelBounds(model, DoorGeometry.Side.LANDING).minX() - BESIDE_GAP_PX * px;
-            double minX = maxX - BESIDE_WIDTH_PX * px;
+            // 左側の脇の、幅の中央
+            double minX = (DoorGeometry.frameJambCenter2Px(model, false) - BESIDE_WIDTH_PX) / 2 * px;
+            double maxX = minX + BESIDE_WIDTH_PX * px;
             double bottom = BESIDE_BOTTOM_PX * px;
             double downTop = bottom + BESIDE_SECTION_HEIGHT_PX * px;
             double upBottom = downTop + px;

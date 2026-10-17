@@ -48,6 +48,13 @@ public final class CarShapes {
                 .toList();
     }
 
+    /** 三方枠（かごの原点からの相対座標）。 */
+    public static List<Box> landingFrame(CarModel model, Direction facing) {
+        return DoorGeometry.landingFrame(model).stream()
+                .map(box -> box.rotateQuarterTurns(facing.get2DDataValue()))
+                .toList();
+    }
+
     public static Box doorTravelBounds(CarModel model, Direction facing, DoorGeometry.Side side) {
         return DoorGeometry.travelBounds(model, side).rotateQuarterTurns(facing.get2DDataValue());
     }

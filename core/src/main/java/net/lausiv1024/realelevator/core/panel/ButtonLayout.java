@@ -15,7 +15,7 @@ import net.lausiv1024.realelevator.core.door.DoorGeometry;
  * <p>かごの操作盤は、かごの中から扉の方を向いて右側（−X 側）の袖壁の内面に置く。設定によっては左側（+X 側）にも同じものを置く。
  * 行先ボタンは2列で、下の段から順に、左の列に奇数階、右の列に偶数階を並べる。その下の段に開・閉ボタンを置く。
  *
- * <p>乗場のボタンは、乗場から扉の方を向いて右側（+X 側）、戸が開いたときに滑り込む範囲のさらに外側に置く。
+ * <p>乗場のボタンは、三方枠の乗場側の面の、乗場から扉の方を向いて右側（+X 側）の脇の、幅の中央に置く。
  */
 public final class ButtonLayout {
     public static final int BUTTON_PX = 2;
@@ -103,7 +103,7 @@ public final class ButtonLayout {
 
     /** 乗場のボタンの左端（−X 側）[px]。 */
     public static int hallButtonMinXPx(CarModel model) {
-        return px(DoorGeometry.travelBounds(model, DoorGeometry.Side.LANDING).maxX()) + GAP_PX * 2;
+        return (DoorGeometry.frameJambCenter2Px(model, true) - BUTTON_PX) / 2;
     }
 
     /** 乗場のボタン（▲▼の両方があるとき）の上端 [px]。 */
@@ -116,7 +116,7 @@ public final class ButtonLayout {
      */
     public static List<Button> hallButtons(CarModel model, int floor, int floorCount) {
         int x = hallButtonMinXPx(model);
-        int face = px(DoorGeometry.travelBounds(model, DoorGeometry.Side.LANDING).maxZ());
+        int face = px(DoorGeometry.landingFace(model));
         List<Button> buttons = new ArrayList<>(2);
         if (floor < floorCount - 1) {
             buttons.add(new Button(Kind.HALL_UP, floor, Box.ofPixels(x, HALL_BOTTOM_PX + BUTTON_PX + GAP_PX * 2, face,

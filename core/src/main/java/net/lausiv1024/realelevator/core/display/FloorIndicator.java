@@ -45,8 +45,8 @@ public final class FloorIndicator {
     private static final int ARROW_SIZE = 5;
     /** かごの操作盤の上の表示器の下端の最低の高さ（実機 約1800 mm）。 */
     private static final int CAR_PANEL_BOTTOM_PX = 40;
-    /** 乗場の扉の上の表示器の下端の、出入口の上端からの高さ。 */
-    private static final int HALL_GAP_PX = 2;
+    /** 乗場の扉の上の表示器の下端の、出入口の上端からの高さ。上にホールランタンを重ねても三方枠に収まるよう、1px。 */
+    private static final int HALL_GAP_PX = 1;
 
     private static final String[] UP_ARROW = {"..#..", ".###.", "#####", "..#..", "..#.."};
 
@@ -122,7 +122,7 @@ public final class FloorIndicator {
 
     /** 乗場の表示器。 */
     public static Frame hall(CarModel model, FixtureConfig config, String label, TravelDirection direction) {
-        int face = px(DoorGeometry.travelBounds(model, DoorGeometry.Side.LANDING).maxZ());
+        int face = px(DoorGeometry.landingFace(model));
         if (config.hallIndicator() == FixtureConfig.HallIndicator.OVER_BUTTONS) {
             // ボタンの列の中央に合わせる
             int buttonCenter2 = ButtonLayout.hallButtonMinXPx(model) * 2 + ButtonLayout.BUTTON_PX;

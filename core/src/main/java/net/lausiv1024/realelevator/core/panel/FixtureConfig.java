@@ -12,9 +12,12 @@ package net.lausiv1024.realelevator.core.panel;
  */
 public record FixtureConfig(PanelSides panelSides, CarIndicator carIndicator, boolean leftPanelIndicator, HallIndicator hallIndicator,
                             HallLanternPlacement hallLantern) {
-    /** 右側の操作盤の上に表示器、乗場は扉の上に表示器とホールランタン。 */
+    /**
+     * 日本の標準仕様に合わせた初期値。かごは右側の操作盤の上に表示器、乗場はボタンの上（三方枠の横）に表示器。
+     * ホールランタンは有償の付加仕様なので付けない。
+     */
     public static final FixtureConfig DEFAULT = new FixtureConfig(PanelSides.RIGHT, CarIndicator.OVER_PANEL, false,
-            HallIndicator.OVER_DOOR, HallLanternPlacement.OVER_DOOR);
+            HallIndicator.OVER_BUTTONS, HallLanternPlacement.NONE);
 
     public enum PanelSides {
         /** かごの中から扉の方を向いて右側の袖壁だけ。 */
@@ -31,17 +34,31 @@ public record FixtureConfig(PanelSides panelSides, CarIndicator carIndicator, bo
     }
 
     public enum HallIndicator {
-        /** 出入口の上の中央。 */
-        OVER_DOOR,
         /** 乗場のボタンの上。 */
-        OVER_BUTTONS
+        OVER_BUTTONS,
+        /** 出入口の上の中央。 */
+        OVER_DOOR
     }
 
     public enum HallLanternPlacement {
-        /** 出入口の上に横長の棒。 */
-        OVER_DOOR,
+        /** 付けない。 */
+        NONE,
         /** 出入口の横（乗場から見てボタンと反対側）に縦長の棒。 */
-        BESIDE_DOOR
+        BESIDE_DOOR,
+        /** 出入口の上に横長の棒。 */
+        OVER_DOOR
+    }
+
+    /** 乗場の器具のどれかを出入口の上に付けるか。 */
+    public boolean usesOverDoorHallFixtures() {
+        return hallIndicator == HallIndicator.OVER_DOOR || hallLantern == HallLanternPlacement.OVER_DOOR;
+    }
+
+    /** 出入口の上に付ける乗場の器具を、出入口の横へ移したもの。表示器はボタンの上、ランタンは扉の横にする。 */
+    public FixtureConfig withoutOverDoorHallFixtures() {
+        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator,
+                hallIndicator == HallIndicator.OVER_DOOR ? HallIndicator.OVER_BUTTONS : hallIndicator,
+                hallLantern == HallLanternPlacement.OVER_DOOR ? HallLanternPlacement.BESIDE_DOOR : hallLantern);
     }
 
     public FixtureConfig withPanelSides(PanelSides value) {

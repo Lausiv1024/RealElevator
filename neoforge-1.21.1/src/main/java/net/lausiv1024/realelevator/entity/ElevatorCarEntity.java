@@ -27,6 +27,7 @@ import net.lausiv1024.realelevator.core.door.DoorController;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.door.DoorState;
 import net.lausiv1024.realelevator.core.door.DoorTiming;
+import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.motion.Trip;
 import net.lausiv1024.realelevator.network.AnnouncePayload;
@@ -36,6 +37,9 @@ import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -79,6 +83,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 停止階の床面のY座標（下から順）。 */
     private int[] floors = new int[0];
+    /** 停止階の階名（下から順）。空文字なら初期値（下から 1、2、3…）を使う。 */
+    private String[] labels = new String[0];
     private List<Button> buttons = List.of();
     private FixtureConfig fixtures = FixtureConfig.DEFAULT;
     /** アナウンスの設定。サーバーだけが使う。 */
@@ -137,6 +143,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         this.speedSpec = speedSpec;
         this.currentFloor = nearestFloor(getY());
         this.targetFloor = currentFloor;
+        // 停止階が変わったら、付けられない配置を直す
+        setFixtures(fixtures);
         setBoundingBox(makeBoundingBox());
     }
 
@@ -195,7 +203,6 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         return fixtures;
     }
 
-    /** 操作盤と階床表示器の配置を変える。サーバーで呼ぶ。 */
     /** アナウンスの設定。 */
     public AnnouncementConfig announcements() {
         return announcements;
@@ -207,9 +214,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         door.setCloseAnnouncementTicks(announcements.doorClose() ? AnnouncementScript.DOOR_CLOSE_WAIT_TICKS : 0);
     }
 
+    /** 操作盤と階床表示器の配置を変える。停止階の間隔で付けられない配置は直す。サーバーで呼ぶ。 */
     public void setFixtures(FixtureConfig fixtures) {
-        this.fixtures = fixtures;
-        this.entityData.set(DATA_FIXTURES, writeFixtures(fixtures));
+        this.fixtures = ShaftLayout.fitFixtures(fixtures, floors);
+        this.entityData.set(DATA_FIXTURES, ConfigTags.writeFixtures(this.fixtures));
         rebuildButtons();
     }
 
@@ -531,8 +539,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         return probe.direction();
     }
 
-    /** 停止階 floor の乗場で、ホールランタンの位置から到着チャイムを鳴らす。下りは C6→G#5、それ以外は G#5→C6。 */
+    /** 設定で有効なら、停止階 floor の乗場で、ホールランタンの位置から到着チャイムを鳴らす。下りは C6→G#5、それ以外は G#5→C6。 */
     private void playArrivalChime(int floor, TravelDirection direction) {
+        if (!announcements.chime()) {
+            return;
+        }
         Vec3 position = lanternCenter(floor);
         SoundEvent sound = (direction == TravelDirection.DOWN ? ModSounds.CHIME_DOWN : ModSounds.CHIME_UP).get();
         level().playSound(null, position.x, position.y, position.z, sound, SoundSource.BLOCKS, 1.0F, 1.0F);
@@ -545,7 +556,14 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             AABB box = CarShapes.toAabb(section.box().rotateQuarterTurns(facing().get2DDataValue()), getX(), floors[floor], getZ());
             bounds = bounds == null ? box : bounds.minmax(box);
         }
-        return bounds != null ? bounds.getCenter() : position();
+        if (bounds != null) {
+            return bounds.getCenter();
+        }
+        // ホールランタンを付けないときは、出入口の上の中央から鳴らす
+        Box entrance = CarGeometry.entrance(model());
+        Box above = new Box(0, entrance.maxY(), DoorGeometry.landingFace(model()), 0, entrance.maxY(), DoorGeometry.landingFace(model()))
+                .rotateQuarterTurns(facing().get2DDataValue());
+        return new Vec3(getX() + above.minX(), floors[floor] + above.minY(), getZ() + above.minZ());
     }
 
     /** 最上階または最下階か。 */
@@ -602,7 +620,37 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 停止階 floor の階名。 */
     public String floorLabel(int floor) {
-        return FloorIndicator.defaultLabel(floor);
+        return floor >= 0 && floor < labels.length && !labels[floor].isEmpty() ? labels[floor] : FloorIndicator.defaultLabel(floor);
+    }
+
+    /** 停止階の階名を変える（下から順）。サーバーで呼ぶ。 */
+    public void setLabels(String[] labels) {
+        this.labels = Arrays.copyOf(labels, floors.length);
+        for (int i = 0; i < this.labels.length; i++) {
+            if (this.labels[i] == null) {
+                this.labels[i] = "";
+            }
+        }
+        CompoundTag tag = this.entityData.get(DATA_FLOORS).copy();
+        tag.put("Labels", writeLabels(this.labels));
+        this.entityData.set(DATA_FLOORS, tag);
+    }
+
+    private static ListTag writeLabels(String[] labels) {
+        ListTag list = new ListTag();
+        for (String label : labels) {
+            list.add(StringTag.valueOf(label));
+        }
+        return list;
+    }
+
+    private static String[] readLabels(CompoundTag tag) {
+        ListTag list = tag.getList("Labels", Tag.TAG_STRING);
+        String[] labels = new String[list.size()];
+        for (int i = 0; i < labels.length; i++) {
+            labels[i] = list.getString(i);
+        }
+        return labels;
     }
 
     /** ゲーム時刻 tick に階床表示器に出す階。かごの位置に最も近い階。 */
@@ -767,6 +815,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         }
         if (DATA_MODEL.equals(key) || DATA_FLOORS.equals(key)) {
             applyFloors(this.entityData.get(DATA_FLOORS).getIntArray("Floors"));
+            labels = readLabels(this.entityData.get(DATA_FLOORS));
             readCalls(this.entityData.get(DATA_CALLS));
         } else if (DATA_TRIP.equals(key)) {
             Trip previous = trip;
@@ -780,7 +829,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         } else if (DATA_CALLS.equals(key)) {
             readCalls(this.entityData.get(DATA_CALLS));
         } else if (DATA_FIXTURES.equals(key)) {
-            fixtures = readFixtures(this.entityData.get(DATA_FIXTURES));
+            fixtures = ConfigTags.readFixtures(this.entityData.get(DATA_FIXTURES));
             rebuildButtons();
         }
     }
@@ -829,9 +878,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (control != null) {
             tag.put("Calls", writeCalls(control));
         }
-        tag.put("Fixtures", writeFixtures(fixtures));
-        tag.putBoolean("ArrivalAnnouncement", announcements.arrival());
-        tag.putBoolean("DoorCloseAnnouncement", announcements.doorClose());
+        tag.put("Fixtures", ConfigTags.writeFixtures(fixtures));
+        tag.put("Labels", writeLabels(labels));
+        tag.put("Announcements", ConfigTags.writeAnnouncements(announcements));
         tag.putInt("CurrentFloor", currentFloor);
         tag.putInt("TargetFloor", targetFloor);
     }
@@ -844,10 +893,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             facing = Direction.SOUTH;
         }
         setup(model, facing, tag.getIntArray("Floors"), parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW));
-        setFixtures(readFixtures(tag.getCompound("Fixtures")));
-        setAnnouncements(new AnnouncementConfig(
-                !tag.contains("ArrivalAnnouncement") || tag.getBoolean("ArrivalAnnouncement"),
-                !tag.contains("DoorCloseAnnouncement") || tag.getBoolean("DoorCloseAnnouncement")));
+        setFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")));
+        setLabels(readLabels(tag));
+        setAnnouncements(ConfigTags.readAnnouncements(tag.getCompound("Announcements")));
         // 保存時に走行中・開閉中だった場合は、ゲーム時刻に合わせてそのまま続きから動く
         setTrip(tag.contains("Trip") ? readTrip(tag.getCompound("Trip")) : null);
         readDoorState(tag.getCompound("Door"));
@@ -906,26 +954,6 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private static void readDoor(CompoundTag tag, DoorController door) {
         door.restore(parseEnum(DoorState.class, tag.getString("State"), DoorState.CLOSED),
                 tag.getLong("StartTick"), tag.getDouble("StartFraction"), tag.getInt("Dwell"));
-    }
-
-    private static CompoundTag writeFixtures(FixtureConfig fixtures) {
-        CompoundTag tag = new CompoundTag();
-        tag.putString("PanelSides", fixtures.panelSides().name());
-        tag.putString("CarIndicator", fixtures.carIndicator().name());
-        tag.putBoolean("LeftPanelIndicator", fixtures.leftPanelIndicator());
-        tag.putString("HallIndicator", fixtures.hallIndicator().name());
-        tag.putString("HallLantern", fixtures.hallLantern().name());
-        return tag;
-    }
-
-    private static FixtureConfig readFixtures(CompoundTag tag) {
-        FixtureConfig defaults = FixtureConfig.DEFAULT;
-        return new FixtureConfig(
-                parseEnum(FixtureConfig.PanelSides.class, tag.getString("PanelSides"), defaults.panelSides()),
-                parseEnum(FixtureConfig.CarIndicator.class, tag.getString("CarIndicator"), defaults.carIndicator()),
-                tag.getBoolean("LeftPanelIndicator"),
-                parseEnum(FixtureConfig.HallIndicator.class, tag.getString("HallIndicator"), defaults.hallIndicator()),
-                parseEnum(FixtureConfig.HallLanternPlacement.class, tag.getString("HallLantern"), defaults.hallLantern()));
     }
 
     private static CompoundTag writeCalls(CollectiveControl control) {

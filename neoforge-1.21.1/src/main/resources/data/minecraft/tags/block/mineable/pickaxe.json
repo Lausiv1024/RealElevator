@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "realelevator:control_panel",
+    "realelevator:guide_rail"
+  ]
+}

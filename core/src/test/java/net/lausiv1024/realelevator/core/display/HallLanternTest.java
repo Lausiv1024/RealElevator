@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -83,7 +84,7 @@ class HallLanternTest {
         assertTrue(terminal.get(0).isLit(Set.of(DOWN)) && terminal.get(0).isLit(Set.of(UP)));
         assertFalse(terminal.get(0).isLit(Set.of()));
         // 扉の上の横長は、最上階・最下階でも2段のまま
-        assertEquals(2, HallLantern.sections(model, FixtureConfig.DEFAULT, true).size());
+        assertEquals(2, HallLantern.sections(model, FixtureConfig.DEFAULT.withHallLantern(FixtureConfig.HallLanternPlacement.OVER_DOOR), true).size());
     }
 
     @ParameterizedTest
@@ -98,17 +99,18 @@ class HallLanternTest {
         assertTrue(up.sizeY() > up.sizeX() && down.sizeY() > down.sizeX());
         assertTrue(up.minY() > down.maxY());
         assertEquals(up.minX(), down.minX(), EPS);
-        // 戸袋の外側で、ボタン（+X 側）と反対側
-        assertTrue(up.maxX() < DoorGeometry.travelBounds(model, DoorGeometry.Side.LANDING).minX());
+        // 左側（ボタンと反対側）の三方枠の脇
+        assertTrue(up.minX() >= -DoorGeometry.LANDING_FRAME_HALF_WIDTH && up.maxX() <= CarGeometry.entrance(model).minX());
         assertTrue(up.maxX() < ButtonLayout.hallButtons(model, 1, 3).get(0).box().minX());
-        assertEquals(DoorGeometry.travelBounds(model, DoorGeometry.Side.LANDING).maxZ(), up.minZ(), EPS);
+        assertEquals(DoorGeometry.landingFace(model), up.minZ(), EPS);
     }
 
     @ParameterizedTest
     @EnumSource(CarModel.class)
     void overTheDoorSpansTheEntranceAboveTheIndicator(CarModel model) {
         for (FixtureConfig.HallIndicator placement : FixtureConfig.HallIndicator.values()) {
-            FixtureConfig config = FixtureConfig.DEFAULT.withHallIndicator(placement);
+            FixtureConfig config = FixtureConfig.DEFAULT.withHallIndicator(placement)
+                    .withHallLantern(FixtureConfig.HallLanternPlacement.OVER_DOOR);
             List<Section> sections = HallLantern.sections(model, config, false);
             Box up = sections.get(0).box();
             Box down = sections.get(1).box();
@@ -123,5 +125,37 @@ class HallLanternTest {
                 assertTrue(down.minY() > FloorIndicator.hall(model, config, "", NONE).face().maxY());
             }
         }
+    }
+
+    @ParameterizedTest
+    @EnumSource(CarModel.class)
+    void everyHallFixtureFitsOnTheFrameFace(CarModel model) {
+        double half = DoorGeometry.LANDING_FRAME_HALF_WIDTH;
+        double top = DoorGeometry.LANDING_FRAME_HEIGHT;
+        for (FixtureConfig.HallIndicator indicator : FixtureConfig.HallIndicator.values()) {
+            for (FixtureConfig.HallLanternPlacement lantern : FixtureConfig.HallLanternPlacement.values()) {
+                FixtureConfig config = FixtureConfig.DEFAULT.withHallIndicator(indicator).withHallLantern(lantern);
+                List<Box> boxes = new ArrayList<>();
+                boxes.add(FloorIndicator.hall(model, config, "12", UP).face());
+                HallLantern.sections(model, config, false).forEach(s -> boxes.add(s.box()));
+                HallLantern.sections(model, config, true).forEach(s -> boxes.add(s.box()));
+                ButtonLayout.hallButtons(model, 1, 3).forEach(b -> boxes.add(b.box()));
+                for (Box box : boxes) {
+                    assertTrue(box.minX() >= -half - EPS && box.maxX() <= half + EPS && box.minY() >= 0 && box.maxY() <= top + EPS,
+                            indicator + " / " + lantern + ": " + box);
+                    // 出入口の前にはかからない
+                    Box entrance = CarGeometry.entrance(model);
+                    boolean overEntrance = box.maxX() > entrance.minX() && box.minX() < entrance.maxX() && box.minY() < entrance.maxY();
+                    assertFalse(overEntrance, indicator + " / " + lantern + ": " + box);
+                }
+            }
+        }
+    }
+
+    @Test
+    void noLanternHasNoSections() {
+        FixtureConfig config = FixtureConfig.DEFAULT.withHallLantern(FixtureConfig.HallLanternPlacement.NONE);
+        assertTrue(HallLantern.sections(CarModel.P11, config, false).isEmpty());
+        assertTrue(HallLantern.sections(CarModel.P11, config, true).isEmpty());
     }
 }

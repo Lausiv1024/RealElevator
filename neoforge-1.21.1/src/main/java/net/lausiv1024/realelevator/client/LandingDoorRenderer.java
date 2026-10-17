@@ -23,9 +23,12 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * 乗場の扉、▲▼ボタン、階床表示器、ホールランタンの仮の描画。戸はかごの戸と同じテクスチャを使う。
+ * 乗場の扉、三方枠、▲▼ボタン、階床表示器、ホールランタンの仮の描画。戸はかごの戸と同じテクスチャを使う。
  */
 public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
+    /** 三方枠（仮）のテクスチャ。デザインシステム（フェーズ4）で素材を選べるようにする。 */
+    private static final ResourceLocation FRAME = ResourceLocation.withDefaultNamespace("block/smooth_stone");
+
     public LandingDoorRenderer(EntityRendererProvider.Context context) {
         super(context);
         this.shadowRadius = 0;
@@ -40,6 +43,10 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
         double fraction = door.renderFraction(partialTick);
         for (Box panel : CarShapes.doorPanels(door.model(), door.facing(), DoorGeometry.Side.LANDING, fraction)) {
             BoxRenderer.renderBox(pose, consumer, panel, sprite, packedLight);
+        }
+        TextureAtlasSprite frame = BoxRenderer.blockSprite(FRAME);
+        for (Box box : CarShapes.landingFrame(door.model(), door.facing())) {
+            BoxRenderer.renderBox(pose, consumer, box, frame, packedLight);
         }
         BoxRenderer.renderButtons(pose, consumer, door, door.facing().get2DDataValue(), packedLight);
         // かごが読み込まれていなければ、表示器は消灯したままにする

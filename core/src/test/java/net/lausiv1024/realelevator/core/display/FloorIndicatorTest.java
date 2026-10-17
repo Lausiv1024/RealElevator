@@ -22,6 +22,7 @@ import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 class FloorIndicatorTest {
     private static final double EPS = 1e-9;
     private static final double PX = 1.0 / 16;
+    private static final FixtureConfig OVER_DOOR = FixtureConfig.DEFAULT.withHallIndicator(FixtureConfig.HallIndicator.OVER_DOOR);
 
     @Test
     void displayedFloorSwitchesAtTheMidpoint() {
@@ -73,11 +74,11 @@ class FloorIndicatorTest {
     @ParameterizedTest
     @EnumSource(CarModel.class)
     void hallIndicatorIsCenteredAboveTheEntrance(CarModel model) {
-        Frame frame = FloorIndicator.hall(model, FixtureConfig.DEFAULT, "B1", TravelDirection.DOWN);
+        Frame frame = FloorIndicator.hall(model, OVER_DOOR, "B1", TravelDirection.DOWN);
         Box face = frame.face();
         assertEquals(-face.maxX(), face.minX(), EPS);
         assertTrue(face.minY() > CarGeometry.entrance(model).maxY());
-        assertEquals(DoorGeometry.travelBounds(model, DoorGeometry.Side.LANDING).maxZ(), face.minZ(), EPS);
+        assertEquals(DoorGeometry.landingFace(model), face.minZ(), EPS);
         assertDotsInside(frame);
     }
 
@@ -96,8 +97,8 @@ class FloorIndicatorTest {
     @Test
     void hallIndicatorReadsLeftToRightFromTheLanding() {
         // 乗場から見ると左が −X なので、矢印が −X 側、階名が +X 側にある
-        Frame withArrow = FloorIndicator.hall(CarModel.P11, FixtureConfig.DEFAULT, "", TravelDirection.UP);
-        Frame withLabel = FloorIndicator.hall(CarModel.P11, FixtureConfig.DEFAULT, "8", TravelDirection.NONE);
+        Frame withArrow = FloorIndicator.hall(CarModel.P11, OVER_DOOR, "", TravelDirection.UP);
+        Frame withLabel = FloorIndicator.hall(CarModel.P11, OVER_DOOR, "8", TravelDirection.NONE);
         double arrowMax = withArrow.dots().stream().mapToDouble(Box::maxX).max().orElseThrow();
         double labelMin = withLabel.dots().stream().mapToDouble(Box::minX).min().orElseThrow();
         assertTrue(arrowMax < labelMin);
@@ -105,21 +106,21 @@ class FloorIndicatorTest {
 
     @Test
     void arrowAppearsOnlyWithADirection() {
-        int none = FloorIndicator.hall(CarModel.P11, FixtureConfig.DEFAULT, "1", TravelDirection.NONE).dots().size();
-        int up = FloorIndicator.hall(CarModel.P11, FixtureConfig.DEFAULT, "1", TravelDirection.UP).dots().size();
-        int down = FloorIndicator.hall(CarModel.P11, FixtureConfig.DEFAULT, "1", TravelDirection.DOWN).dots().size();
+        int none = FloorIndicator.hall(CarModel.P11, OVER_DOOR, "1", TravelDirection.NONE).dots().size();
+        int up = FloorIndicator.hall(CarModel.P11, OVER_DOOR, "1", TravelDirection.UP).dots().size();
+        int down = FloorIndicator.hall(CarModel.P11, OVER_DOOR, "1", TravelDirection.DOWN).dots().size();
         assertTrue(up > none);
         assertEquals(up, down);
         // 上向きの矢印は先端が上
-        List<Box> arrow = FloorIndicator.hall(CarModel.P11, FixtureConfig.DEFAULT, "", TravelDirection.UP).dots();
+        List<Box> arrow = FloorIndicator.hall(CarModel.P11, OVER_DOOR, "", TravelDirection.UP).dots();
         double top = arrow.stream().mapToDouble(Box::maxY).max().orElseThrow();
         assertEquals(1, arrow.stream().filter(b -> Math.abs(b.maxY() - top) < EPS).count());
     }
 
     @Test
     void longLabelsAreCutToTwoCharacters() {
-        assertEquals(FloorIndicator.hall(CarModel.P11, FixtureConfig.DEFAULT, "12", TravelDirection.NONE).dots(),
-                FloorIndicator.hall(CarModel.P11, FixtureConfig.DEFAULT, "123", TravelDirection.NONE).dots());
+        assertEquals(FloorIndicator.hall(CarModel.P11, OVER_DOOR, "12", TravelDirection.NONE).dots(),
+                FloorIndicator.hall(CarModel.P11, OVER_DOOR, "123", TravelDirection.NONE).dots());
     }
 
     @ParameterizedTest
