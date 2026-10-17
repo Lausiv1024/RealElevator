@@ -42,10 +42,14 @@ class DoorTypeGeometryTest {
     @Test
     void fourCenterIsOnlyForLargeModelsAndWidensTheEntrance() {
         assertFalse(DoorType.FOUR_CENTER.isAvailable(CarModel.P15));
+        assertFalse(DoorType.FOUR_CENTER.isAvailable(CarModel.P20));
         assertEquals(DoorType.CENTER, new CarSpec(CarModel.P13, DoorType.FOUR_CENTER).door());
-        assertEquals(26, new CarSpec(CarModel.P17, DoorType.FOUR_CENTER).entranceWidthPx());
-        assertEquals(26, new CarSpec(CarModel.P20, DoorType.FOUR_CENTER).entranceWidthPx());
-        assertEquals(30, new CarSpec(CarModel.P24, DoorType.FOUR_CENTER).entranceWidthPx());
+        // 実機 1400 mm
+        for (CarModel model : new CarModel[] {CarModel.P24, CarModel.P27, CarModel.P30}) {
+            CarSpec spec = new CarSpec(model, DoorType.FOUR_CENTER);
+            assertEquals(34, spec.entranceWidthPx());
+            assertEquals(9, spec.panelWidthPx());
+        }
     }
 
     @Test
@@ -88,8 +92,8 @@ class DoorTypeGeometryTest {
             for (Box panel : DoorGeometry.panels(spec, side, 1)) {
                 assertTrue(panel.maxX() <= entrance.minX() + EPS || panel.minX() >= entrance.maxX() - EPS,
                         spec + " " + side + " a panel stays in the entrance: " + panel);
-                // COは戸（出入口の半分）が袖壁より広く、開くと少しかごの横へ出る（今までどおり）。2S・4COは袖壁を戸1枚分にしてある
-                if (spec.door() != DoorType.CENTER) {
+                // CO・4COは戸が袖壁より広く、開くと少しかごの横へ出る（実機でも同じ）。2Sは戸袋の側の袖壁を戸1枚分にしてある
+                if (spec.door().isSideOpening()) {
                     assertTrue(panel.minX() >= exterior.minX() - EPS && panel.maxX() <= exterior.maxX() + EPS,
                             spec + " " + side + " a panel sticks out of the car: " + panel);
                 }

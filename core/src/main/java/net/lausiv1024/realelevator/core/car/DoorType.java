@@ -10,7 +10,7 @@ public enum DoorType {
     SIDE_LEFT(2),
     /** 2枚片開き（2S）、右開き。開くと2枚とも乗場から見て右（+X 側）の戸袋に入り、出入口は左へ寄る。 */
     SIDE_RIGHT(2),
-    /** 4枚中央開き（4CO）。左右に2枚ずつ。大型の機種だけで選べ、出入口をCOより広くできる。 */
+    /** 4枚中央開き（4CO）。左右に2枚ずつ。P-24以上だけで選べ、出入口をCOより広くできる。 */
     FOUR_CENTER(2);
 
     private final int tracks;
