@@ -11,13 +11,27 @@ package net.lausiv1024.realelevator.core.door;
  * <ul>
  * <li>閉 → 開動作：{@link #open}（着床、開ボタン、現在階の呼び）</li>
  * <li>開動作 → 開放待機：全開</li>
- * <li>開放待機 → 閉動作：待機時間の終了、{@link #close}（閉ボタン）</li>
+ * <li>開放待機 → 閉動作：待機時間の終了、{@link #close}（閉ボタン）。待機時間が終わって自動で閉めるときは、
+ * 戸閉アナウンスの時間（{@link #setCloseAnnouncementTicks}）だけ待ってから閉め始める。閉ボタンでは待たない</li>
  * <li>閉動作 → 開動作：{@link #obstruct}（セーフティシュー）、{@link #open}（開ボタン）。その時点の開き具合から開き直す</li>
  * <li>閉動作 → 閉：全閉</li>
  * </ul>
  */
 public final class DoorController {
+    /** {@link #tick} で起きたこと。 */
+    public enum Event {
+        NONE,
+        /** 状態が変わった。 */
+        STATE_CHANGED,
+        /** 開放待機が終わり、戸閉アナウンスを流して閉め始めるのを待ち始めた。 */
+        CLOSE_ANNOUNCED
+    }
+
     private final DoorTiming timing;
+    /** 自動で閉めるとき、戸閉アナウンスを流してから閉め始めるまでの時間 [tick]。0なら待たない。 */
+    private int closeAnnouncementTicks;
+    /** 戸閉アナウンスのあと閉め始めるゲーム時刻。待っていなければ −1。サーバーだけが使う。 */
+    private long closeAt = -1;
     private DoorState state = DoorState.CLOSED;
     private long startTick;
     private double startFraction;
@@ -40,15 +54,26 @@ public final class DoorController {
             case OPEN -> {
                 startTick = now;
                 this.dwellTicks = dwellTicks;
+                closeAt = -1;
             }
         }
     }
 
-    /** 閉ボタン。開放待機中なら、待機時間を打ち切ってすぐに閉じ始める。 */
+    /** 閉ボタン。開放待機中なら、待機時間を打ち切り、戸閉アナウンスも待たずにすぐに閉じ始める。 */
     public void close(long now) {
         if (state == DoorState.OPEN) {
             startClosing(now);
         }
+    }
+
+    /** 戸閉アナウンスを流して、閉め始めるのを待っているところか。 */
+    public boolean isWaitingToClose() {
+        return closeAt >= 0;
+    }
+
+    /** 自動で閉めるとき、戸閉アナウンスを流してから閉め始めるまでの時間 [tick]。0なら待たない。 */
+    public void setCloseAnnouncementTicks(int ticks) {
+        this.closeAnnouncementTicks = Math.max(0, ticks);
     }
 
     /** セーフティシューが物に触れた。閉動作中なら開き直す。待機時間は元の呼びのものを使う。 */
@@ -58,25 +83,30 @@ public final class DoorController {
         }
     }
 
-    /**
-     * 時間の経過による遷移を進める。
-     *
-     * @return 状態が変わったかどうか
-     */
-    public boolean tick(long now) {
+    /** 時間の経過による遷移を進める。 */
+    public Event tick(long now) {
         switch (state) {
             case OPENING -> {
                 if (now - startTick >= openingDuration()) {
                     state = DoorState.OPEN;
                     startTick = now;
                     startFraction = 1;
-                    return true;
+                    return Event.STATE_CHANGED;
                 }
             }
             case OPEN -> {
-                if (now - startTick >= dwellTicks) {
+                if (closeAt >= 0) {
+                    if (now >= closeAt) {
+                        startClosing(now);
+                        return Event.STATE_CHANGED;
+                    }
+                } else if (now - startTick >= dwellTicks) {
+                    if (closeAnnouncementTicks > 0) {
+                        closeAt = now + closeAnnouncementTicks;
+                        return Event.CLOSE_ANNOUNCED;
+                    }
                     startClosing(now);
-                    return true;
+                    return Event.STATE_CHANGED;
                 }
             }
             case CLOSING -> {
@@ -84,13 +114,13 @@ public final class DoorController {
                     state = DoorState.CLOSED;
                     startTick = now;
                     startFraction = 0;
-                    return true;
+                    return Event.STATE_CHANGED;
                 }
             }
             case CLOSED -> {
             }
         }
-        return false;
+        return Event.NONE;
     }
 
     /** ゲーム時刻 tick（partialTickを含めてよい）での開き具合。0 が全閉、1 が全開。 */
@@ -109,9 +139,11 @@ public final class DoorController {
         this.startTick = startTick;
         this.startFraction = startFraction;
         this.dwellTicks = dwellTicks;
+        this.closeAt = -1;
     }
 
     private void startClosing(long now) {
+        closeAt = -1;
         state = DoorState.CLOSING;
         startTick = now;
         startFraction = 1;

@@ -1,5 +1,6 @@
 {
   "entity.realelevator.elevator_car": "エレベーターのかご",
   "entity.realelevator.landing_door": "乗場の扉",
-  "subtitles.realelevator.chime": "エレベーターのチャイム"
+  "subtitles.realelevator.chime": "エレベーターのチャイム",
+  "subtitles.realelevator.announcement": "エレベーターのアナウンス"
 }

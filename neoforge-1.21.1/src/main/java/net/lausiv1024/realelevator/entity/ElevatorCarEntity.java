@@ -1,12 +1,17 @@
 package net.lausiv1024.realelevator.entity;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 
 import javax.annotation.Nullable;
 
+import net.lausiv1024.realelevator.core.announce.Announcement;
+import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
+import net.lausiv1024.realelevator.core.announce.AnnouncementScript;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
@@ -24,6 +29,7 @@ import net.lausiv1024.realelevator.core.door.DoorState;
 import net.lausiv1024.realelevator.core.door.DoorTiming;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.motion.Trip;
+import net.lausiv1024.realelevator.network.AnnouncePayload;
 import net.lausiv1024.realelevator.registry.ModSounds;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
@@ -43,6 +49,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * エレベーターのかご。
@@ -74,6 +81,16 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private int[] floors = new int[0];
     private List<Button> buttons = List.of();
     private FixtureConfig fixtures = FixtureConfig.DEFAULT;
+    /** アナウンスの設定。サーバーだけが使う。 */
+    private AnnouncementConfig announcements = AnnouncementConfig.DEFAULT;
+    /** 戸が開ききったら行先方向のアナウンスを流すか。サーバーだけが使う。 */
+    private boolean directionAnnouncementPending;
+    /** この停止で最後に流した行先方向。同じ方向を繰り返さないために使う。サーバーだけが使う。 */
+    private TravelDirection spokenDirection = TravelDirection.NONE;
+    /** 行先方向のアナウンスが流れ終わるゲーム時刻。サーバーだけが使う。 */
+    private long directionSpeakingUntil = Long.MIN_VALUE;
+    /** 最近流したアナウンス（新しい順に最大8件）。動作の確認用。サーバーだけが使う。 */
+    private final Deque<Announcement> recentAnnouncements = new ArrayDeque<>();
     /** 停止階が2つ以上あるときだけ作る。 */
     @Nullable
     private CollectiveControl control;
@@ -105,6 +122,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     public ElevatorCarEntity(EntityType<? extends ElevatorCarEntity> type, Level level) {
         super(type, level);
         this.noPhysics = true;
+        setAnnouncements(AnnouncementConfig.DEFAULT);
     }
 
     public void setup(CarModel model, Direction facing, int[] floors, SpeedSpec speedSpec) {
@@ -178,6 +196,17 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     /** 操作盤と階床表示器の配置を変える。サーバーで呼ぶ。 */
+    /** アナウンスの設定。 */
+    public AnnouncementConfig announcements() {
+        return announcements;
+    }
+
+    /** アナウンスの設定を変える。サーバーで呼ぶ。 */
+    public void setAnnouncements(AnnouncementConfig announcements) {
+        this.announcements = announcements;
+        door.setCloseAnnouncementTicks(announcements.doorClose() ? AnnouncementScript.DOOR_CLOSE_WAIT_TICKS : 0);
+    }
+
     public void setFixtures(FixtureConfig fixtures) {
         this.fixtures = fixtures;
         this.entityData.set(DATA_FIXTURES, writeFixtures(fixtures));
@@ -220,7 +249,16 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                 lanternTick = level().getGameTime();
                 playArrivalChime(currentFloor, control != null ? control.direction() : TravelDirection.NONE);
             }
+            boolean alreadyOpen = door.state() == DoorState.OPEN;
             openDoor(callType);
+            // かごがいる階の乗場呼びでは、階の案内はせず、行先方向だけを流す（戸がもう開いていればすぐに）
+            if (callType == CallType.HALL && announcements.arrival()) {
+                if (alreadyOpen) {
+                    announceDirection();
+                } else {
+                    directionAnnouncementPending = true;
+                }
+            }
         }
         if (result == PressResult.SERVED_HERE || result == PressResult.REGISTERED) {
             // その場で応えた乗場呼びでも進行方向が決まるので、階床表示器の矢印のために送る
@@ -242,6 +280,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     public boolean closeDoor() {
         if (level().isClientSide || door.state() != DoorState.OPEN) {
             return false;
+        }
+        // 閉ボタンでは、戸閉アナウンスを流しながらすぐに閉め始める。行先方向を流している間は戸閉アナウンスを流さない
+        if (announcements.doorClose() && !isSpeakingDirection(level().getGameTime())) {
+            announce(Announcement.doorClose());
         }
         door.close(level().getGameTime());
         syncDoor();
@@ -313,7 +355,25 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             announceArrivalIfCertain(now);
         }
 
-        boolean doorChanged = door.tick(now);
+        // 行先方向を流している間に自動で閉めるときは、戸閉アナウンスを流さず（待たず）に閉める
+        door.setCloseAnnouncementTicks(announcements.doorClose() && !isSpeakingDirection(now)
+                ? AnnouncementScript.DOOR_CLOSE_WAIT_TICKS : 0);
+        DoorController.Event doorEvent = door.tick(now);
+        if (doorEvent == DoorController.Event.CLOSE_ANNOUNCED) {
+            // 開放待機が終わった。戸閉アナウンスを流し終わってから閉め始める
+            announce(Announcement.doorClose());
+        }
+        boolean doorChanged = doorEvent == DoorController.Event.STATE_CHANGED;
+        if (doorChanged && directionAnnouncementPending) {
+            if (door.state() == DoorState.OPEN) {
+                // 戸が開ききったら行先方向を流す
+                directionAnnouncementPending = false;
+                announceDirection();
+            } else if (door.state() != DoorState.OPENING) {
+                directionAnnouncementPending = false;
+            }
+        }
+        announceDirectionIfChanged();
         if (door.state() == DoorState.CLOSING && isDoorObstructed(now)) {
             door.obstruct(now);
             doorChanged = true;
@@ -385,6 +445,56 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         door.open(now, door.timing().dwellTicks(served));
         syncDoor();
         syncCalls();
+        spokenDirection = TravelDirection.NONE;
+        // 戸を開き始めるときに「◯階です。」を流し（戸はアナウンスを待たない）、開ききったら行先方向を流す
+        if (announcements.arrival()) {
+            announce(Announcement.arrival(floorLabel(currentFloor)));
+            directionAnnouncementPending = true;
+        }
+    }
+
+    /** 行先方向のアナウンス（「上へ参ります。」「下へ参ります。」）を流す。方向が決まっていなければ流さない。 */
+    private void announceDirection() {
+        TravelDirection direction = control != null ? control.direction() : TravelDirection.NONE;
+        if (direction != TravelDirection.NONE) {
+            announce(Announcement.direction(direction));
+            spokenDirection = direction;
+            directionSpeakingUntil = level().getGameTime() + AnnouncementScript.DIRECTION_TICKS;
+        }
+    }
+
+    /** 行先方向のアナウンスを流しているところか。 */
+    private boolean isSpeakingDirection(long now) {
+        return now < directionSpeakingUntil;
+    }
+
+    /**
+     * 戸が開ききっている間に、呼びの登録などで進行方向が決まったり変わったりしたら、行先方向を流す。
+     * 戸閉アナウンスを流して閉め始めるのを待っている間は、そちらを途中で切らないよう流さない。
+     */
+    private void announceDirectionIfChanged() {
+        if (!announcements.arrival() || control == null || trip != null || directionAnnouncementPending
+                || door.state() != DoorState.OPEN || door.isWaitingToClose()) {
+            return;
+        }
+        TravelDirection direction = control.direction();
+        if (direction != TravelDirection.NONE && direction != spokenDirection) {
+            announceDirection();
+        }
+    }
+
+    /** このかごが見えているクライアントへアナウンスを送る。鳴らし方はクライアントに任せる。 */
+    private void announce(Announcement announcement) {
+        PacketDistributor.sendToPlayersTrackingEntity(this, new AnnouncePayload(getId(), announcement));
+        recentAnnouncements.addFirst(announcement);
+        while (recentAnnouncements.size() > 8) {
+            recentAnnouncements.removeLast();
+        }
+    }
+
+    /** 最近流したアナウンス（新しい順）。動作の確認用。 */
+    public List<Announcement> recentAnnouncements() {
+        return List.copyOf(recentAnnouncements);
     }
 
     /**
@@ -720,6 +830,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             tag.put("Calls", writeCalls(control));
         }
         tag.put("Fixtures", writeFixtures(fixtures));
+        tag.putBoolean("ArrivalAnnouncement", announcements.arrival());
+        tag.putBoolean("DoorCloseAnnouncement", announcements.doorClose());
         tag.putInt("CurrentFloor", currentFloor);
         tag.putInt("TargetFloor", targetFloor);
     }
@@ -733,6 +845,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         }
         setup(model, facing, tag.getIntArray("Floors"), parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW));
         setFixtures(readFixtures(tag.getCompound("Fixtures")));
+        setAnnouncements(new AnnouncementConfig(
+                !tag.contains("ArrivalAnnouncement") || tag.getBoolean("ArrivalAnnouncement"),
+                !tag.contains("DoorCloseAnnouncement") || tag.getBoolean("DoorCloseAnnouncement")));
         // 保存時に走行中・開閉中だった場合は、ゲーム時刻に合わせてそのまま続きから動く
         setTrip(tag.contains("Trip") ? readTrip(tag.getCompound("Trip")) : null);
         readDoorState(tag.getCompound("Door"));

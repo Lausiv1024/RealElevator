@@ -39,19 +39,19 @@ class DoorControllerTest {
 
         run(door, 101, 139);
         assertEquals(DoorState.OPENING, door.state());
-        assertTrue(door.tick(140));
+        assertEquals(DoorController.Event.STATE_CHANGED, door.tick(140));
         assertEquals(DoorState.OPEN, door.state());
         assertEquals(1, door.fractionAt(140));
 
         run(door, 141, 179);
         assertEquals(DoorState.OPEN, door.state());
-        assertTrue(door.tick(180));
+        assertEquals(DoorController.Event.STATE_CHANGED, door.tick(180));
         assertEquals(DoorState.CLOSING, door.state());
         assertEquals(0.5, door.fractionAt(205), EPS);
 
         run(door, 181, 229);
         assertEquals(DoorState.CLOSING, door.state());
-        assertTrue(door.tick(230));
+        assertEquals(DoorController.Event.STATE_CHANGED, door.tick(230));
         assertTrue(door.isClosed());
         assertEquals(0, door.fractionAt(230));
     }
@@ -156,5 +156,42 @@ class DoorControllerTest {
             assertEquals(server.fractionAt(t), client.fractionAt(t), EPS);
         }
         assertFalse(client.isClosed());
+    }
+
+    @Test
+    void automaticClosingWaitsForTheCloseAnnouncement() {
+        DoorController door = new DoorController(TIMING);
+        door.setCloseAnnouncementTicks(30);
+        door.open(0, 40);
+        run(door, 1, 79);
+        assertEquals(DoorController.Event.CLOSE_ANNOUNCED, door.tick(80));
+        // アナウンスの間は開いたまま
+        run(door, 81, 109);
+        assertEquals(DoorState.OPEN, door.state());
+        assertEquals(DoorController.Event.STATE_CHANGED, door.tick(110));
+        assertEquals(DoorState.CLOSING, door.state());
+    }
+
+    @Test
+    void closeButtonDoesNotWaitForTheAnnouncement() {
+        DoorController door = new DoorController(TIMING);
+        door.setCloseAnnouncementTicks(30);
+        door.open(0, 80);
+        run(door, 1, 50);
+        door.close(50);
+        assertEquals(DoorState.CLOSING, door.state());
+    }
+
+    @Test
+    void openButtonDuringTheAnnouncementCancelsClosing() {
+        DoorController door = new DoorController(TIMING);
+        door.setCloseAnnouncementTicks(30);
+        door.open(0, 40);
+        run(door, 1, 90);
+        door.open(90, 40);
+        // 待っていた閉め始めは取り消され、待機時間を数え直す
+        run(door, 91, 129);
+        assertEquals(DoorState.OPEN, door.state());
+        assertEquals(DoorController.Event.CLOSE_ANNOUNCED, door.tick(130));
     }
 }

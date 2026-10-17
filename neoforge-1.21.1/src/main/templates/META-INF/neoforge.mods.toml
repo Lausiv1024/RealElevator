@@ -39,7 +39,8 @@ displayName="${mod_name}" #mandatory
 #logoFile="examplemod.png" #optional
 
 # A text field displayed in the mod UI
-#credits="" #optional
+# 同梱のアナウンス音声のクレジット（VOICEVOXの利用規約による）
+credits="アナウンス音声: VOICEVOX:冥鳴ひまり"
 
 # The authors of the mod, displayed in the mod UI (optional)
 #authors=""
@@ -47,6 +48,8 @@ displayName="${mod_name}" #mandatory
 # The description text for the mod (multi line!) (#mandatory)
 description='''
 Japanese-style elevators for Minecraft.
+
+アナウンス音声: VOICEVOX:冥鳴ひまり
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.

@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 
 import net.lausiv1024.realelevator.command.DebugCommands;
+import net.lausiv1024.realelevator.client.ClientAnnouncements;
+import net.lausiv1024.realelevator.network.AnnouncePayload;
 import net.lausiv1024.realelevator.network.PressButtonPayload;
 import net.lausiv1024.realelevator.registry.ModEntities;
 import net.lausiv1024.realelevator.registry.ModSounds;
@@ -29,6 +31,9 @@ public class RealElevator {
     }
 
     private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        event.registrar("1").playToServer(PressButtonPayload.TYPE, PressButtonPayload.STREAM_CODEC, PressButtonPayload::handle);
+        event.registrar("1")
+                .playToServer(PressButtonPayload.TYPE, PressButtonPayload.STREAM_CODEC, PressButtonPayload::handle)
+                // クライアント側の処理は、ラムダの中で呼ぶのでサーバーでは読み込まれない
+                .playToClient(AnnouncePayload.TYPE, AnnouncePayload.STREAM_CODEC, (payload, context) -> ClientAnnouncements.handle(payload));
     }
 }

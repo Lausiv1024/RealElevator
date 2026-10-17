@@ -1,5 +1,6 @@
 {
   "entity.realelevator.elevator_car": "Elevator Car",
   "entity.realelevator.landing_door": "Landing Door",
-  "subtitles.realelevator.chime": "Elevator chimes"
+  "subtitles.realelevator.chime": "Elevator chimes",
+  "subtitles.realelevator.announcement": "Elevator announcement"
 }

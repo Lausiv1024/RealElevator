@@ -5,8 +5,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import net.lausiv1024.realelevator.RealElevator;
+import net.lausiv1024.realelevator.core.announce.Announcement;
+import net.lausiv1024.realelevator.core.announce.AnnouncementScript;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
@@ -14,6 +17,7 @@ import net.lausiv1024.realelevator.core.control.OperationTiming;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.door.DoorState;
+import net.lausiv1024.realelevator.core.door.DoorTiming;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
@@ -412,6 +416,192 @@ public class ElevatorCarGameTests {
             long lead = arrivedAt.get() - announcedAt.get();
             helper.assertTrue(announcedAt.get() > departedAt.get(), "should wait after departing");
             helper.assertTrue(lead >= 119 && lead <= 121, "announced " + lead + " ticks before arriving");
+        });
+    }
+
+    /** 自動で閉めるときは、戸閉アナウンスの時間だけ待ってから閉め始める。設定で切ると待たない。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 400)
+    public static void automaticClosingWaitsForTheCloseAnnouncement(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
+        ElevatorCarEntity quiet = spawnCarOnly(helper, helper.absolutePos(LOWER).getX() + 3.5);
+        quiet.setAnnouncements(quiet.announcements().withDoorClose(false));
+        car.pressCarCall(0);
+        quiet.pressCarCall(0);
+        AtomicLong openedAt = new AtomicLong(-1);
+        AtomicLong closingAt = new AtomicLong(-1);
+        AtomicLong quietClosingAt = new AtomicLong(-1);
+        helper.onEachTick(() -> {
+            long now = helper.getLevel().getGameTime();
+            if (openedAt.get() < 0 && car.doorState() == DoorState.OPEN) {
+                openedAt.set(now);
+            }
+            if (closingAt.get() < 0 && car.doorState() == DoorState.CLOSING) {
+                closingAt.set(now);
+            }
+            if (quietClosingAt.get() < 0 && quiet.doorState() == DoorState.CLOSING) {
+                quietClosingAt.set(now);
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(closingAt.get() >= 0 && quietClosingAt.get() >= 0, "not closing yet");
+            long dwell = DoorTiming.STANDARD.carDwellTicks();
+            long waited = closingAt.get() - openedAt.get();
+            helper.assertTrue(waited == dwell + AnnouncementScript.DOOR_CLOSE_WAIT_TICKS, "closed after " + waited + " ticks");
+            helper.assertTrue(quietClosingAt.get() - openedAt.get() == dwell, "without the announcement it should not wait");
+        });
+    }
+
+    /** 閉ボタンでは、戸閉アナウンスを待たずにすぐ閉め始める。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 200)
+    public static void closeButtonDoesNotWaitForTheAnnouncement(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
+        car.pressHallCall(0, TravelDirection.UP);
+        AtomicBoolean pressed = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            if (!pressed.get() && car.doorState() == DoorState.OPEN) {
+                pressed.set(true);
+                helper.assertTrue(car.closeDoor(), "the close button should work");
+                helper.assertTrue(car.doorState() == DoorState.CLOSING, "should start closing right away");
+            }
+        });
+        helper.succeedWhen(() -> helper.assertTrue(pressed.get() && car.doorState() == DoorState.CLOSED, "not closed yet"));
+    }
+
+    /** 乗場の扉なしで、下階にかごだけを置く（扉どうしが重ならないよう、x をずらせる）。 */
+    private static ElevatorCarEntity spawnCarOnly(GameTestHelper helper, double x) {
+        BlockPos lower = helper.absolutePos(LOWER);
+        ElevatorCarEntity car = ModEntities.ELEVATOR_CAR.get().create(helper.getLevel());
+        if (car == null) {
+            throw new IllegalStateException("failed to create the car");
+        }
+        car.moveTo(x, lower.getY(), lower.getZ() + 0.5, 0, 0);
+        car.setup(MODEL, Direction.SOUTH, new int[] {lower.getY(), lower.getY() + RISE}, SpeedSpec.NORMAL_HIGH);
+        helper.getLevel().addFreshEntity(car);
+        return car;
+    }
+
+    /** 到着すると、戸を開き始めるときに「◯階です。」、開ききったときに行先方向を流す。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 600)
+    public static void arrivalAnnouncesTheFloorThenTheDirection(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, 4, 8).car();
+        car.pressHallCall(1, TravelDirection.UP);
+        AtomicBoolean sawFloor = new AtomicBoolean();
+        AtomicBoolean sawDirection = new AtomicBoolean();
+        AtomicReference<DoorState> previous = new AtomicReference<>(DoorState.CLOSED);
+        helper.onEachTick(() -> {
+            DoorState state = car.doorState();
+            if (previous.get() == DoorState.CLOSED && state == DoorState.OPENING && !car.isMoving()) {
+                helper.assertTrue(car.recentAnnouncements().get(0).equals(Announcement.arrival("2")),
+                        "the floor should be announced as the door starts opening: " + car.recentAnnouncements());
+                sawFloor.set(true);
+            }
+            if (previous.get() == DoorState.OPENING && state == DoorState.OPEN && sawFloor.get() && !sawDirection.get()) {
+                helper.assertTrue(car.recentAnnouncements().get(0).equals(Announcement.direction(TravelDirection.UP)),
+                        "the direction should be announced once the door is open: " + car.recentAnnouncements());
+                sawDirection.set(true);
+            }
+            previous.set(state);
+        });
+        helper.succeedWhen(() -> helper.assertTrue(sawFloor.get() && sawDirection.get(), "not announced yet"));
+    }
+
+    /** かごがいる階の乗場呼びでは、階の案内はせず、行先方向だけを流す。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 200)
+    public static void hallCallAtTheCarFloorAnnouncesOnlyTheDirection(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
+        car.pressHallCall(0, TravelDirection.UP);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(car.doorState() == DoorState.OPEN, "not open yet");
+            helper.assertTrue(car.recentAnnouncements().equals(List.of(Announcement.direction(TravelDirection.UP))),
+                    "announcements: " + car.recentAnnouncements());
+        });
+    }
+
+    /** 戸が開いている間に行先が決まったら、その場で行先方向を流す。同じ方向は繰り返さない。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 200)
+    public static void directionIsAnnouncedWhenItIsDecidedWhileTheDoorIsOpen(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 1, SpeedSpec.NORMAL_HIGH, 0, 4, 8).car();
+        // かご呼びでその場の戸を開く（方向は決まらない）
+        helper.assertTrue(car.pressCarCall(1) == PressResult.SERVED_HERE, "the door should open");
+        AtomicBoolean pressed = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            if (!pressed.get() && car.doorState() == DoorState.OPEN) {
+                helper.assertTrue(car.recentAnnouncements().isEmpty(), "nothing should be announced yet: " + car.recentAnnouncements());
+                pressed.set(true);
+                // 乗った人が下の階を押した
+                car.pressCarCall(0);
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(pressed.get(), "not pressed yet");
+            helper.assertTrue(car.recentAnnouncements().equals(List.of(Announcement.direction(TravelDirection.DOWN))),
+                    "announcements: " + car.recentAnnouncements());
+        });
+    }
+
+    /** 行先方向を流している間に閉ボタンを押すと、戸閉アナウンスは流さない。流し終わってからなら流す。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 300)
+    public static void closeButtonDuringTheDirectionSkipsTheCloseAnnouncement(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
+        ElevatorCarEntity later = spawnCarOnly(helper, helper.absolutePos(LOWER).getX() + 3.5);
+        car.pressHallCall(0, TravelDirection.UP);
+        later.pressHallCall(0, TravelDirection.UP);
+        AtomicLong openedAt = new AtomicLong(-1);
+        AtomicBoolean pressedEarly = new AtomicBoolean();
+        AtomicBoolean pressedLate = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            long now = helper.getLevel().getGameTime();
+            if (openedAt.get() < 0 && car.doorState() == DoorState.OPEN) {
+                openedAt.set(now);
+            }
+            if (openedAt.get() >= 0 && !pressedEarly.get()) {
+                // 「上へ参ります。」を流し始めた直後
+                pressedEarly.set(true);
+                car.closeDoor();
+            }
+            if (openedAt.get() >= 0 && !pressedLate.get() && now >= openedAt.get() + AnnouncementScript.DIRECTION_TICKS + 2
+                    && later.doorState() == DoorState.OPEN) {
+                pressedLate.set(true);
+                later.closeDoor();
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(pressedEarly.get() && pressedLate.get(), "not pressed yet");
+            helper.assertTrue(car.recentAnnouncements().equals(List.of(Announcement.direction(TravelDirection.UP))),
+                    "should skip the close announcement: " + car.recentAnnouncements());
+            helper.assertTrue(later.recentAnnouncements().get(0).equals(Announcement.doorClose()),
+                    "should announce after the direction: " + later.recentAnnouncements());
+        });
+    }
+
+    /** 行先方向を流している間に開放待機が終わったら、戸閉アナウンスを流さず、待たずに閉め始める。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 300)
+    public static void automaticClosingDuringTheDirectionSkipsTheCloseAnnouncement(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 1, SpeedSpec.NORMAL_HIGH, 0, 4, 8).car();
+        car.pressCarCall(1);
+        AtomicLong openedAt = new AtomicLong(-1);
+        AtomicLong closingAt = new AtomicLong(-1);
+        AtomicBoolean pressed = new AtomicBoolean();
+        long dwell = DoorTiming.STANDARD.carDwellTicks();
+        helper.onEachTick(() -> {
+            long now = helper.getLevel().getGameTime();
+            if (openedAt.get() < 0 && car.doorState() == DoorState.OPEN) {
+                openedAt.set(now);
+            }
+            // 開放待機が終わる少し前に行先が決まり、「下へ参ります。」が流れ始める
+            if (openedAt.get() >= 0 && !pressed.get() && now >= openedAt.get() + dwell - 5) {
+                pressed.set(true);
+                car.pressCarCall(0);
+            }
+            if (closingAt.get() < 0 && car.doorState() == DoorState.CLOSING) {
+                closingAt.set(now);
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(closingAt.get() >= 0, "not closing yet");
+            helper.assertTrue(closingAt.get() - openedAt.get() == dwell, "should close without waiting: " + (closingAt.get() - openedAt.get()));
+            helper.assertTrue(car.recentAnnouncements().equals(List.of(Announcement.direction(TravelDirection.DOWN))),
+                    "should skip the close announcement: " + car.recentAnnouncements());
         });
     }
 

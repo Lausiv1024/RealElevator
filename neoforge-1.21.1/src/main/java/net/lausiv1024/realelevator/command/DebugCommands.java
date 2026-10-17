@@ -15,6 +15,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 
+import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.control.CallType;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
@@ -50,6 +51,8 @@ import net.minecraft.world.phys.Vec3;
  * /realelevator config left_indicator true|false           両側の操作盤のとき、左側にも表示器を付けるか
  * /realelevator config hall_indicator over_door|over_buttons  乗場の階床表示器を扉の上／ボタンの上に置く
  * /realelevator config hall_lantern over_door|beside_door     ホールランタンを扉の上／扉の横に置く
+ * /realelevator config arrival_announcement true|false        到着して戸を開くときに「◯階です。」を流すか
+ * /realelevator config close_announcement true|false          戸を閉める前に「ドアが閉まります。」を流すか
  * </pre>
  *
  * call 以降は、半径32ブロック以内で最も近いかごに対して行う。
@@ -117,7 +120,15 @@ public final class DebugCommands {
                         .then(Commands.literal("hall_indicator")
                                 .then(enumValue(FixtureConfig.HallIndicator.class, FixtureConfig::withHallIndicator)))
                         .then(Commands.literal("hall_lantern")
-                                .then(enumValue(FixtureConfig.HallLanternPlacement.class, FixtureConfig::withHallLantern)))));
+                                .then(enumValue(FixtureConfig.HallLanternPlacement.class, FixtureConfig::withHallLantern)))
+                        .then(Commands.literal("arrival_announcement")
+                                .then(Commands.argument("value", BoolArgumentType.bool())
+                                        .executes(c -> withNearestCar(c, (ctx, car) -> configureAnnouncements(ctx, car,
+                                                car.announcements().withArrival(BoolArgumentType.getBool(ctx, "value")))))))
+                        .then(Commands.literal("close_announcement")
+                                .then(Commands.argument("value", BoolArgumentType.bool())
+                                        .executes(c -> withNearestCar(c, (ctx, car) -> configureAnnouncements(ctx, car,
+                                                car.announcements().withDoorClose(BoolArgumentType.getBool(ctx, "value")))))))));
     }
 
     private static int spawn(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
@@ -240,6 +251,14 @@ public final class DebugCommands {
                 + "、左の表示器 " + fixtures.leftPanelIndicator()
                 + "、乗場の表示器 " + fixtures.hallIndicator().name().toLowerCase(Locale.ROOT)
                 + "、ホールランタン " + fixtures.hallLantern().name().toLowerCase(Locale.ROOT)), false);
+        return 1;
+    }
+
+    private static int configureAnnouncements(CommandContext<CommandSourceStack> context, ElevatorCarEntity car,
+                                              AnnouncementConfig announcements) {
+        car.setAnnouncements(announcements);
+        context.getSource().sendSuccess(() -> Component.literal("アナウンスの設定を変更しました：到着 " + announcements.arrival()
+                + "、戸閉 " + announcements.doorClose()), false);
         return 1;
     }
 

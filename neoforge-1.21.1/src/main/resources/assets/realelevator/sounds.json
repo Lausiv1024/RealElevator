@@ -1,10 +1,368 @@
 {
   "chime_up": {
     "subtitle": "subtitles.realelevator.chime",
-    "sounds": ["realelevator:chime_up"]
+    "sounds": [
+      "realelevator:chime_up"
+    ]
   },
   "chime_down": {
     "subtitle": "subtitles.realelevator.chime",
-    "sounds": ["realelevator:chime_down"]
+    "sounds": [
+      "realelevator:chime_down"
+    ]
+  },
+  "announce.floor_1": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_1"
+    ]
+  },
+  "announce.floor_2": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_2"
+    ]
+  },
+  "announce.floor_3": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_3"
+    ]
+  },
+  "announce.floor_4": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_4"
+    ]
+  },
+  "announce.floor_5": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_5"
+    ]
+  },
+  "announce.floor_6": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_6"
+    ]
+  },
+  "announce.floor_7": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_7"
+    ]
+  },
+  "announce.floor_8": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_8"
+    ]
+  },
+  "announce.floor_9": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_9"
+    ]
+  },
+  "announce.floor_10": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_10"
+    ]
+  },
+  "announce.floor_11": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_11"
+    ]
+  },
+  "announce.floor_12": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_12"
+    ]
+  },
+  "announce.floor_13": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_13"
+    ]
+  },
+  "announce.floor_14": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_14"
+    ]
+  },
+  "announce.floor_15": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_15"
+    ]
+  },
+  "announce.floor_16": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_16"
+    ]
+  },
+  "announce.floor_17": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_17"
+    ]
+  },
+  "announce.floor_18": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_18"
+    ]
+  },
+  "announce.floor_19": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_19"
+    ]
+  },
+  "announce.floor_20": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_20"
+    ]
+  },
+  "announce.floor_21": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_21"
+    ]
+  },
+  "announce.floor_22": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_22"
+    ]
+  },
+  "announce.floor_23": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_23"
+    ]
+  },
+  "announce.floor_24": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_24"
+    ]
+  },
+  "announce.floor_25": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_25"
+    ]
+  },
+  "announce.floor_26": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_26"
+    ]
+  },
+  "announce.floor_27": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_27"
+    ]
+  },
+  "announce.floor_28": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_28"
+    ]
+  },
+  "announce.floor_29": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_29"
+    ]
+  },
+  "announce.floor_30": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_30"
+    ]
+  },
+  "announce.floor_31": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_31"
+    ]
+  },
+  "announce.floor_32": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_32"
+    ]
+  },
+  "announce.floor_33": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_33"
+    ]
+  },
+  "announce.floor_34": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_34"
+    ]
+  },
+  "announce.floor_35": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_35"
+    ]
+  },
+  "announce.floor_36": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_36"
+    ]
+  },
+  "announce.floor_37": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_37"
+    ]
+  },
+  "announce.floor_38": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_38"
+    ]
+  },
+  "announce.floor_39": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_39"
+    ]
+  },
+  "announce.floor_40": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_40"
+    ]
+  },
+  "announce.floor_41": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_41"
+    ]
+  },
+  "announce.floor_42": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_42"
+    ]
+  },
+  "announce.floor_43": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_43"
+    ]
+  },
+  "announce.floor_44": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_44"
+    ]
+  },
+  "announce.floor_45": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_45"
+    ]
+  },
+  "announce.floor_46": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_46"
+    ]
+  },
+  "announce.floor_47": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_47"
+    ]
+  },
+  "announce.floor_48": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_48"
+    ]
+  },
+  "announce.floor_49": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_49"
+    ]
+  },
+  "announce.floor_50": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_50"
+    ]
+  },
+  "announce.floor_b1": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_b1"
+    ]
+  },
+  "announce.floor_b2": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_b2"
+    ]
+  },
+  "announce.floor_b3": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_b3"
+    ]
+  },
+  "announce.floor_b4": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_b4"
+    ]
+  },
+  "announce.floor_b5": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_b5"
+    ]
+  },
+  "announce.floor_r": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/floor_r"
+    ]
+  },
+  "announce.dir_up": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/dir_up"
+    ]
+  },
+  "announce.dir_down": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/dir_down"
+    ]
+  },
+  "announce.door_close": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      "realelevator:announce/door_close"
+    ]
   }
 }

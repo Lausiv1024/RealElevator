@@ -147,6 +147,8 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_version            : mod_version,
     ]
     inputs.properties replaceProperties
+    // テンプレートに日本語（音声のクレジット）があるので、OSの既定の文字コードではなく UTF-8 で読み書きする
+    filteringCharset = 'UTF-8'
     expand replaceProperties
     from "src/main/templates"
     into "build/generated/sources/modMetadata"
