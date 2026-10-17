@@ -2,6 +2,7 @@ package net.lausiv1024.realelevator.core.display;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntFunction;
 
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
@@ -87,6 +88,30 @@ public final class FloorIndicator {
             }
         }
         return nearest;
+    }
+
+    /** この間隔 [ブロック] 以上ある階間（急行区間など）では、途中でハイフンを出す。 */
+    public static final int LONG_GAP = 10;
+    /** 長い階間でも、停止階からこの距離 [ブロック] 未満のあいだは、その階を出す（約1階分）。 */
+    public static final double NEAR_FLOOR = 4.0;
+    /** 長い階間の途中で、階名の代わりに出す文字。 */
+    public static final String BETWEEN_FLOORS = "--";
+
+    /**
+     * かごの位置 y で出す階名。長い階間（{@value #LONG_GAP} ブロック以上）の途中で、どちらの停止階からも
+     * {@value #NEAR_FLOOR} ブロック以上離れているあいだは {@value #BETWEEN_FLOORS}、それ以外は {@link #displayedFloor} の階名。
+     *
+     * @param labels 停止階の階名（下から順）
+     */
+    public static String displayedLabel(double y, int[] floors, IntFunction<String> labels) {
+        for (int i = 1; i < floors.length; i++) {
+            int below = floors[i - 1];
+            int above = floors[i];
+            if (above - below >= LONG_GAP && y - below >= NEAR_FLOOR && above - y >= NEAR_FLOOR) {
+                return BETWEEN_FLOORS;
+            }
+        }
+        return labels.apply(displayedFloor(y, floors));
     }
 
     /** 階名の初期値。階名を設定する仕組みができるまでは、下から 1、2、3…。 */

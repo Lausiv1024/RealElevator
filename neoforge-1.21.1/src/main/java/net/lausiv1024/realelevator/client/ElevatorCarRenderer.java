@@ -53,7 +53,7 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
         BoxRenderer.renderButtons(pose, consumer, car, car.facing().get2DDataValue(), packedLight);
         double tick = car.renderTick(partialTick);
         for (FloorIndicator.Frame indicator : FloorIndicator.car(car.model(), car.floorCount(), car.fixtures(),
-                car.floorLabel(car.indicatorFloor(tick)), car.indicatorDirection())) {
+                car.indicatorLabel(tick), car.indicatorDirection())) {
             BoxRenderer.renderIndicator(pose, consumer, indicator, car.facing().get2DDataValue(), packedLight);
         }
         poseStack.popPose();

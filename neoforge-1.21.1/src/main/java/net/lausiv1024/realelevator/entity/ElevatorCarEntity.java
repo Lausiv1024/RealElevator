@@ -745,6 +745,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         return floors.length > 0 ? FloorIndicator.displayedFloor(yAt(tick), floors) : 0;
     }
 
+    /** ゲーム時刻 tick に階床表示器に出す階名。長い階間の途中ではハイフン。 */
+    public String indicatorLabel(double tick) {
+        return floors.length > 0 ? FloorIndicator.displayedLabel(yAt(tick), floors, this::floorLabel) : floorLabel(0);
+    }
+
     /** 階床表示器に出す矢印の向き。走行中はその向き、停止中は次に進む方向。 */
     public TravelDirection indicatorDirection() {
         if (trip != null) {

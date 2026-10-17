@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.function.IntFunction;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -182,5 +183,23 @@ class FloorIndicatorTest {
             // ドットは表示面の手前（見る人の側）に浮いている
             assertTrue(dot.maxZ() <= face.minZ() + EPS || dot.minZ() >= face.maxZ() - EPS, dot.toString());
         }
+    }
+
+    @Test
+    void longGapsShowHyphensInTheMiddle() {
+        int[] floors = {0, 5, 25, 30};
+        IntFunction<String> labels = i -> String.valueOf(i + 1);
+        // 普通の階間では、近いほうの階
+        assertEquals("1", FloorIndicator.displayedLabel(2.4, floors, labels));
+        assertEquals("2", FloorIndicator.displayedLabel(2.6, floors, labels));
+        // 長い階間（20ブロック）は、どちらの階からも4ブロック以上離れたらハイフン
+        assertEquals("2", FloorIndicator.displayedLabel(8.9, floors, labels));
+        assertEquals("--", FloorIndicator.displayedLabel(9.0, floors, labels));
+        assertEquals("--", FloorIndicator.displayedLabel(15, floors, labels));
+        assertEquals("--", FloorIndicator.displayedLabel(21.0, floors, labels));
+        assertEquals("3", FloorIndicator.displayedLabel(21.1, floors, labels));
+        // 9ブロックの階間は長い階間ではない
+        assertEquals("1", FloorIndicator.displayedLabel(4.4, new int[] {0, 9}, labels));
+        assertEquals("2", FloorIndicator.displayedLabel(4.6, new int[] {0, 9}, labels));
     }
 }

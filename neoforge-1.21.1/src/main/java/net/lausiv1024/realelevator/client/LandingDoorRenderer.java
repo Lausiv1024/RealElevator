@@ -52,7 +52,7 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
         // かごが読み込まれていなければ、表示器は消灯したままにする
         ElevatorCarEntity car = door.car();
         FloorIndicator.Frame indicator = car != null
-                ? FloorIndicator.hall(door.model(), car.fixtures(), car.floorLabel(car.indicatorFloor(car.renderTick(partialTick))),
+                ? FloorIndicator.hall(door.model(), car.fixtures(), car.indicatorLabel(car.renderTick(partialTick)),
                         car.indicatorDirection())
                 : FloorIndicator.hall(door.model(), FixtureConfig.DEFAULT, "", TravelDirection.NONE);
         BoxRenderer.renderIndicator(pose, consumer, indicator, door.facing().get2DDataValue(), packedLight);
