@@ -623,8 +623,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (level().isClientSide || door.state() != DoorState.OPEN) {
             return false;
         }
-        // 閉ボタンでは、戸閉アナウンスを流しながらすぐに閉め始める。行先方向を流している間は戸閉アナウンスを流さない
-        if (announcements.doorClose() && !isSpeakingDirection(level().getGameTime())) {
+        // 閉ボタンでは、戸閉アナウンスを流しながらすぐに閉め始める。行先方向や、自動で閉めるときの戸閉アナウンスを
+        // 流している間は、新しく流さない（別のアナウンスが流れていれば流し直さない）
+        if (announcements.doorClose() && !isSpeakingDirection(level().getGameTime()) && !door.isWaitingToClose()) {
             announce(Announcement.doorClose());
         }
         door.close(level().getGameTime());

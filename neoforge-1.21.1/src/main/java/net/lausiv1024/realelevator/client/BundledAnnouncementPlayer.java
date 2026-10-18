@@ -27,6 +27,7 @@ import net.minecraft.util.RandomSource;
 /**
  * 同梱音声でアナウンスを鳴らす。録っておいたクリップ（{@link AnnouncementScript#clips}）を、
  * 1つ鳴り終わるごとに次を鳴らしてつなげる。音はかごの中（床から2.5ブロック）から鳴らす。
+ * 同じかごで別のアナウンスが鳴っているあいだに届いたアナウンスは、鳴らさずに捨てる。
  *
  * <p>クリップの長さは、音声を作ったときに書き出した assets/realelevator/announcements.json から読む。
  */
@@ -42,11 +43,17 @@ public final class BundledAnnouncementPlayer implements AnnouncementPlayer {
     private final Map<Integer, Deque<Clip>> queues = new HashMap<>();
     private final Map<Integer, SoundInstance> playing = new HashMap<>();
     private final Map<Integer, Long> nextAt = new HashMap<>();
+    /** かごごとの、今鳴っているアナウンスの最後のクリップが鳴り終わるゲーム時刻。 */
+    private final Map<Integer, Long> busyUntil = new HashMap<>();
     @Nullable
     private Map<String, Double> durations;
 
     @Override
     public void play(ElevatorCarEntity car, Announcement announcement) {
+        if (isBusy(car.getId())) {
+            // 別のアナウンスが鳴っているので、流し直さずに捨てる
+            return;
+        }
         stop(car.getId());
         Deque<Clip> queue = new ArrayDeque<>();
         for (String clip : AnnouncementScript.clips(announcement)) {
@@ -64,6 +71,7 @@ public final class BundledAnnouncementPlayer implements AnnouncementPlayer {
             queues.clear();
             playing.clear();
             nextAt.clear();
+            busyUntil.clear();
             return;
         }
         long now = minecraft.level.getGameTime();
@@ -89,8 +97,24 @@ public final class BundledAnnouncementPlayer implements AnnouncementPlayer {
             minecraft.getSoundManager().play(sound);
             playing.put(carId, sound);
             nextAt.put(carId, now + Math.round(duration(clip.name()) * 20));
+            busyUntil.put(carId, nextAt.get(carId));
             return false;
         });
+    }
+
+    /** かご carId で、アナウンスが鳴っている（またはつなげて鳴らす続きが残っている）か。 */
+    private boolean isBusy(int carId) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null) {
+            return false;
+        }
+        Deque<Clip> queue = queues.get(carId);
+        if (queue != null && !queue.isEmpty()) {
+            return true;
+        }
+        SoundInstance sound = playing.get(carId);
+        boolean soundActive = sound != null && minecraft.getSoundManager().isActive(sound);
+        return soundActive || minecraft.level.getGameTime() < busyUntil.getOrDefault(carId, Long.MIN_VALUE);
     }
 
     private void stop(int carId) {

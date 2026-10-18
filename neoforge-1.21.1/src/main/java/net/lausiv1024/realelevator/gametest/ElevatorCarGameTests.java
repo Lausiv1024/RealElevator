@@ -467,6 +467,26 @@ public class ElevatorCarGameTests {
         helper.succeedWhen(() -> helper.assertTrue(pressed.get() && car.doorState() == DoorState.CLOSED, "not closed yet"));
     }
 
+    /** 自動で閉めるときの戸閉アナウンスが流れているあいだに閉ボタンを押しても、戸閉アナウンスを流し直さない。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 300)
+    public static void closeButtonDuringTheCloseAnnouncementDoesNotRepeatIt(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
+        car.pressCarCall(0);
+        AtomicBoolean pressed = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            if (!pressed.get() && car.doorState() == DoorState.OPEN && car.recentAnnouncements().stream()
+                    .anyMatch(a -> a.type() == Announcement.Type.DOOR_CLOSE)) {
+                pressed.set(true);
+                helper.assertTrue(car.closeDoor(), "the close button should still close the door");
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(pressed.get() && car.doorState() == DoorState.CLOSED, "not closed yet");
+            long closes = car.recentAnnouncements().stream().filter(a -> a.type() == Announcement.Type.DOOR_CLOSE).count();
+            helper.assertTrue(closes == 1, "the close announcement should play once: " + closes);
+        });
+    }
+
     /** 乗場の扉なしで、下階にかごだけを置く（扉どうしが重ならないよう、x をずらせる）。 */
     private static ElevatorCarEntity spawnCarOnly(GameTestHelper helper, double x) {
         BlockPos lower = helper.absolutePos(LOWER);
