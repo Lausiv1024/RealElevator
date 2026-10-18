@@ -172,7 +172,8 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     public List<Button> buttons() {
         ElevatorCarEntity car = car();
         int floor = floorIndex();
-        return car != null && floor >= 0 ? ButtonLayout.hallButtons(spec(), floor, car.floorCount(), faceOffset()) : List.of();
+        return car != null && floor >= 0
+                ? ButtonLayout.hallButtons(spec(), floor, car.floorCount(), faceOffset(), car.fixtures().wheelchairPanel()) : List.of();
     }
 
     @Override
@@ -185,7 +186,11 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     public boolean isButtonLit(int index) {
         ElevatorCarEntity car = car();
         Button button = buttons().get(index);
-        return car != null && car.isHallCallLit(button.floor(), direction(button), entrance());
+        if (car == null) {
+            return false;
+        }
+        return button.wheelchair() ? car.isWheelchairHallCallLit(button.floor(), direction(button), entrance())
+                : car.isHallCallLit(button.floor(), direction(button), entrance());
     }
 
     @Override
@@ -193,7 +198,7 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         ElevatorCarEntity car = car();
         if (car != null) {
             Button button = buttons().get(index);
-            car.pressHallCall(button.floor(), direction(button), entrance());
+            car.pressHallCall(button.floor(), direction(button), entrance(), button.wheelchair());
         }
     }
 
@@ -220,7 +225,7 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         }
         int turns = quarterTurns();
         double offset = faceOffset();
-        for (Button button : ButtonLayout.hallButtons(spec(), 1, 3, offset)) {
+        for (Button button : ButtonLayout.hallButtons(spec(), 1, 3, offset, true)) {
             bounds = bounds.minmax(CarShapes.toAabb(button.box().rotateQuarterTurns(turns), getX(), getY(), getZ()));
         }
         // 階床表示器とホールランタンは、どの位置に付けても入るようにする

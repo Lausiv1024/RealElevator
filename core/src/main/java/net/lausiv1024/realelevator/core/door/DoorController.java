@@ -16,6 +16,9 @@ package net.lausiv1024.realelevator.core.door;
  * <li>閉動作 → 開動作：{@link #obstruct}（セーフティシュー）、{@link #open}（開ボタン）。その時点の開き具合から開き直す</li>
  * <li>閉動作 → 閉：全閉</li>
  * </ul>
+ *
+ * <p>車椅子用のボタンで開いたときは、ゆっくり閉じる（{@link DoorTiming#wheelchairCloseTicks}）。閉まりきるまで続き、
+ * その間に普通のボタンで開き直しても、ゆっくりのまま、開放待機も短くしない。
  */
 public final class DoorController {
     /** {@link #tick} で起きたこと。 */
@@ -36,6 +39,8 @@ public final class DoorController {
     private long startTick;
     private double startFraction;
     private int dwellTicks;
+    /** 車椅子用のボタンで開いたので、ゆっくり閉じるか。 */
+    private boolean slowClose;
 
     public DoorController(DoorTiming timing) {
         this.timing = timing;
@@ -43,17 +48,38 @@ public final class DoorController {
 
     /** 戸を開く。開放待機中に呼ぶと、待機時間を数え直す。 */
     public void open(long now, int dwellTicks) {
+        open(now, dwellTicks, false);
+    }
+
+    /**
+     * 戸を開く。開放待機中に呼ぶと、待機時間を数え直す。
+     *
+     * @param slowClose 車椅子用のボタンで開いたか（ゆっくり閉じる）
+     */
+    public void open(long now, int dwellTicks, boolean slowClose) {
         switch (state) {
-            case CLOSED, CLOSING -> {
-                startFraction = fractionAt(now);
+            case CLOSED -> {
+                startFraction = 0;
                 startTick = now;
                 state = DoorState.OPENING;
                 this.dwellTicks = dwellTicks;
+                this.slowClose = slowClose;
             }
-            case OPENING -> this.dwellTicks = Math.max(this.dwellTicks, dwellTicks);
+            case CLOSING -> {
+                startFraction = fractionAt(now);
+                startTick = now;
+                state = DoorState.OPENING;
+                this.dwellTicks = this.slowClose ? Math.max(this.dwellTicks, dwellTicks) : dwellTicks;
+                this.slowClose |= slowClose;
+            }
+            case OPENING -> {
+                this.dwellTicks = Math.max(this.dwellTicks, dwellTicks);
+                this.slowClose |= slowClose;
+            }
             case OPEN -> {
                 startTick = now;
-                this.dwellTicks = dwellTicks;
+                this.dwellTicks = this.slowClose ? Math.max(this.dwellTicks, dwellTicks) : dwellTicks;
+                this.slowClose |= slowClose;
                 closeAt = -1;
             }
         }
@@ -79,7 +105,7 @@ public final class DoorController {
     /** セーフティシューが物に触れた。閉動作中なら開き直す。待機時間は元の呼びのものを使う。 */
     public void obstruct(long now) {
         if (state == DoorState.CLOSING) {
-            open(now, dwellTicks);
+            open(now, dwellTicks, slowClose);
         }
     }
 
@@ -135,6 +161,12 @@ public final class DoorController {
 
     /** サーバーから届いた状態をそのまま反映する（クライアント用、読み込み用）。 */
     public void restore(DoorState state, long startTick, double startFraction, int dwellTicks) {
+        restore(state, startTick, startFraction, dwellTicks, false);
+    }
+
+    /** サーバーから届いた状態をそのまま反映する（クライアント用、読み込み用）。 */
+    public void restore(DoorState state, long startTick, double startFraction, int dwellTicks, boolean slowClose) {
+        this.slowClose = slowClose;
         this.state = state;
         this.startTick = startTick;
         this.startFraction = startFraction;
@@ -155,7 +187,7 @@ public final class DoorController {
     }
 
     private double closingDuration() {
-        return startFraction * timing.closeTicks();
+        return startFraction * (slowClose ? timing.wheelchairCloseTicks() : timing.closeTicks());
     }
 
     private double progress(double tick, double duration) {
@@ -188,6 +220,11 @@ public final class DoorController {
 
     public int dwellTicks() {
         return dwellTicks;
+    }
+
+    /** 車椅子用のボタンで開いたので、ゆっくり閉じるか。 */
+    public boolean isSlowClose() {
+        return slowClose;
     }
 
     public DoorTiming timing() {

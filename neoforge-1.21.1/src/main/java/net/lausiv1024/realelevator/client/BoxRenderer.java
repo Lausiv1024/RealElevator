@@ -10,6 +10,7 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.display.HallLantern;
+import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.entity.ButtonHost;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
@@ -29,6 +30,8 @@ final class BoxRenderer {
     private static final int WHITE = 0xFFFFFF;
     /** 階床表示器のドットの色（アンバー）。 */
     private static final int AMBER = 0xFFAA00;
+    /** 車椅子用のボタン（消灯中）の色。車椅子マークの代わりの仮の色で、デザインシステムで差し替える。 */
+    private static final int WHEELCHAIR_BLUE = 0x2F5FB8;
     /** 消灯しているホールランタンの色（くすんだ乳白色）。 */
     private static final int LANTERN_OFF = 0x6E6A60;
 
@@ -43,10 +46,17 @@ final class BoxRenderer {
     static void renderButtons(PoseStack.Pose pose, VertexConsumer consumer, ButtonHost host, int quarterTurns, int light) {
         TextureAtlasSprite unlit = blockSprite(BUTTON);
         TextureAtlasSprite lit = blockSprite(BUTTON_LIT);
+        TextureAtlasSprite wheelchair = blockSprite(INDICATOR_DOT);
         for (int i = 0; i < host.buttons().size(); i++) {
-            Box box = host.buttons().get(i).box().rotateQuarterTurns(quarterTurns);
-            boolean on = host.isButtonLit(i);
-            renderBox(pose, consumer, box, on ? lit : unlit, on ? LightTexture.FULL_BRIGHT : light);
+            ButtonLayout.Button button = host.buttons().get(i);
+            Box box = button.box().rotateQuarterTurns(quarterTurns);
+            if (host.isButtonLit(i)) {
+                renderBox(pose, consumer, box, lit, LightTexture.FULL_BRIGHT);
+            } else if (button.wheelchair()) {
+                renderBox(pose, consumer, box, wheelchair, light, WHEELCHAIR_BLUE);
+            } else {
+                renderBox(pose, consumer, box, unlit, light);
+            }
         }
     }
 

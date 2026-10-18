@@ -194,4 +194,62 @@ class DoorControllerTest {
         assertEquals(DoorState.OPEN, door.state());
         assertEquals(DoorController.Event.CLOSE_ANNOUNCED, door.tick(130));
     }
+
+    @Test
+    void wheelchairCallsWaitLongerAndCloseSlowly() {
+        assertEquals(200, TIMING.dwellTicks(CallType.CAR, true));
+        assertEquals(200, TIMING.dwellTicks(CallType.HALL, true));
+        assertEquals(80, TIMING.dwellTicks(CallType.HALL, false));
+        DoorController door = new DoorController(TIMING);
+        door.open(0, TIMING.dwellTicks(CallType.CAR, true), true);
+        run(door, 1, 40);
+        assertEquals(DoorState.OPEN, door.state());
+        run(door, 41, 239);
+        assertEquals(DoorState.OPEN, door.state(), "the dwell should last 10 seconds");
+        run(door, 240, 240);
+        assertEquals(DoorState.CLOSING, door.state());
+        // 普通なら50tickで閉まるところを75tickかける
+        run(door, 241, 290);
+        assertEquals(DoorState.CLOSING, door.state());
+        assertTrue(door.fractionAt(290) > 0);
+        run(door, 291, 315);
+        assertEquals(DoorState.CLOSED, door.state());
+    }
+
+    @Test
+    void anOrdinaryOpenButtonKeepsTheWheelchairDwellAndSlowClose() {
+        DoorController door = new DoorController(TIMING);
+        door.open(0, TIMING.dwellTicks(CallType.CAR, true), true);
+        run(door, 1, 100);
+        door.open(100, TIMING.dwellTicks(CallType.CAR));
+        assertTrue(door.isSlowClose());
+        assertEquals(200, door.dwellTicks());
+        // 閉まりかけを普通のボタンで開き直しても、ゆっくりのまま
+        door.close(150);
+        door.open(160, TIMING.dwellTicks(CallType.CAR));
+        assertTrue(door.isSlowClose());
+        assertEquals(200, door.dwellTicks());
+        // 閉まりきったあとに普通に開けば、普通に戻る
+        DoorController plain = new DoorController(TIMING);
+        plain.open(0, TIMING.dwellTicks(CallType.CAR, true), true);
+        run(plain, 1, 40);
+        plain.close(41);
+        run(plain, 41, 200);
+        assertTrue(plain.isClosed());
+        plain.open(300, TIMING.dwellTicks(CallType.CAR));
+        assertFalse(plain.isSlowClose());
+        assertEquals(40, plain.dwellTicks());
+    }
+
+    @Test
+    void slowCloseIsRestoredOnTheClient() {
+        DoorController server = new DoorController(TIMING);
+        server.open(0, 200, true);
+        run(server, 1, 40);
+        server.close(50);
+        DoorController client = new DoorController(TIMING);
+        client.restore(server.state(), server.startTick(), server.startFraction(), server.dwellTicks(), server.isSlowClose());
+        assertEquals(server.fractionAt(100), client.fractionAt(100), EPS);
+    }
 }
+

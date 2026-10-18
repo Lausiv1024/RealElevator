@@ -656,6 +656,66 @@ public class ElevatorCarGameTests {
         helper.succeed();
     }
 
+    /**
+     * 車椅子用操作盤の行先ボタンで着いた階では、開放待機が延びてゆっくり閉じる。
+     * 普通の操作盤で押しても車椅子用操作盤は点かず、車椅子用操作盤で押すと両方点く。
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = 600)
+    public static void wheelchairCarCallsHoldTheDoorLonger(GameTestHelper helper) {
+        Elevator elevator = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE);
+        ElevatorCarEntity car = elevator.car();
+        int usual = car.buttons().size();
+        car.setFixtures(car.fixtures().withWheelchairPanel(true));
+        helper.assertTrue(car.buttons().size() == usual + (2 + 2) * 2, "a wheelchair panel on each side wall");
+        int wheelchairSecond = wheelchairIndexOf(car.buttons(), ButtonLayout.Kind.CAR_CALL, 1);
+        int usualSecond = indexOf(car.buttons(), ButtonLayout.Kind.CAR_CALL, 1);
+        car.pressButton(usualSecond);
+        helper.assertTrue(car.isButtonLit(usualSecond) && !car.isButtonLit(wheelchairSecond), "only the usual panel should light up");
+        car.pressButton(wheelchairSecond);
+        helper.assertTrue(car.isButtonLit(wheelchairSecond) && car.isButtonLit(usualSecond), "both panels should light up");
+        int top = car.floors()[1];
+        helper.succeedWhen(() -> {
+            helper.assertTrue(!car.isMoving() && car.getY() == top && car.doorState() == DoorState.OPEN, "not open yet");
+            helper.assertTrue(car.doorDwellTicks() == DoorTiming.STANDARD.wheelchairDwellTicks() && car.isDoorSlowClose(),
+                    "the wheelchair stop should wait longer and close slowly");
+        });
+    }
+
+    /** 乗場の車椅子用ボタンは▲▼の下にあり、押すと車椅子用と普通のボタンが点き、着いたら開放待機が延びる。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 600)
+    public static void wheelchairHallButtonsHoldTheDoorLonger(GameTestHelper helper) {
+        Elevator elevator = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE);
+        ElevatorCarEntity car = elevator.car();
+        LandingDoorEntity upper = elevator.landingDoors().get(1);
+        helper.assertTrue(upper.buttons().size() == 1, "no wheelchair button before it is enabled");
+        car.setFixtures(car.fixtures().withWheelchairPanel(true));
+        helper.assertTrue(upper.buttons().size() == 2, "the top floor has the usual and the wheelchair down button");
+        int usualDown = indexOf(upper.buttons(), ButtonLayout.Kind.HALL_DOWN, 1);
+        int wheelchairDown = wheelchairIndexOf(upper.buttons(), ButtonLayout.Kind.HALL_DOWN, 1);
+        // 普通のボタンで登録したあとに車椅子用を押しても、車椅子用として扱う
+        upper.pressButton(usualDown);
+        helper.assertTrue(upper.isButtonLit(usualDown) && !upper.isButtonLit(wheelchairDown), "only the usual button should light");
+        upper.pressButton(wheelchairDown);
+        helper.assertTrue(upper.isButtonLit(usualDown) && upper.isButtonLit(wheelchairDown), "both buttons should light");
+        int top = car.floors()[1];
+        helper.succeedWhen(() -> {
+            helper.assertTrue(!car.isMoving() && car.getY() == top && car.doorState() == DoorState.OPEN, "not open yet");
+            helper.assertTrue(car.doorDwellTicks() == DoorTiming.STANDARD.wheelchairDwellTicks() && car.isDoorSlowClose(),
+                    "the wheelchair stop should wait longer and close slowly");
+            helper.assertTrue(!upper.isButtonLit(wheelchairDown) && !upper.isButtonLit(usualDown), "the lamps should go out");
+        });
+    }
+
+    private static int wheelchairIndexOf(List<ButtonLayout.Button> buttons, ButtonLayout.Kind kind, int floor) {
+        for (int i = 0; i < buttons.size(); i++) {
+            ButtonLayout.Button button = buttons.get(i);
+            if (button.wheelchair() && button.kind() == kind && button.floor() == floor) {
+                return i;
+            }
+        }
+        throw new IllegalStateException("no wheelchair button " + kind + " " + floor);
+    }
+
     private static int indexOf(List<ButtonLayout.Button> buttons, ButtonLayout.Kind kind, int floor) {
         for (int i = 0; i < buttons.size(); i++) {
             if (buttons.get(i).kind() == kind && buttons.get(i).floor() == floor) {

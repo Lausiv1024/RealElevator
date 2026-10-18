@@ -9,15 +9,21 @@ package net.lausiv1024.realelevator.core.panel;
  *                           かごの表示器が操作盤の上のときだけ効く
  * @param hallIndicator      乗場の階床表示器の位置
  * @param hallLantern        ホールランタンの位置
+ * @param wheelchairPanel    車椅子用操作盤（かごの両側の側壁）と乗場の車椅子用ボタンを付けるか
  */
 public record FixtureConfig(PanelSides panelSides, CarIndicator carIndicator, boolean leftPanelIndicator, HallIndicator hallIndicator,
-                            HallLanternPlacement hallLantern) {
+                            HallLanternPlacement hallLantern, boolean wheelchairPanel) {
     /**
      * 日本の標準仕様に合わせた初期値。かごは右側の操作盤の上に表示器、乗場はボタンの上（三方枠の横）に表示器。
-     * ホールランタンは有償の付加仕様なので付けない。
+     * ホールランタンは有償の付加仕様なので付けない。車椅子用操作盤も付けない。
      */
     public static final FixtureConfig DEFAULT = new FixtureConfig(PanelSides.RIGHT, CarIndicator.OVER_PANEL, false,
-            HallIndicator.OVER_BUTTONS, HallLanternPlacement.NONE);
+            HallIndicator.OVER_BUTTONS, HallLanternPlacement.NONE, false);
+
+    public FixtureConfig(PanelSides panelSides, CarIndicator carIndicator, boolean leftPanelIndicator, HallIndicator hallIndicator,
+                         HallLanternPlacement hallLantern) {
+        this(panelSides, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, false);
+    }
 
     public enum PanelSides {
         /** かごの中から扉の方を向いて右側の袖壁だけ。 */
@@ -58,26 +64,30 @@ public record FixtureConfig(PanelSides panelSides, CarIndicator carIndicator, bo
     public FixtureConfig withoutOverDoorHallFixtures() {
         return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator,
                 hallIndicator == HallIndicator.OVER_DOOR ? HallIndicator.OVER_BUTTONS : hallIndicator,
-                hallLantern == HallLanternPlacement.OVER_DOOR ? HallLanternPlacement.BESIDE_DOOR : hallLantern);
+                hallLantern == HallLanternPlacement.OVER_DOOR ? HallLanternPlacement.BESIDE_DOOR : hallLantern, wheelchairPanel);
     }
 
     public FixtureConfig withPanelSides(PanelSides value) {
-        return new FixtureConfig(value, carIndicator, leftPanelIndicator, hallIndicator, hallLantern);
+        return new FixtureConfig(value, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, wheelchairPanel);
     }
 
     public FixtureConfig withCarIndicator(CarIndicator value) {
-        return new FixtureConfig(panelSides, value, leftPanelIndicator, hallIndicator, hallLantern);
+        return new FixtureConfig(panelSides, value, leftPanelIndicator, hallIndicator, hallLantern, wheelchairPanel);
     }
 
     public FixtureConfig withLeftPanelIndicator(boolean value) {
-        return new FixtureConfig(panelSides, carIndicator, value, hallIndicator, hallLantern);
+        return new FixtureConfig(panelSides, carIndicator, value, hallIndicator, hallLantern, wheelchairPanel);
     }
 
     public FixtureConfig withHallIndicator(HallIndicator value) {
-        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, value, hallLantern);
+        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, value, hallLantern, wheelchairPanel);
     }
 
     public FixtureConfig withHallLantern(HallLanternPlacement value) {
-        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, hallIndicator, value);
+        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, hallIndicator, value, wheelchairPanel);
+    }
+
+    public FixtureConfig withWheelchairPanel(boolean value) {
+        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, value);
     }
 }

@@ -29,6 +29,7 @@
   "gui.realelevator.panel.panel_sides": "かご操作盤",
   "gui.realelevator.panel.car_indicator": "かごの表示器",
   "gui.realelevator.panel.left_indicator": "左の表示器",
+  "gui.realelevator.panel.wheelchair_panel": "車椅子用操作盤",
   "gui.realelevator.panel.hall_indicator": "乗場の表示器",
   "gui.realelevator.panel.hall_lantern": "ホールランタン",
   "gui.realelevator.panel.arrival_announcement": "到着アナウンス",

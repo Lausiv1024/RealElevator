@@ -18,6 +18,9 @@ import net.lausiv1024.realelevator.core.door.DoorGeometry;
  * 行先ボタンは2列で、下の段から順に、左の列に奇数階、右の列に偶数階を並べる。その下の段に開・閉ボタンを置く。
  *
  * <p>乗場のボタンは、三方枠の乗場側の面の、乗場から扉の方を向いて右側（+X 側）の脇の、幅の中央に置く。
+ *
+ * <p>車椅子用操作盤は、かごの左右の側壁の内面の、奥行きの中ほどに横長に置く。開・閉ボタンを扉の側の端の列に置き、
+ * そこから奥へ、各列の下の段から順に行先ボタンを並べる。乗場の車椅子用ボタンは、▲▼の下に同じ並びで置く。
  */
 public final class ButtonLayout {
     public static final int BUTTON_PX = 2;
@@ -27,6 +30,12 @@ public final class ButtonLayout {
     public static final int CAR_PANEL_BOTTOM_PX = 22;
     /** 乗場の下りボタンの下端の高さ（実機 約1000 mm）。 */
     public static final int HALL_BOTTOM_PX = 25;
+    /** 車椅子用操作盤のいちばん下の段のボタンの下端の高さ（実機 約900 mm）。 */
+    public static final int WHEELCHAIR_PANEL_BOTTOM_PX = 21;
+    /** 車椅子用操作盤の、奥行きの両端に空けるすき間。 */
+    public static final int WHEELCHAIR_PANEL_MARGIN_PX = 2;
+    /** 乗場の車椅子用の下りボタンの下端の高さ。 */
+    public static final int WHEELCHAIR_HALL_BOTTOM_PX = 16;
 
     public enum Kind {
         CAR_CALL,
@@ -37,9 +46,13 @@ public final class ButtonLayout {
     }
 
     /**
-     * @param floor 行先ボタンの階（0始まり）。それ以外のボタンでは −1
+     * @param floor      行先ボタンの階（0始まり）。それ以外のボタンでは −1
+     * @param wheelchair 車椅子用操作盤・乗場の車椅子用ボタンか
      */
-    public record Button(Kind kind, int floor, Box box) {
+    public record Button(Kind kind, int floor, Box box, boolean wheelchair) {
+        public Button(Kind kind, int floor, Box box) {
+            this(kind, floor, box, false);
+        }
     }
 
     private ButtonLayout() {
@@ -138,6 +151,48 @@ public final class ButtonLayout {
         return (DoorGeometry.frameJambCenter2Px(spec, true) - BUTTON_PX) / 2;
     }
 
+    /**
+     * 車椅子用操作盤のボタン。かごの中から扉の方を向いて右側（−X 側）の側壁、左側（+X 側）の側壁の順で、
+     * それぞれ開、閉、1階、2階…の並び。
+     */
+    public static List<Button> wheelchairPanel(CarSpec spec, int floorCount) {
+        List<Button> buttons = new ArrayList<>((floorCount + 2) * 2);
+        int rows = wheelchairPanelRows(spec, floorCount);
+        int pitch = BUTTON_PX + GAP_PX;
+        int columns = 1 + (floorCount + rows - 1) / rows;
+        int width = columns * pitch - GAP_PX;
+        int minZ = px(CarGeometry.interior(spec).minZ());
+        int maxZ = px(CarGeometry.interior(spec).maxZ());
+        // 扉の側（+Z）の端の列
+        int doorEnd = Math.floorDiv(minZ + maxZ + width, 2);
+        for (boolean right : List.of(true, false)) {
+            int face = px(right ? CarGeometry.interior(spec).minX() : CarGeometry.interior(spec).maxX());
+            buttons.add(new Button(Kind.OPEN, -1, sideButton(face, right, doorEnd, WHEELCHAIR_PANEL_BOTTOM_PX), true));
+            buttons.add(new Button(Kind.CLOSE, -1, sideButton(face, right, doorEnd, WHEELCHAIR_PANEL_BOTTOM_PX + pitch), true));
+            for (int floor = 0; floor < floorCount; floor++) {
+                int column = 1 + floor / rows;
+                int row = floor % rows;
+                buttons.add(new Button(Kind.CAR_CALL, floor,
+                        sideButton(face, right, doorEnd - column * pitch, WHEELCHAIR_PANEL_BOTTOM_PX + row * pitch), true));
+            }
+        }
+        return buttons;
+    }
+
+    /** 車椅子用操作盤の段の数。2段で、奥行きに収まらなければ増やす。 */
+    public static int wheelchairPanelRows(CarSpec spec, int floorCount) {
+        int pitch = BUTTON_PX + GAP_PX;
+        int depth = px(CarGeometry.interior(spec).maxZ() - CarGeometry.interior(spec).minZ()) - WHEELCHAIR_PANEL_MARGIN_PX * 2;
+        int floorColumns = Math.max(1, (depth + GAP_PX) / pitch - 1);
+        return Math.max(2, (floorCount + floorColumns - 1) / floorColumns);
+    }
+
+    /** 側壁の内面 face から、かごの中へ（right なら +X、そうでなければ −X へ）出っ張るボタン。maxZ は扉の側の端。 */
+    private static Box sideButton(int face, boolean right, int maxZ, int minY) {
+        int minX = right ? face : face - PROTRUSION_PX;
+        return Box.ofPixels(minX, minY, maxZ - BUTTON_PX, minX + PROTRUSION_PX, minY + BUTTON_PX, maxZ);
+    }
+
     /** 乗場のボタン（▲▼の両方があるとき）の上端 [px]。 */
     public static int hallButtonsTopPx() {
         return HALL_BOTTOM_PX + BUTTON_PX * 2 + GAP_PX * 2;
@@ -156,18 +211,34 @@ public final class ButtonLayout {
 
     /** 乗場の面を faceOffset だけずらした乗場のボタン（二方向出入口の奥の乗場）。 */
     public static List<Button> hallButtons(CarSpec spec, int floor, int floorCount, double faceOffset) {
-        int x = hallButtonMinXPx(spec);
-        int face = px(DoorGeometry.landingFace(spec, faceOffset));
-        List<Button> buttons = new ArrayList<>(2);
-        if (floor < floorCount - 1) {
-            buttons.add(new Button(Kind.HALL_UP, floor, Box.ofPixels(x, HALL_BOTTOM_PX + BUTTON_PX + GAP_PX * 2, face,
-                    x + BUTTON_PX, hallButtonsTopPx(), face + PROTRUSION_PX)));
-        }
-        if (floor > 0) {
-            buttons.add(new Button(Kind.HALL_DOWN, floor, Box.ofPixels(x, HALL_BOTTOM_PX, face,
-                    x + BUTTON_PX, HALL_BOTTOM_PX + BUTTON_PX, face + PROTRUSION_PX)));
+        return hallButtons(spec, floor, floorCount, faceOffset, false);
+    }
+
+    /**
+     * 乗場のボタン。wheelchair なら、▲▼の下に車椅子用の▲▼も置く。並びは上り、下り、車椅子用の上り、下りの順で、ない方は含めない。
+     */
+    public static List<Button> hallButtons(CarSpec spec, int floor, int floorCount, double faceOffset, boolean wheelchair) {
+        List<Button> buttons = new ArrayList<>(4);
+        addHallButtons(buttons, spec, floor, floorCount, faceOffset, HALL_BOTTOM_PX, false);
+        if (wheelchair) {
+            addHallButtons(buttons, spec, floor, floorCount, faceOffset, WHEELCHAIR_HALL_BOTTOM_PX, true);
         }
         return buttons;
+    }
+
+    private static void addHallButtons(List<Button> buttons, CarSpec spec, int floor, int floorCount, double faceOffset,
+                                       int bottom, boolean wheelchair) {
+        int x = hallButtonMinXPx(spec);
+        int face = px(DoorGeometry.landingFace(spec, faceOffset));
+        if (floor < floorCount - 1) {
+            int upBottom = bottom + BUTTON_PX + GAP_PX * 2;
+            buttons.add(new Button(Kind.HALL_UP, floor, Box.ofPixels(x, upBottom, face,
+                    x + BUTTON_PX, upBottom + BUTTON_PX, face + PROTRUSION_PX), wheelchair));
+        }
+        if (floor > 0) {
+            buttons.add(new Button(Kind.HALL_DOWN, floor, Box.ofPixels(x, bottom, face,
+                    x + BUTTON_PX, bottom + BUTTON_PX, face + PROTRUSION_PX), wheelchair));
+        }
     }
 
     /** かご内向き（−Z 方向）に出っ張るボタン。 */

@@ -18,6 +18,7 @@ public final class ConfigTags {
         tag.putBoolean("LeftPanelIndicator", fixtures.leftPanelIndicator());
         tag.putString("HallIndicator", fixtures.hallIndicator().name());
         tag.putString("HallLantern", fixtures.hallLantern().name());
+        tag.putBoolean("WheelchairPanel", fixtures.wheelchairPanel());
         return tag;
     }
 
@@ -28,7 +29,8 @@ public final class ConfigTags {
                 parseEnum(FixtureConfig.CarIndicator.class, tag.getString("CarIndicator"), defaults.carIndicator()),
                 tag.getBoolean("LeftPanelIndicator"),
                 parseEnum(FixtureConfig.HallIndicator.class, tag.getString("HallIndicator"), defaults.hallIndicator()),
-                parseEnum(FixtureConfig.HallLanternPlacement.class, tag.getString("HallLantern"), defaults.hallLantern()));
+                parseEnum(FixtureConfig.HallLanternPlacement.class, tag.getString("HallLantern"), defaults.hallLantern()),
+                tag.getBoolean("WheelchairPanel"));
     }
 
     public static CompoundTag writeAnnouncements(AnnouncementConfig announcements) {

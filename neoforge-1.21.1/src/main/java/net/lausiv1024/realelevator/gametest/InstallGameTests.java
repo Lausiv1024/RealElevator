@@ -440,6 +440,34 @@ public class InstallGameTests {
         });
     }
 
+    /** 二方向出入口で、車椅子用操作盤の行先ボタンでは、乗ったとき（最後に開いた）の扉の反対側を開く。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 600)
+    public static void aWheelchairCallOpensTheDoorOppositeTheOneUsedToBoard(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        BlockPos panelPos = helper.absolutePos(PANEL);
+        int top = panelPos.getY() + RISE;
+        CompoundTag settings = panel.settingsTag();
+        settings.putBoolean("Through", true);
+        CompoundTag entrances = new CompoundTag();
+        entrances.putString(Integer.toString(top), FloorEntrances.BOTH.name());
+        settings.put("Entrances", entrances);
+        panel.applySettings(settings);
+        ElevatorPlan plan = panel.plan();
+        panel.install();
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        car.setFixtures(car.fixtures().withWheelchairPanel(true));
+        // 最下階で正面から乗った
+        car.openDoor(Entrance.FRONT);
+        helper.runAfterDelay(20, () -> car.pressWheelchairCarCall(1));
+        helper.succeedWhen(() -> {
+            long now = helper.getLevel().getGameTime();
+            helper.assertTrue(!car.isMoving() && car.getY() == top && car.doorFractionAt(now, Entrance.REAR) > 0.99,
+                    "the rear door should open");
+            helper.assertTrue(car.doorFractionAt(now, Entrance.FRONT) == 0 && car.isDoorSlowClose(),
+                    "only the rear door, held for the wheelchair");
+        });
+    }
+
     @GameTest(template = TEMPLATE, timeoutTicks = 600)
     public static void aCarCallFromTheRearPanelOpensOnlyTheRearDoor(GameTestHelper helper) {
         InstallerBlockEntity panel = placePanel(helper);

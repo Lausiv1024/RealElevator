@@ -49,6 +49,7 @@ import net.minecraft.world.phys.Vec3;
  * /realelevator config panel right|both                    操作盤を右側だけ／両側に置く
  * /realelevator config car_indicator over_door|over_panel  かごの階床表示器を扉の上／操作盤の上に置く
  * /realelevator config left_indicator true|false           両側の操作盤のとき、左側にも表示器を付けるか
+ * /realelevator config wheelchair_panel true|false         車椅子用操作盤と乗場の車椅子用ボタンを付けるか
  * /realelevator config hall_indicator over_door|over_buttons  乗場の階床表示器を扉の上／ボタンの上に置く
  * /realelevator config hall_lantern over_door|beside_door|none  ホールランタンを扉の上／扉の横に置く、または付けない
  * /realelevator config chime true|false                       到着チャイムを鳴らすか
@@ -118,6 +119,10 @@ public final class DebugCommands {
                                 .then(Commands.argument("value", BoolArgumentType.bool())
                                         .executes(c -> withNearestCar(c, (ctx, car) -> configure(ctx, car,
                                                 car.fixtures().withLeftPanelIndicator(BoolArgumentType.getBool(ctx, "value")))))))
+                        .then(Commands.literal("wheelchair_panel")
+                                .then(Commands.argument("value", BoolArgumentType.bool())
+                                        .executes(c -> withNearestCar(c, (ctx, car) -> configure(ctx, car,
+                                                car.fixtures().withWheelchairPanel(BoolArgumentType.getBool(ctx, "value")))))))
                         .then(Commands.literal("hall_indicator")
                                 .then(enumValue(FixtureConfig.HallIndicator.class, FixtureConfig::withHallIndicator)))
                         .then(Commands.literal("hall_lantern")
@@ -255,7 +260,8 @@ public final class DebugCommands {
                 + "、かごの表示器 " + fixtures.carIndicator().name().toLowerCase(Locale.ROOT)
                 + "、左の表示器 " + fixtures.leftPanelIndicator()
                 + "、乗場の表示器 " + fixtures.hallIndicator().name().toLowerCase(Locale.ROOT)
-                + "、ホールランタン " + fixtures.hallLantern().name().toLowerCase(Locale.ROOT)), false);
+                + "、ホールランタン " + fixtures.hallLantern().name().toLowerCase(Locale.ROOT)
+                + "、車椅子用操作盤 " + fixtures.wheelchairPanel()), false);
         return 1;
     }
 
