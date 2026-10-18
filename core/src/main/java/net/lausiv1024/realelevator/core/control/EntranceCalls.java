@@ -65,6 +65,14 @@ public final class EntranceCalls {
         remember(floor, side);
     }
 
+    /** 側 side の操作盤の、floor へのかご呼びを取り消す（2度押しキャンセル）。 */
+    public void cancelCar(int floor, Entrance side) {
+        bits(side, CAR).clear(floor);
+        if (!bits(side, UP).get(floor) && !bits(side, DOWN).get(floor)) {
+            order.get(side.ordinal()).remove(floor);
+        }
+    }
+
     /** 側 side の乗場の、floor の direction 向きの呼びが登録されているか（応答灯）。 */
     public boolean isRegistered(int floor, TravelDirection direction, Entrance side) {
         return direction != TravelDirection.NONE && bits(side, kind(direction)).get(floor);

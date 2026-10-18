@@ -22,6 +22,11 @@ public final class WheelchairCalls {
         car.set(floor);
     }
 
+    /** floor へのかご呼びが取り消された（2度押しキャンセル）。 */
+    public void cancelCar(int floor) {
+        car.clear(floor);
+    }
+
     /** 乗場の車椅子用ボタンで、floor の direction 向きの呼びが押された。 */
     public void press(int floor, TravelDirection direction) {
         if (direction != TravelDirection.NONE) {

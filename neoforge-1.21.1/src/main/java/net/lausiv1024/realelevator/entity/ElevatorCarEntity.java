@@ -5,7 +5,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.Nullable;
@@ -22,6 +24,7 @@ import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.car.Entrance;
 import net.lausiv1024.realelevator.core.car.FloorEntrances;
 import net.lausiv1024.realelevator.core.control.CallType;
+import net.lausiv1024.realelevator.core.control.CancelReplan;
 import net.lausiv1024.realelevator.core.control.CollectiveControl;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.control.EntranceCalls;
@@ -112,6 +115,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private TravelDirection pendingHallDirection = TravelDirection.NONE;
     /** あとから開く側も、車椅子用のボタンで呼ばれた扱い（開放待機を延ばし、ゆっくり閉じる）で開くか。サーバーだけで使う。 */
     private boolean pendingWheelchair;
+    /** 応答灯の点いた行先ボタン（ボタンの番号）を最後に押したゲーム時刻。2度押しキャンセルの判定に使う。サーバーだけで使う。 */
+    private final Map<Integer, Long> litPressTicks = new HashMap<>();
+    /** 今向かっている階の呼びが取り消されたので、着いても戸を開けないか。サーバーだけで使う。 */
+    private boolean skipDoorsOnArrival;
     /** 車椅子用操作盤・乗場の車椅子用ボタンで登録された呼び。 */
     private final WheelchairCalls wheelchairCalls = new WheelchairCalls();
     /** ボタンの並びのうち、正面の操作盤のボタンの数（そのあとが奥の操作盤）。 */
@@ -348,6 +355,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             all.addAll(ButtonLayout.wheelchairPanel(spec(), floors.length));
         }
         this.buttons = List.copyOf(all);
+        litPressTicks.clear();
     }
 
     @Override
@@ -483,6 +491,80 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         }
         handlePress(result, CallType.CAR, side, wheelchair);
         return result;
+    }
+
+    /**
+     * 行先ボタンの2度押しキャンセル。floor のかご呼びを取り消す。
+     *
+     * <p>二方向出入口で side を指定したときは、その側の操作盤の呼びだけを取り消し、反対側の操作盤でも登録されていれば、
+     * かごはその階に止まる。走行中に今向かっている階の呼びがなくなったら、行先を決め直す（{@link CancelReplan}）。
+     *
+     * @param side 押した操作盤の側。null ならどちらの側の呼びも取り消す（一方向出入口、車椅子用操作盤）
+     * @return 取り消したか
+     */
+    public boolean cancelCarCall(int floor, @Nullable Entrance side) {
+        if (level().isClientSide || control == null || !control.hasCarCall(floor)) {
+            return false;
+        }
+        if (side != null) {
+            entranceCalls.cancelCar(floor, side);
+            Entrance other = side == Entrance.FRONT ? Entrance.REAR : Entrance.FRONT;
+            if (entranceCalls.isCarRegistered(floor, other)) {
+                syncCalls();
+                return true;
+            }
+        } else {
+            for (Entrance each : Entrance.values()) {
+                entranceCalls.cancelCar(floor, each);
+            }
+        }
+        wheelchairCalls.cancelCar(floor);
+        control.cancelCar(floor, trip == null);
+        if (trip != null && floor == targetFloor) {
+            replanAfterCancel(level().getGameTime());
+        }
+        syncCalls();
+        return true;
+    }
+
+    /** 走行中に、今向かっている階の呼びが取り消された。延ばせれば先の呼びへ延ばし、だめならどこかに止まって戸を開けない。 */
+    private void replanAfterCancel(long now) {
+        CancelReplan.Outcome outcome = CancelReplan.replan(control, trip, now, floors, currentFloor, targetFloor);
+        boolean changed = outcome.targetFloor() != targetFloor || !outcome.openDoors();
+        if (outcome.trip() != trip) {
+            setTrip(outcome.trip());
+        }
+        targetFloor = outcome.targetFloor();
+        skipDoorsOnArrival = !outcome.openDoors();
+        if (changed && arrivalAnnounced) {
+            // 取り消した階の到着チャイムとランタンはやめる（行先を延ばしたら、その階で鳴らし直す）
+            arrivalAnnounced = false;
+            announcedFloor = -1;
+            syncDoor();
+        }
+    }
+
+    /**
+     * 応答灯の点いた行先ボタン index が、素早く2回続けて押されたかを調べる。2回目なら呼びを取り消して true を返す。
+     */
+    private boolean cancelIfDoublePressed(int index) {
+        if (level().isClientSide) {
+            return false;
+        }
+        if (!isButtonLit(index)) {
+            litPressTicks.remove(index);
+            return false;
+        }
+        long now = level().getGameTime();
+        Long last = litPressTicks.get(index);
+        if (last != null && now - last <= OperationTiming.DOUBLE_PRESS_TICKS) {
+            litPressTicks.remove(index);
+            Button button = buttons.get(index);
+            cancelCarCall(button.floor(), through && !button.wheelchair() ? buttonSide(index) : null);
+            return true;
+        }
+        litPressTicks.put(index, now);
+        return false;
     }
 
     /** 正面の乗場の乗場呼び。 */
@@ -707,7 +789,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             switch (button.kind()) {
                 case OPEN -> openDoorForWheelchair();
                 case CLOSE -> closeDoor();
-                case CAR_CALL -> pressWheelchairCarCall(button.floor());
+                case CAR_CALL -> {
+                    if (!cancelIfDoublePressed(index)) {
+                        pressWheelchairCarCall(button.floor());
+                    }
+                }
                 case HALL_UP, HALL_DOWN -> {
                 }
             }
@@ -717,7 +803,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         switch (button.kind()) {
             case OPEN -> openDoor(side);
             case CLOSE -> closeDoor();
-            case CAR_CALL -> pressCarCall(button.floor(), side);
+            case CAR_CALL -> {
+                if (!cancelIfDoublePressed(index)) {
+                    pressCarCall(button.floor(), side);
+                }
+            }
             case HALL_UP, HALL_DOWN -> {
             }
         }
@@ -745,7 +835,16 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (trip != null && trip.isArrivedAt(now - 1)) {
             setTrip(null);
             currentFloor = targetFloor;
-            serveCurrentFloor(now);
+            if (skipDoorsOnArrival && (control == null || !control.hasAnyCallAt(currentFloor))) {
+                // 取り消された行先に止まった。戸は開けずに、次の呼びへ向かう（なければここで待つ）
+                arrivalAnnounced = false;
+                announcedFloor = -1;
+                syncDoor();
+                syncCalls();
+            } else {
+                serveCurrentFloor(now);
+            }
+            skipDoorsOnArrival = false;
         } else if (trip != null) {
             stopOnTheWayIfPossible(now);
             announceArrivalIfCertain(now);
@@ -845,6 +944,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             if (shorter != null) {
                 targetFloor = floor;
                 setTrip(shorter);
+                skipDoorsOnArrival = false;
                 return;
             }
         }
@@ -940,7 +1040,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      * チャイムの向きは、到着したあとの進行方向を先読みして決める。
      */
     private void announceArrivalIfCertain(long now) {
-        if (arrivalAnnounced || trip == null || control == null) {
+        if (arrivalAnnounced || trip == null || control == null
+                || (skipDoorsOnArrival && !control.hasAnyCallAt(targetFloor))) {
             return;
         }
         int step = trip.to() > trip.from() ? 1 : -1;
@@ -1358,6 +1459,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.putBoolean("PendingCarCall", pendingCarCall);
         tag.putString("PendingHallDirection", pendingHallDirection.name());
         tag.putBoolean("PendingWheelchair", pendingWheelchair);
+        tag.putBoolean("SkipDoors", skipDoorsOnArrival);
         if (trip != null) {
             tag.put("Trip", writeTrip(trip));
         }
@@ -1394,6 +1496,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         pendingCarCall = tag.getBoolean("PendingCarCall");
         pendingHallDirection = parseEnum(TravelDirection.class, tag.getString("PendingHallDirection"), TravelDirection.NONE);
         pendingWheelchair = tag.getBoolean("PendingWheelchair");
+        skipDoorsOnArrival = tag.getBoolean("SkipDoors");
         setup(new CarSpec(model, door), facing, tag.getIntArray("Floors"), speed);
         setFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")));
         setLabels(readLabels(tag));

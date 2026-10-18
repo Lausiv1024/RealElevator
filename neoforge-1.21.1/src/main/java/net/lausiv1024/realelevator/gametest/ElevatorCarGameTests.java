@@ -726,6 +726,40 @@ public class ElevatorCarGameTests {
         });
     }
 
+    /**
+     * 応答灯の点いた行先ボタンを素早く2回押すと取り消す。間を空けて押しても取り消さない。
+     * 走行中に行先を取り消して呼びがなくなったら、止まれる階に止まり、戸は開けない。
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = 600)
+    public static void doublePressCancelsTheCarCall(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE, RISE * 2, RISE * 3).car();
+        int top = indexOf(car.buttons(), ButtonLayout.Kind.CAR_CALL, 3);
+        car.pressButton(top);
+        car.pressButton(top);
+        helper.assertTrue(car.isButtonLit(top), "the registering press and the next one are not a double press");
+        AtomicBoolean cancelled = new AtomicBoolean();
+        AtomicBoolean opened = new AtomicBoolean();
+        helper.runAfterDelay(20, () -> {
+            // 前の押下から間が空いたので取り消さない
+            car.pressButton(top);
+            helper.assertTrue(car.isButtonLit(top), "a slow second press should not cancel");
+            helper.assertTrue(car.isMoving(), "the car should be on its way");
+            car.pressButton(top);
+            helper.assertTrue(!car.isButtonLit(top) && !car.isCarCallLit(3), "a quick double press should cancel");
+            cancelled.set(true);
+        });
+        helper.onEachTick(() -> {
+            if (cancelled.get() && car.doorState() != DoorState.CLOSED) {
+                opened.set(true);
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(cancelled.get() && !car.isMoving(), "still moving");
+            helper.assertTrue(car.floorIndexAt(car.getY()) >= 1 && car.floorIndexAt(car.getY()) < 3, "should stop on the way: " + car.getY());
+            helper.assertTrue(!opened.get() && car.doorState() == DoorState.CLOSED, "the doors should stay closed");
+        });
+    }
+
     private static int wheelchairIndexOf(List<ButtonLayout.Button> buttons, ButtonLayout.Kind kind, int floor) {
         for (int i = 0; i < buttons.size(); i++) {
             ButtonLayout.Button button = buttons.get(i);

@@ -468,6 +468,44 @@ public class InstallGameTests {
         });
     }
 
+    /** 二方向出入口で両側の操作盤から登録した行先は、2度押しした側だけ取り消され、反対側が残れば止まる。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 600)
+    public static void aDoublePressCancelsOnlyThatSidesCarCall(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        BlockPos panelPos = helper.absolutePos(PANEL);
+        int top = panelPos.getY() + RISE;
+        CompoundTag settings = panel.settingsTag();
+        settings.putBoolean("Through", true);
+        CompoundTag entrances = new CompoundTag();
+        entrances.putString(Integer.toString(top), FloorEntrances.BOTH.name());
+        settings.put("Entrances", entrances);
+        panel.applySettings(settings);
+        ElevatorPlan plan = panel.plan();
+        panel.install();
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        List<ButtonLayout.Button> buttons = car.buttons();
+        List<Integer> callButtons = new ArrayList<>();
+        for (int i = 0; i < buttons.size(); i++) {
+            if (buttons.get(i).kind() == ButtonLayout.Kind.CAR_CALL && buttons.get(i).floor() == 1) {
+                callButtons.add(i);
+            }
+        }
+        int front = callButtons.get(0);
+        int rear = callButtons.get(1);
+        car.pressButton(front);
+        car.pressButton(rear);
+        car.pressButton(rear);
+        car.pressButton(rear);
+        helper.assertTrue(car.isButtonLit(front) && !car.isButtonLit(rear), "only the rear call should be cancelled");
+        helper.assertTrue(car.isCarCallLit(1), "the car should still go there for the front call");
+        helper.succeedWhen(() -> {
+            long now = helper.getLevel().getGameTime();
+            helper.assertTrue(!car.isMoving() && car.getY() == top && car.doorFractionAt(now, Entrance.FRONT) > 0.99,
+                    "the front door should open");
+            helper.assertTrue(car.doorFractionAt(now, Entrance.REAR) == 0, "the rear door should stay closed");
+        });
+    }
+
     @GameTest(template = TEMPLATE, timeoutTicks = 600)
     public static void aCarCallFromTheRearPanelOpensOnlyTheRearDoor(GameTestHelper helper) {
         InstallerBlockEntity panel = placePanel(helper);

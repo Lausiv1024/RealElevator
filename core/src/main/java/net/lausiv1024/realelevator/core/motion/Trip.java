@@ -61,11 +61,31 @@ public final class Trip {
             return null;
         }
         Trip candidate = new Trip(startTick, from, newTo, limits);
+        return isSameStateAt(tick, candidate) ? candidate : null;
+    }
+
+    /**
+     * 走行中に行先を先の階 newTo へ延ばす（行先の呼びが取り消されたとき）。出発時点から newTo まで改めて計画した曲線が、
+     * ゲーム時刻 tick の時点の位置・速度・加速度と一致するとき（まだ元の行先向けの減速を始めていないとき）だけ、新しい発車情報を返す。
+     *
+     * <p>短い走行は最高速度や最大加速度に届かない形の曲線なので、走り出した直後でも延ばせないことがある。
+     *
+     * @return 延ばせるなら新しい発車情報、延ばせなければ null
+     */
+    public Trip extend(double tick, double newTo) {
+        double direction = Math.signum(to - from);
+        if (direction == 0 || (newTo - to) * direction <= 0) {
+            return null;
+        }
+        Trip candidate = new Trip(startTick, from, newTo, limits);
+        return isSameStateAt(tick, candidate) ? candidate : null;
+    }
+
+    private boolean isSameStateAt(double tick, Trip candidate) {
         double t = (tick - startTick) / TravelCurve.TICKS_PER_SECOND;
-        boolean sameState = Math.abs(candidate.curve.position(t) - curve.position(t)) < STATE_TOLERANCE
+        return Math.abs(candidate.curve.position(t) - curve.position(t)) < STATE_TOLERANCE
                 && Math.abs(candidate.curve.velocity(t) - curve.velocity(t)) < STATE_TOLERANCE
                 && Math.abs(candidate.curve.acceleration(t) - curve.acceleration(t)) < STATE_TOLERANCE;
-        return sameState ? candidate : null;
     }
 
     public long startTick() {

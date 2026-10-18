@@ -22,6 +22,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.Tags;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -33,7 +34,20 @@ import net.neoforged.neoforge.network.PacketDistributor;
  */
 @EventBusSubscriber(modid = RealElevator.MODID, value = Dist.CLIENT)
 public final class ButtonInput {
+    /**
+     * ボタンを押したあと、使用キーを押したままか。押したままのあいだの繰り返し（4tickごと）では押さない。
+     * 押しっぱなしで行先ボタンの2度押しキャンセルにならないようにするため。
+     */
+    private static boolean useHeld;
+
     private ButtonInput() {
+    }
+
+    @SubscribeEvent
+    static void onClientTick(ClientTickEvent.Post event) {
+        if (useHeld && !Minecraft.getInstance().options.keyUse.isDown()) {
+            useHeld = false;
+        }
     }
 
     private record Target(Entity host, int index, double distanceSqr) {
@@ -65,6 +79,12 @@ public final class ButtonInput {
             return;
         }
         event.setCanceled(true);
+        if (useHeld) {
+            // 押したままの繰り返し
+            event.setSwingHand(false);
+            return;
+        }
+        useHeld = true;
         event.setSwingHand(true);
         PacketDistributor.sendToServer(new PressButtonPayload(target.host().getId(), target.index()));
     }

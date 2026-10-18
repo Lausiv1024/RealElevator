@@ -74,6 +74,35 @@ public final class CollectiveControl {
     }
 
     /**
+     * 行先ボタンの2度押しキャンセル。floor のかご呼びを取り消す。停止中に呼びがなくなったら、進行方向も消す。
+     * 走行中は進行方向を残す（着いたときに {@link #arrive} が決め直す）。
+     *
+     * @return 取り消したか（登録されていなければ false）
+     */
+    public boolean cancelCar(int floor, boolean stopped) {
+        if (floor < 0 || floor >= floorCount || !carCalls.get(floor)) {
+            return false;
+        }
+        carCalls.clear(floor);
+        if (stopped && !hasAnyCall()) {
+            direction = TravelDirection.NONE;
+        }
+        return true;
+    }
+
+    /** floor に、かご呼びか、どちらかの向きの乗場呼びがあるか。 */
+    public boolean hasAnyCallAt(int floor) {
+        return carCalls.get(floor) || upCalls.get(floor) || downCalls.get(floor);
+    }
+
+    /**
+     * floor から dir の向きに進んだとき、次に止まる階（進行方向を変えずに見る）。なければ −1。
+     */
+    public int nextStopAfter(int floor, TravelDirection dir) {
+        return dir == TravelDirection.NONE ? -1 : nextStopBeyond(floor, dir);
+    }
+
+    /**
      * かごが停止中で戸が閉じたときに、次に止まる階を決める。進行方向も更新する。
      *
      * @return 次に止まる階。今いる階で応える呼びがあれば carFloor、呼びがなければ −1

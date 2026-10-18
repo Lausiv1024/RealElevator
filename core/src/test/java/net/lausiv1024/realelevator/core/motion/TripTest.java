@@ -74,6 +74,31 @@ class TripTest {
         assertNull(trip.retarget(tick, 4.5));
     }
 
+    @Test
+    void extendBeforeDeceleratingContinuesToTheFartherFloorWithoutAJump() {
+        Trip trip = new Trip(0, 0, 40, SpeedSpec.NORMAL_LOW);
+        Trip longer = trip.extend(100, 60);
+        assertNotNull(longer);
+        assertEquals(60, longer.to());
+        for (double tick = 0; tick <= 100; tick += 0.5) {
+            assertEquals(trip.positionAt(tick), longer.positionAt(tick), 1e-12);
+        }
+        assertEquals(60, longer.positionAt(100000));
+    }
+
+    @Test
+    void extendIsRejectedOnceDecelerating() {
+        Trip trip = new Trip(0, 0, 40, SpeedSpec.NORMAL_LOW);
+        long tick = 0;
+        while (trip.positionAt(tick) < 39) {
+            tick++;
+        }
+        assertNull(trip.extend(tick, 60));
+        // 手前や逆向きには延ばさない
+        assertNull(new Trip(0, 0, 40, SpeedSpec.NORMAL_LOW).extend(100, 30));
+        assertNull(new Trip(0, 0, 40, SpeedSpec.NORMAL_LOW).extend(100, -10));
+    }
+
     /** 加速（＝減速）にかかる時間。定速走行の始まりの時刻。 */
     private static double accelerationTime(TravelCurve curve) {
         double t = 0;
