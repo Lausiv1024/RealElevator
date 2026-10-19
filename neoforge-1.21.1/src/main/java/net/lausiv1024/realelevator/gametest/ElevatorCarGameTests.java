@@ -275,11 +275,11 @@ public class ElevatorCarGameTests {
     }
 
     /**
-     * 強制戸閉：閉まりかけの戸が5回続けて反転すると、低速で閉め続ける。セーフティシューでは開き直すが、開ききるとすぐ閉め始め、
-     * 開ボタンは効かない。物がなくなると、閉まりきって強制戸閉が終わる。
+     * ナッジング：閉まりかけの戸が5回続けて反転すると、低速で閉め続ける。セーフティシューでは開き直すが、開ききるとすぐ閉め始め、
+     * 開ボタンは効かない。物がなくなると、閉まりきってナッジングが終わる。
      */
     @GameTest(template = TEMPLATE, timeoutTicks = 2400)
-    public static void fiveReversalsStartForcedClosing(GameTestHelper helper) {
+    public static void fiveReversalsStartNudging(GameTestHelper helper) {
         ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
         helper.assertTrue(car.pressCarCall(0) == PressResult.SERVED_HERE, "the door should open");
         // かごの戸に触れるが、ビームの検知領域には入らない位置
@@ -290,68 +290,68 @@ public class ElevatorCarGameTests {
 
         AtomicInteger reversals = new AtomicInteger();
         AtomicBoolean wasClosing = new AtomicBoolean();
-        AtomicLong forcedClosingAt = new AtomicLong(-1);
+        AtomicLong nudgeClosingAt = new AtomicLong(-1);
         helper.onEachTick(() -> {
             long now = helper.getLevel().getGameTime();
             DoorState state = car.doorState();
             if (wasClosing.get() && state == DoorState.OPENING) {
                 reversals.incrementAndGet();
-                if (reversals.get() < DoorController.FORCED_CLOSE_REVERSALS) {
-                    helper.assertTrue(!car.isForcedClosing(), "forced closing too early after " + reversals.get() + " reversals");
+                if (reversals.get() < DoorController.NUDGE_REVERSALS) {
+                    helper.assertTrue(!car.isNudging(), "nudging too early after " + reversals.get() + " reversals");
                 } else {
-                    helper.assertTrue(car.isForcedClosing(), "forced closing should start after " + reversals.get() + " reversals");
+                    helper.assertTrue(car.isNudging(), "nudging should start after " + reversals.get() + " reversals");
                 }
             }
-            if (car.isForcedClosing() && state == DoorState.CLOSING) {
+            if (car.isNudging() && state == DoorState.CLOSING) {
                 if (stand.isAlive()) {
-                    // 開ボタンは効かない。強制戸閉中の閉動作を一度見たら、物を取り除く
+                    // 開ボタンは効かない。ナッジング中の閉動作を一度見たら、物を取り除く
                     car.pressButton(open);
-                    helper.assertTrue(car.doorState() == DoorState.CLOSING, "the open button should be ignored while forced closing");
+                    helper.assertTrue(car.doorState() == DoorState.CLOSING, "the open button should be ignored while nudging");
                     stand.discard();
-                    forcedClosingAt.set(now);
+                    nudgeClosingAt.set(now);
                 }
             }
-            if (state == DoorState.CLOSED && reversals.get() > 0 && reversals.get() < DoorController.FORCED_CLOSE_REVERSALS) {
-                helper.fail("closed before forced closing");
+            if (state == DoorState.CLOSED && reversals.get() > 0 && reversals.get() < DoorController.NUDGE_REVERSALS) {
+                helper.fail("closed before nudging");
             }
             wasClosing.set(state == DoorState.CLOSING);
         });
         helper.succeedWhen(() -> {
-            helper.assertTrue(forcedClosingAt.get() >= 0 && car.doorState() == DoorState.CLOSED, "not closed by forced closing yet");
-            helper.assertTrue(!car.isForcedClosing(), "forced closing should end once closed");
+            helper.assertTrue(nudgeClosingAt.get() >= 0 && car.doorState() == DoorState.CLOSED, "not closed by nudging yet");
+            helper.assertTrue(!car.isNudging(), "nudging should end once closed");
         });
     }
 
-    /** 強制戸閉：開ボタンを押し続けて60秒たつと、低速で閉め始め、開ボタンは効かなくなる。 */
+    /** ナッジング：開ボタンを押し続けて60秒たつと、低速で閉め始め、開ボタンは効かなくなる。 */
     @GameTest(template = TEMPLATE, timeoutTicks = 1800)
-    public static void sixtySecondsOpenStartForcedClosing(GameTestHelper helper) {
+    public static void sixtySecondsOpenStartNudging(GameTestHelper helper) {
         ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
         int open = indexOf(car.buttons(), ButtonLayout.Kind.OPEN, -1);
         car.pressButton(open);
         long openedAt = helper.getLevel().getGameTime();
-        AtomicLong forcedAt = new AtomicLong(-1);
+        AtomicLong nudgedAt = new AtomicLong(-1);
         AtomicLong closedAt = new AtomicLong(-1);
         helper.onEachTick(() -> {
             long now = helper.getLevel().getGameTime();
-            if (forcedAt.get() < 0 && car.isForcedClosing()) {
-                forcedAt.set(now);
-                helper.assertTrue(car.doorState() == DoorState.CLOSING, "forced closing should start closing");
+            if (nudgedAt.get() < 0 && car.isNudging()) {
+                nudgedAt.set(now);
+                helper.assertTrue(car.doorState() == DoorState.CLOSING, "nudging should start closing");
             }
-            if (forcedAt.get() >= 0 && closedAt.get() < 0 && car.doorState() == DoorState.CLOSED) {
+            if (nudgedAt.get() >= 0 && closedAt.get() < 0 && car.doorState() == DoorState.CLOSED) {
                 closedAt.set(now);
             }
             if ((now - openedAt) % 4 == 0 && closedAt.get() < 0) {
-                // 押し続けると、4tickごとに押される（強制戸閉中は効かない）
+                // 押し続けると、4tickごとに押される（ナッジング中は効かない）
                 car.pressButton(open);
             }
         });
         helper.succeedWhen(() -> {
-            helper.assertTrue(closedAt.get() >= 0, "not closed yet: forced closing at " + forcedAt.get() + ", opened at " + openedAt
-                    + ", state " + car.doorState() + ", forced closing " + car.isForcedClosing() + ", now " + helper.getLevel().getGameTime());
-            long waited = forcedAt.get() - openedAt;
-            helper.assertTrue(Math.abs(waited - DoorController.FORCED_CLOSE_OPEN_TICKS) <= 2, "forced closing started after " + waited + " ticks");
-            long closing = closedAt.get() - forcedAt.get();
-            helper.assertTrue(Math.abs(closing - DoorController.FORCED_CLOSE_TICKS) <= 2, "closing took " + closing + " ticks");
+            helper.assertTrue(closedAt.get() >= 0, "not closed yet: nudged at " + nudgedAt.get() + ", opened at " + openedAt
+                    + ", state " + car.doorState() + ", nudging " + car.isNudging() + ", now " + helper.getLevel().getGameTime());
+            long waited = nudgedAt.get() - openedAt;
+            helper.assertTrue(Math.abs(waited - DoorController.NUDGE_OPEN_TICKS) <= 2, "nudging started after " + waited + " ticks");
+            long closing = closedAt.get() - nudgedAt.get();
+            helper.assertTrue(Math.abs(closing - DoorController.NUDGE_CLOSE_TICKS) <= 2, "closing took " + closing + " ticks");
         });
     }
 

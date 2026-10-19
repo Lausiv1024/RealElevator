@@ -1,4 +1,4 @@
-"""強制戸閉のブザー音を合成して OGG で書き出す。
+"""ナッジング（強制戸閉）のブザー音を合成して OGG で書き出す。
 
 実在メーカーの音は使わず、矩形波に近い倍音を重ねた音に、ブザーらしいざらつき（細かい振幅のゆれ）を加えて作る。
 0.5秒の1回分で、かごの側で1秒ごとに鳴らして断続音にする。
@@ -41,7 +41,7 @@ def buzz() -> np.ndarray:
 def main() -> None:
     out_dir = Path(sys.argv[1])
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / "door_buzzer.ogg"
+    path = out_dir / "nudge_buzzer.ogg"
     sf.write(path, buzz().astype(np.float32), SAMPLE_RATE, format="OGG", subtype="VORBIS")
     print(path, path.stat().st_size, "bytes")
 
