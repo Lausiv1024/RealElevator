@@ -14,6 +14,8 @@ public final class ModSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_UP = register("chime_up");
     /** 到着チャイム（下り、2回）。 */
     public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_DOWN = register("chime_down");
+    /** ナッジング（強制戸閉）のブザー（0.5秒の1回分）。音は tools/sounds/make_buzzer.py で合成したもの。 */
+    public static final DeferredHolder<SoundEvent, SoundEvent> NUDGE_BUZZER = register("nudge_buzzer");
 
     private ModSounds() {
     }

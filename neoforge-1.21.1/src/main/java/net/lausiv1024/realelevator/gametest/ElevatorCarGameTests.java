@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -17,6 +18,7 @@ import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.control.OperationTiming;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
+import net.lausiv1024.realelevator.core.door.DoorController;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.door.DoorState;
 import net.lausiv1024.realelevator.core.door.DoorTiming;
@@ -264,6 +266,87 @@ public class ElevatorCarGameTests {
             long waited = closingAt.get() - leftAt.get();
             long expected = DoorTiming.STANDARD.carDwellTicks() + AnnouncementScript.DOOR_CLOSE_WAIT_TICKS;
             helper.assertTrue(Math.abs(waited - expected) <= 1, "closed " + waited + " ticks after leaving");
+        });
+    }
+
+    /**
+     * ナッジング：閉まりかけの戸が5回続けて反転すると、低速で閉め続ける。セーフティシューでは開き直すが、開ききるとすぐ閉め始め、
+     * 開ボタンは効かない。物がなくなると、閉まりきってナッジングが終わる。
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = 2400)
+    public static void fiveReversalsStartNudging(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
+        helper.assertTrue(car.pressCarCall(0) == PressResult.SERVED_HERE, "the door should open");
+        // かごの戸に触れるが、ビームの検知領域には入らない位置
+        double doorZ = CarGeometry.entrance(MODEL).maxZ() - 0.2;
+        ArmorStand stand = helper.spawn(EntityType.ARMOR_STAND, LOWER);
+        stand.moveTo(car.getX(), car.getY(), car.getZ() + doorZ);
+        int open = indexOf(car.buttons(), ButtonLayout.Kind.OPEN, -1);
+
+        AtomicInteger reversals = new AtomicInteger();
+        AtomicBoolean wasClosing = new AtomicBoolean();
+        AtomicLong nudgeClosingAt = new AtomicLong(-1);
+        helper.onEachTick(() -> {
+            long now = helper.getLevel().getGameTime();
+            DoorState state = car.doorState();
+            if (wasClosing.get() && state == DoorState.OPENING) {
+                reversals.incrementAndGet();
+                if (reversals.get() < DoorController.NUDGE_REVERSALS) {
+                    helper.assertTrue(!car.isNudging(), "nudging too early after " + reversals.get() + " reversals");
+                } else {
+                    helper.assertTrue(car.isNudging(), "nudging should start after " + reversals.get() + " reversals");
+                }
+            }
+            if (car.isNudging() && state == DoorState.CLOSING) {
+                if (stand.isAlive()) {
+                    // 開ボタンは効かない。ナッジング中の閉動作を一度見たら、物を取り除く
+                    car.pressButton(open);
+                    helper.assertTrue(car.doorState() == DoorState.CLOSING, "the open button should be ignored while nudging");
+                    stand.discard();
+                    nudgeClosingAt.set(now);
+                }
+            }
+            if (state == DoorState.CLOSED && reversals.get() > 0 && reversals.get() < DoorController.NUDGE_REVERSALS) {
+                helper.fail("closed before nudging");
+            }
+            wasClosing.set(state == DoorState.CLOSING);
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(nudgeClosingAt.get() >= 0 && car.doorState() == DoorState.CLOSED, "not closed by nudging yet");
+            helper.assertTrue(!car.isNudging(), "nudging should end once closed");
+        });
+    }
+
+    /** ナッジング：開ボタンを押し続けて60秒たつと、低速で閉め始め、開ボタンは効かなくなる。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 1800)
+    public static void sixtySecondsOpenStartNudging(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
+        int open = indexOf(car.buttons(), ButtonLayout.Kind.OPEN, -1);
+        car.pressButton(open);
+        long openedAt = helper.getLevel().getGameTime();
+        AtomicLong nudgedAt = new AtomicLong(-1);
+        AtomicLong closedAt = new AtomicLong(-1);
+        helper.onEachTick(() -> {
+            long now = helper.getLevel().getGameTime();
+            if (nudgedAt.get() < 0 && car.isNudging()) {
+                nudgedAt.set(now);
+                helper.assertTrue(car.doorState() == DoorState.CLOSING, "nudging should start closing");
+            }
+            if (nudgedAt.get() >= 0 && closedAt.get() < 0 && car.doorState() == DoorState.CLOSED) {
+                closedAt.set(now);
+            }
+            if ((now - openedAt) % 4 == 0 && closedAt.get() < 0) {
+                // 押し続けると、4tickごとに押される（ナッジング中は効かない）
+                car.pressButton(open);
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(closedAt.get() >= 0, "not closed yet: nudged at " + nudgedAt.get() + ", opened at " + openedAt
+                    + ", state " + car.doorState() + ", nudging " + car.isNudging() + ", now " + helper.getLevel().getGameTime());
+            long waited = nudgedAt.get() - openedAt;
+            helper.assertTrue(Math.abs(waited - DoorController.NUDGE_OPEN_TICKS) <= 2, "nudging started after " + waited + " ticks");
+            long closing = closedAt.get() - nudgedAt.get();
+            helper.assertTrue(Math.abs(closing - DoorController.NUDGE_CLOSE_TICKS) <= 2, "closing took " + closing + " ticks");
         });
     }
 
