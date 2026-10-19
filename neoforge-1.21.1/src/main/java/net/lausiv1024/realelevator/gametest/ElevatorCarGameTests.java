@@ -10,8 +10,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import net.lausiv1024.realelevator.RealElevator;
 import net.lausiv1024.realelevator.core.announce.Announcement;
 import net.lausiv1024.realelevator.core.announce.AnnouncementScript;
+import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.control.OperationTiming;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
@@ -184,8 +186,9 @@ public class ElevatorCarGameTests {
         ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
         helper.assertTrue(car.pressCarCall(0) == PressResult.SERVED_HERE, "the door should open");
 
-        // 戸が全開になってから、出入口の戸の位置に防具立てを置く
-        double doorZ = CarGeometry.exterior(MODEL).maxZ() + DoorGeometry.PANEL_THICKNESS_PX / 16.0;
+        // 戸が全開になってから、かごの戸に触れるがビームの検知領域には入らない位置（かごの中、戸のすぐ内側）に防具立てを置く
+        double doorZ = CarGeometry.entrance(MODEL).maxZ() - 0.2;
+        helper.assertTrue(doorZ + 0.25 < DoorGeometry.beamZone(CarSpec.of(MODEL)).minZ(), "the stand should stay out of the beam");
         ArmorStand stand = helper.spawn(EntityType.ARMOR_STAND, LOWER);
         stand.moveTo(car.getX(), car.getY() + 3, car.getZ() - 2);
         helper.runAtTickTime(45, () -> stand.moveTo(car.getX(), car.getY(), car.getZ() + doorZ));
@@ -204,6 +207,64 @@ public class ElevatorCarGameTests {
             }
         });
         helper.succeedWhen(() -> helper.assertTrue(reversed.get() && car.doorState() == DoorState.CLOSED, "not reversed and closed yet"));
+    }
+
+    /** 多光軸ビーム：閉まり始めてから出入口の真ん中に入ると、戸が触れる前（閉まり始めてすぐ）に開き直す。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 600)
+    public static void beamSensorReopensBeforeTheDoorsTouch(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
+        helper.assertTrue(car.pressCarCall(0) == PressResult.SERVED_HERE, "the door should open");
+        Box beam = DoorGeometry.beamZone(CarSpec.of(MODEL));
+        ArmorStand stand = helper.spawn(EntityType.ARMOR_STAND, LOWER);
+        stand.moveTo(car.getX(), car.getY() + 3, car.getZ() - 2);
+
+        AtomicBoolean entered = new AtomicBoolean();
+        AtomicBoolean reversed = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            long now = helper.getLevel().getGameTime();
+            if (!entered.get() && car.doorState() == DoorState.CLOSING) {
+                entered.set(true);
+                stand.moveTo(car.getX(), car.getY(), car.getZ() + (beam.minZ() + beam.maxZ()) / 2);
+            } else if (entered.get() && !reversed.get() && car.doorState() == DoorState.OPENING) {
+                reversed.set(true);
+                helper.assertTrue(car.doorFractionAt(now) > 0.9, "should reopen before the doors reach the middle: " + car.doorFractionAt(now));
+                stand.discard();
+            }
+        });
+        helper.succeedWhen(() -> helper.assertTrue(reversed.get() && car.doorState() == DoorState.CLOSED, "not reversed and closed yet"));
+    }
+
+    /**
+     * 開ききっているあいだに多光軸ビームが人を検知していると、待機時間がたっても閉めず、戸閉アナウンスも流さない。
+     * いなくなってから待機時間と戸閉アナウンスの時間がたつと閉め始める。
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = 600)
+    public static void beamSensorHoldsTheOpenDoor(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
+        helper.assertTrue(car.pressCarCall(0) == PressResult.SERVED_HERE, "the door should open");
+        Box beam = DoorGeometry.beamZone(CarSpec.of(MODEL));
+        ArmorStand stand = helper.spawn(EntityType.ARMOR_STAND, LOWER);
+        stand.moveTo(car.getX(), car.getY(), car.getZ() + (beam.minZ() + beam.maxZ()) / 2);
+        AtomicLong leftAt = new AtomicLong(-1);
+        helper.runAtTickTime(200, () -> {
+            helper.assertTrue(car.doorState() == DoorState.OPEN, "the door should stay open while someone is in the doorway");
+            helper.assertTrue(car.recentAnnouncements().stream().noneMatch(a -> a.type() == Announcement.Type.DOOR_CLOSE),
+                    "the close announcement should not play");
+            stand.discard();
+            leftAt.set(helper.getLevel().getGameTime());
+        });
+        AtomicLong closingAt = new AtomicLong(-1);
+        helper.onEachTick(() -> {
+            if (closingAt.get() < 0 && car.doorState() == DoorState.CLOSING) {
+                closingAt.set(helper.getLevel().getGameTime());
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(closingAt.get() >= 0, "not closing yet");
+            long waited = closingAt.get() - leftAt.get();
+            long expected = DoorTiming.STANDARD.carDwellTicks() + AnnouncementScript.DOOR_CLOSE_WAIT_TICKS;
+            helper.assertTrue(Math.abs(waited - expected) <= 1, "closed " + waited + " ticks after leaving");
+        });
     }
 
     /**

@@ -85,6 +85,17 @@ public final class DoorController {
         }
     }
 
+    /**
+     * 開放待機中に、多光軸ビームが人を検知している。待機時間を数え直し、戸閉アナウンスを流して閉め始めるのを待っていたら、それも取りやめる。
+     * 検知がなくなってから待機時間がたつと閉め始める。反転の回数（ナッジング）には数えない。
+     */
+    public void hold(long now) {
+        if (state == DoorState.OPEN) {
+            startTick = now;
+            closeAt = -1;
+        }
+    }
+
     /** 閉ボタン。開放待機中なら、待機時間を打ち切り、戸閉アナウンスも待たずにすぐに閉じ始める。 */
     public void close(long now) {
         if (state == DoorState.OPEN) {

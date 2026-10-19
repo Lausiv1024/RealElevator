@@ -93,6 +93,11 @@ public final class CarShapes {
         return DoorGeometry.panels(spec, side, fraction).stream().map(box -> box.rotateQuarterTurns(turns)).toList();
     }
 
+    /** 出入口 entrance の多光軸ビームセンサーの検知領域（かごの原点からの相対座標）。 */
+    public static Box beamZone(CarSpec spec, Direction facing, Entrance entrance) {
+        return DoorGeometry.beamZone(spec).rotateQuarterTurns(facing.get2DDataValue() + entrance.quarterTurns());
+    }
+
     public static Box doorTravelBounds(CarSpec spec, Direction facing, DoorGeometry.Side side, Entrance entrance) {
         return DoorGeometry.travelBounds(spec, side).rotateQuarterTurns(facing.get2DDataValue() + entrance.quarterTurns());
     }

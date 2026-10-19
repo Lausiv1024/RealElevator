@@ -168,6 +168,17 @@ public final class DoorGeometry {
                 new Box(entrance.minX(), entrance.maxY(), back, entrance.maxX(), top, face));
     }
 
+    /**
+     * 多光軸ビームセンサーの検知領域。かごの戸（いちばん外側のレール）の乗場側の面から乗場の戸の面までの、敷居のすき間の薄い板で、
+     * 出入口の幅と全高にわたる。閉動作中にここへ生き物が入ったら、戸に触れる前でも開き直す。
+     */
+    public static Box beamZone(CarSpec spec) {
+        double px = 1.0 / CarModel.PIXELS_PER_BLOCK;
+        Box entrance = CarGeometry.entrance(spec);
+        double carDoorFace = entrance.maxZ() + spec.door().tracks() * PANEL_THICKNESS_PX * px;
+        return new Box(entrance.minX(), 0, carDoorFace, entrance.maxX(), entrance.maxY(), carDoorFace + SILL_GAP_PX * px);
+    }
+
     /** 中央開き（CO）の戸が動く範囲。 */
     public static Box travelBounds(CarModel model, Side side) {
         return travelBounds(CarSpec.of(model), side);

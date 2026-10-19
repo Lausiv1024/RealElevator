@@ -242,6 +242,31 @@ class DoorControllerTest {
     }
 
     @Test
+    void holdingWhileOpenRestartsTheDwellAndSkipsTheAnnouncementWait() {
+        DoorController door = new DoorController(TIMING);
+        door.setCloseAnnouncementTicks(30);
+        door.open(0, TIMING.dwellTicks(CallType.CAR));
+        run(door, 1, 40);
+        assertEquals(DoorState.OPEN, door.state());
+        // 待機時間が過ぎても、検知しているあいだは閉めず、戸閉アナウンスも流さない
+        for (long t = 41; t <= 200; t++) {
+            door.hold(t);
+            assertEquals(DoorController.Event.NONE, door.tick(t));
+        }
+        assertEquals(DoorState.OPEN, door.state());
+        assertFalse(door.isWaitingToClose());
+        // 検知がなくなってから待機時間がたつと、戸閉アナウンスを流す
+        run(door, 201, 239);
+        assertEquals(DoorController.Event.CLOSE_ANNOUNCED, door.tick(240));
+        // アナウンスを待っているあいだに検知したら、待つのをやめて待機し直す
+        door.hold(245);
+        assertFalse(door.isWaitingToClose());
+        run(door, 246, 284);
+        assertEquals(DoorState.OPEN, door.state());
+        assertEquals(DoorController.Event.CLOSE_ANNOUNCED, door.tick(285));
+    }
+
+    @Test
     void slowCloseIsRestoredOnTheClient() {
         DoorController server = new DoorController(TIMING);
         server.open(0, 200, true);

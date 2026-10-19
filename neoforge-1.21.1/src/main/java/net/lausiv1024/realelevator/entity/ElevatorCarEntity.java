@@ -853,6 +853,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         // 行先方向を流している間に自動で閉めるときは、戸閉アナウンスを流さず（待たず）に閉める
         door.setCloseAnnouncementTicks(announcements.doorClose() && !isSpeakingDirection(now)
                 ? AnnouncementScript.DOOR_CLOSE_WAIT_TICKS : 0);
+        if (door.state() == DoorState.OPEN && isBeamBlocked()) {
+            // 開ききっているあいだにビームが人を検知していたら、待機時間を数え直す（戸閉アナウンスも流さない）
+            door.hold(now);
+        }
         DoorController.Event doorEvent = door.tick(now);
         if (doorEvent == DoorController.Event.CLOSE_ANNOUNCED) {
             // 開放待機が終わった。戸閉アナウンスを流し終わってから閉め始める
@@ -1146,16 +1150,20 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         return EnumSet.of(sides.get(0));
     }
 
-    /** セーフティシュー：閉まりかけの戸（かごと乗場の両方）に生き物が触れているかどうか。 */
+    /**
+     * 閉まりかけの戸を止めるものがあるかどうか。セーフティシュー（閉まりかけの戸板に生き物が触れている）か、
+     * 多光軸ビームセンサー（かごの戸と乗場の戸の間の検知領域に生き物が入っている）。どちらも開いている側の出入口だけを見る。
+     */
     private boolean isDoorObstructed(long now) {
         double fraction = door.fractionAt(now);
-        List<AABB> panels = new ArrayList<>(8);
+        List<AABB> panels = new ArrayList<>(10);
         for (Entrance entrance : openSides) {
             for (DoorGeometry.Side side : DoorGeometry.Side.values()) {
                 for (Box box : CarShapes.doorPanels(spec(), facing(), side, fraction, entrance)) {
                     panels.add(CarShapes.toAabb(box, getX(), getY(), getZ()).inflate(SAFETY_SHOE_MARGIN));
                 }
             }
+            panels.add(CarShapes.toAabb(CarShapes.beamZone(spec(), facing(), entrance), getX(), getY(), getZ()));
         }
         if (panels.isEmpty()) {
             return false;
@@ -1163,6 +1171,20 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         AABB search = panels.stream().reduce(AABB::minmax).orElseThrow();
         return !level().getEntitiesOfClass(LivingEntity.class, search,
                 entity -> !entity.isSpectator() && panels.stream().anyMatch(entity.getBoundingBox()::intersects)).isEmpty();
+    }
+
+    /** 多光軸ビームセンサー：開いている側の出入口の、かごの戸と乗場の戸の間に生き物がいるかどうか。 */
+    private boolean isBeamBlocked() {
+        List<AABB> zones = new ArrayList<>(2);
+        for (Entrance entrance : openSides) {
+            zones.add(CarShapes.toAabb(CarShapes.beamZone(spec(), facing(), entrance), getX(), getY(), getZ()));
+        }
+        if (zones.isEmpty()) {
+            return false;
+        }
+        AABB search = zones.stream().reduce(AABB::minmax).orElseThrow();
+        return !level().getEntitiesOfClass(LivingEntity.class, search,
+                entity -> !entity.isSpectator() && zones.stream().anyMatch(entity.getBoundingBox()::intersects)).isEmpty();
     }
 
     // ---- 階床表示 ----

@@ -6,6 +6,7 @@ import java.util.Optional;
 import javax.annotation.Nullable;
 
 import net.lausiv1024.realelevator.RealElevator;
+import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.entity.ButtonHost;
 import net.lausiv1024.realelevator.entity.ElevatorTracker;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
@@ -36,7 +37,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public final class ButtonInput {
     /**
      * ボタンを押したあと、使用キーを押したままか。押したままのあいだの繰り返し（4tickごと）では押さない。
-     * 押しっぱなしで行先ボタンの2度押しキャンセルにならないようにするため。
+     * 押しっぱなしで行先ボタンの2度押しキャンセルにならないようにするため。開ボタンだけは、押したままのあいだ繰り返し押し、
+     * 戸を開けたままにする（離してから開放待機の時間がたつと閉まる）。
      */
     private static boolean useHeld;
 
@@ -79,7 +81,9 @@ public final class ButtonInput {
             return;
         }
         event.setCanceled(true);
-        if (useHeld) {
+        boolean openButton = target.host() instanceof ButtonHost host
+                && host.buttons().get(target.index()).kind() == ButtonLayout.Kind.OPEN;
+        if (useHeld && !openButton) {
             // 押したままの繰り返し
             event.setSwingHand(false);
             return;
