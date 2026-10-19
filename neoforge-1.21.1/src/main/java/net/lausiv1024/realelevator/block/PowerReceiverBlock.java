@@ -31,13 +31,13 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.neoforge.common.Tags;
 
 /**
- * 受電盤。普通仕様のエレベーターの受電をレッドストーン信号で受ける。どこにでも置け、保守用レンチでエレベーターにつなぐ。
+ * 運転切替盤。レッドストーン信号でエレベーターの通常運転と休止を切り替える。どこにでも置け、保守用レンチでエレベーターにつなぐ（普通仕様・高速仕様とも）。
  *
- * <p>つなぎ方：レンチを持ってしゃがみながら乗場の操作盤のあたりを右クリックしてエレベーターを選び、そのレンチで受電盤を右クリックする。
- * しゃがみながらレンチで受電盤を右クリックすると、つなぎを外す。レンチで右クリックすると、つないでいるかと受電しているかを表示する。
+ * <p>つなぎ方：レンチを持ってしゃがみながら乗場の操作盤のあたりを右クリックしてエレベーターを選び、そのレンチで運転切替盤を右クリックする。
+ * しゃがみながらレンチで運転切替盤を右クリックすると、つなぎを外す。レンチで右クリックすると、つないでいるかと通常運転か休止かを表示する。
  *
- * <p>まわりからレッドストーン信号を受けているあいだ受電（POWERED）し、正面のランプが緑に点く。つないだエレベーターは、
- * 信号が切れると停電になる。受電盤を壊すと、つなぎが外れて常に受電している扱いに戻る。
+ * <p>まわりからレッドストーン信号を受けているあいだ（POWERED）つないだエレベーターは通常運転し、正面のランプが緑に点く。
+ * 信号がないあいだは休止する。運転切替盤を壊すと、つなぎが外れて常に通常運転の扱いに戻る。
  */
 public class PowerReceiverBlock extends HorizontalDirectionalBlock implements EntityBlock {
     public static final MapCodec<PowerReceiverBlock> CODEC = simpleCodec(PowerReceiverBlock::new);
@@ -104,10 +104,6 @@ public class PowerReceiverBlock extends HorizontalDirectionalBlock implements En
             player.displayClientMessage(Component.translatable("message.realelevator.power.no_car"), true);
             return;
         }
-        if (car.speed().spec().isHighSpeed()) {
-            player.displayClientMessage(Component.translatable("message.realelevator.power.high_speed"), true);
-            return;
-        }
         unlink(level, pos, receiver);
         car.linkPowerReceiver(pos);
         receiver.setCar(carId);
@@ -140,7 +136,7 @@ public class PowerReceiverBlock extends HorizontalDirectionalBlock implements En
     @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
         if (!level.isClientSide && !state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof PowerReceiverBlockEntity receiver) {
-            // 壊したら、つないでいたエレベーターは常に受電している扱いに戻る（読み込まれていなければ、かごの側で気づいて外す）
+            // 壊したら、つないでいたエレベーターは常に通常運転の扱いに戻る（読み込まれていなければ、かごの側で気づいて外す）
             unlink(level, pos, receiver);
         }
         super.onRemove(state, level, pos, newState, movedByPiston);

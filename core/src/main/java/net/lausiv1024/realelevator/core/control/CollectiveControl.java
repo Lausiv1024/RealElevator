@@ -90,7 +90,7 @@ public final class CollectiveControl {
         return true;
     }
 
-    /** すべての呼びを消し、進行方向もなくす（停電）。 */
+    /** すべての呼びを消し、進行方向もなくす（休止）。 */
     public void clearAll() {
         carCalls.clear();
         upCalls.clear();

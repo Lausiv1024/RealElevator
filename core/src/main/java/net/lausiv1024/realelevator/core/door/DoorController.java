@@ -20,8 +20,9 @@ package net.lausiv1024.realelevator.core.door;
  * <p>車椅子用のボタンで開いたときは、ゆっくり閉じる（{@link DoorTiming#wheelchairCloseTicks}）。閉まりきるまで続き、
  * その間に普通のボタンで開き直しても、ゆっくりのまま、開放待機も短くしない。
  *
- * <p>ナッジング（強制戸閉）：閉まりきる前に {@value #NUDGE_REVERSALS} 回反転したら、または開き始めてから閉まりきらないまま
- * {@value #NUDGE_OPEN_TICKS} tick（60秒）たったら、ブザーを鳴らしながら低速（{@value #NUDGE_CLOSE_TICKS} tick）で閉める。
+ * <p>ナッジング（強制戸閉）：閉まりきる前に {@value #NUDGE_REVERSALS} 回反転したら、その反転の開き直しが終わって開ききったときに、
+ * または開き始めてから閉まりきらないまま {@value #NUDGE_OPEN_TICKS} tick（60秒）たったら、ブザーを鳴らしながら低速
+ * （{@value #NUDGE_CLOSE_TICKS} tick）で閉める。
  * ナッジング中は開く操作（{@link #open}）と多光軸ビーム（{@link #hold}）を受け付けない。セーフティシュー（{@link #obstruct}）では
  * 開き直すが、開ききったらすぐにまた閉め始め、閉まりきるまでナッジングを続ける。
  */
@@ -61,6 +62,8 @@ public final class DoorController {
     private long openedAt;
     /** 閉まりきるまでに続けて反転した回数。サーバーだけが使う。 */
     private int reversals;
+    /** 反転の回数が上限に達したので、開き直しが終わったら（開ききったら）ナッジングを始めるか。サーバーだけが使う。 */
+    private boolean nudgePending;
 
     public DoorController(DoorTiming timing) {
         this.timing = timing;
@@ -147,10 +150,11 @@ public final class DoorController {
     public void obstruct(long now) {
         if (state == DoorState.CLOSING) {
             reversals++;
-            if (reversals >= NUDGE_REVERSALS) {
-                nudging = true;
-            }
+            // 開き具合は今の閉じる速さで求めてから開き直す。ナッジングは、この開き直しが終わってから始める
             reopen(now, dwellTicks, slowClose);
+            if (reversals >= NUDGE_REVERSALS && !nudging) {
+                nudgePending = true;
+            }
         }
     }
 
@@ -167,6 +171,13 @@ public final class DoorController {
                     state = DoorState.OPEN;
                     startTick = now;
                     startFraction = 1;
+                    if (nudgePending) {
+                        // 反転の開き直しが終わったので、ナッジングで閉め始める
+                        nudgePending = false;
+                        nudging = true;
+                        startClosing(now);
+                        return Event.NUDGING_STARTED;
+                    }
                     return Event.STATE_CHANGED;
                 }
             }
@@ -201,6 +212,7 @@ public final class DoorController {
                     startTick = now;
                     startFraction = 0;
                     nudging = false;
+                    nudgePending = false;
                     reversals = 0;
                     return Event.STATE_CHANGED;
                 }
@@ -237,6 +249,7 @@ public final class DoorController {
         this.nudging = nudging;
         this.openedAt = startTick;
         this.reversals = 0;
+        this.nudgePending = false;
         this.state = state;
         this.startTick = startTick;
         this.startFraction = startFraction;

@@ -283,12 +283,24 @@ class DoorControllerTest {
         for (int i = 1; i <= DoorController.NUDGE_REVERSALS; i++) {
             t = runUntilClosing(door, t);
             assertFalse(door.isNudging(), "not yet after " + (i - 1) + " reversals");
-            door.obstruct(++t);
+            // 反転しても、開き具合は途切れない（一瞬で開いたりしない）
+            // 閉まりかけ（開き具合が半分より小さい）で反転させる
+            run(door, t + 1, t + 30);
+            t += 30;
+            double before = door.fractionAt(t);
+            assertTrue(before < 0.5, "should be mostly closed: " + before);
+            door.obstruct(t);
+            assertEquals(before, door.fractionAt(t), EPS, "the doors should not jump on reversal " + i);
             assertEquals(DoorState.OPENING, door.state());
         }
-        assertTrue(door.isNudging());
-        // ナッジング中は開く操作を受け付けない
+        // 5回目の反転の開き直しが終わるまでは、まだナッジングではない
+        assertFalse(door.isNudging(), "nudging should wait for the reopening to finish");
+        long reversedAt = t;
         long closing = runUntilClosing(door, t);
+        assertTrue(door.isNudging());
+        assertEquals(1.0, door.fractionAt(closing), EPS, "nudging starts from fully open");
+        assertTrue(closing - reversedAt > TIMING.openTicks() / 2, "the doors should reopen at the normal speed first");
+        // ナッジング中は開く操作を受け付けない
         door.open(closing + 1, TIMING.dwellTicks(CallType.HALL));
         assertEquals(DoorState.CLOSING, door.state(), "the open button should be ignored");
         // 低速で閉める（普通なら50tickのところ100tick）

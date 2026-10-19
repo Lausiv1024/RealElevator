@@ -16,7 +16,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-/** 受電盤をつなぐエレベーターを、保守用レンチで選ぶやりとり。 */
+/** 運転切替盤をつなぐエレベーターを、保守用レンチで選ぶやりとり。 */
 public final class PowerPayloads {
     /** 乗場の扉から操作できる距離。手の届く距離に足す余裕。 */
     private static final double REACH_MARGIN = 2.0;
@@ -48,10 +48,6 @@ public final class PowerPayloads {
             double reach = player.blockInteractionRange() + REACH_MARGIN;
             ElevatorCarEntity car = door.car();
             if (car == null || door.getBoundingBox().distanceToSqr(player.getEyePosition()) > reach * reach) {
-                return;
-            }
-            if (car.speed().spec().isHighSpeed()) {
-                player.displayClientMessage(Component.translatable("message.realelevator.power.high_speed"), true);
                 return;
             }
             wrench.set(ModDataComponents.SELECTED_CAR.get(), car.getUUID());

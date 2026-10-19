@@ -19,7 +19,7 @@ public final class ModDataComponents {
             DATA_COMPONENTS.registerComponentType("linked_installer",
                     builder -> builder.persistent(GlobalPos.CODEC).networkSynchronized(GlobalPos.STREAM_CODEC));
 
-    /** 保守用レンチで、受電盤をつなぐために選んだエレベーター（かごの UUID）。受電盤をつなぐと消える。 */
+    /** 保守用レンチで、運転切替盤をつなぐために選んだエレベーター（かごの UUID）。運転切替盤をつなぐと消える。 */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<UUID>> SELECTED_CAR =
             DATA_COMPONENTS.registerComponentType("selected_car",
                     builder -> builder.persistent(UUIDUtil.CODEC).networkSynchronized(UUIDUtil.STREAM_CODEC));

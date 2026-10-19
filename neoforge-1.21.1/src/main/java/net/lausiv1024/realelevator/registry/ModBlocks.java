@@ -31,7 +31,7 @@ public final class ModBlocks {
             () -> new GuideRailBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL).strength(5.0F, 6.0F).sound(SoundType.METAL).noOcclusion().noLootTable()));
 
-    /** 受電盤。普通仕様のエレベーターの受電をレッドストーン信号で受ける。保守用レンチでエレベーターにつなぐ。 */
+    /** 運転切替盤。レッドストーン信号でエレベーターの通常運転と休止を切り替える。保守用レンチでエレベーターにつなぐ。 */
     public static final DeferredBlock<PowerReceiverBlock> POWER_RECEIVER = BLOCKS.register("power_receiver",
             () -> new PowerReceiverBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL).strength(3.0F, 6.0F).sound(SoundType.METAL).requiresCorrectToolForDrops()));

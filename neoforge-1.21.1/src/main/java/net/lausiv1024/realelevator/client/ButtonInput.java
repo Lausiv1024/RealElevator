@@ -68,7 +68,7 @@ public final class ButtonInput {
             if (door != null) {
                 event.setCanceled(true);
                 event.setSwingHand(true);
-                // しゃがんでいれば、受電盤をつなぐエレベーターに選ぶ。そうでなければリニューアルと解体のメニュー
+                // しゃがんでいれば、運転切替盤をつなぐエレベーターに選ぶ。そうでなければリニューアルと解体のメニュー
                 PacketDistributor.sendToServer(player.isShiftKeyDown()
                         ? new PowerPayloads.Select(door.getId()) : new RenewalPayloads.Open(door.getId()));
             }

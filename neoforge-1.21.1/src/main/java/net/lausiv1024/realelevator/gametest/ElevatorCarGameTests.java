@@ -299,7 +299,8 @@ public class ElevatorCarGameTests {
                 if (reversals.get() < DoorController.NUDGE_REVERSALS) {
                     helper.assertTrue(!car.isNudging(), "nudging too early after " + reversals.get() + " reversals");
                 } else {
-                    helper.assertTrue(car.isNudging(), "nudging should start after " + reversals.get() + " reversals");
+                    // 5回目の反転では、まず普通に開き直し、開ききってからナッジングに入る
+                    helper.assertTrue(!car.isNudging(), "nudging should wait until the doors have reopened");
                 }
             }
             if (car.isNudging() && state == DoorState.CLOSING) {
@@ -949,7 +950,7 @@ public class ElevatorCarGameTests {
         });
     }
 
-    /** 受電盤を置いてかごにつなぎ、隣にレッドストーンブロックを置いて受電させる。レッドストーンブロックの位置を返す。 */
+    /** 運転切替盤を置いてかごにつなぎ、隣にレッドストーンブロックを置いて通常運転させる。レッドストーンブロックの位置を返す。 */
     private static BlockPos powerFromReceiver(GameTestHelper helper, ElevatorCarEntity car) {
         BlockPos receiverPos = new BlockPos(0, 1, 0);
         BlockPos source = new BlockPos(0, 1, 1);
@@ -966,11 +967,11 @@ public class ElevatorCarGameTests {
     }
 
     /**
-     * 停電時自動着床：走行中に受電盤の信号が切れると、止まれる最寄りの階に止まって戸を開け、10秒後に閉めて休止する。
-     * 停電中は呼びが消え、乗場ボタンも行先ボタンも受け付けず、表示器は消える。開ボタンでは開く。復電すると、また呼べる。
+     * 休止時の自動着床：走行中に運転切替盤の信号が切れると、止まれる最寄りの階に止まって戸を開け、10秒後に閉めて休止する。
+     * 休止中は呼びが消え、乗場ボタンも行先ボタンも受け付けず、表示器は消える。開ボタンでは開く。通常運転に戻ると、また呼べる。
      */
     @GameTest(template = TEMPLATE, timeoutTicks = 1200)
-    public static void powerFailureLandsAtTheNearestFloor(GameTestHelper helper) {
+    public static void restingLandsAtTheNearestFloor(GameTestHelper helper) {
         Elevator elevator = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, 4, 8, 12);
         ElevatorCarEntity car = elevator.car();
         BlockPos source = powerFromReceiver(helper, car);
@@ -988,12 +989,12 @@ public class ElevatorCarGameTests {
             }
             if (cutAt.get() >= 0 && landedAt.get() < 0 && !car.isMoving()) {
                 landedAt.set(now);
-                helper.assertTrue(car.isPowerFailure(), "the car should know the power failed");
+                helper.assertTrue(car.isResting(), "the car should be resting");
                 helper.assertTrue(!car.isCarCallLit(3) && !car.isHallCallLit(2, TravelDirection.DOWN), "the calls should be cleared");
-                helper.assertTrue(car.indicatorLabel(now).isEmpty() && car.indicatorDirection() == TravelDirection.NONE,
-                        "the indicators should go dark");
+                helper.assertTrue(car.indicatorLabel(now).equals("--") && car.indicatorDirection() == TravelDirection.NONE,
+                        "the indicators should show hyphens");
                 helper.assertTrue(car.pressHallCall(0, TravelDirection.UP) == PressResult.INVALID && car.pressCarCall(0) == PressResult.INVALID,
-                        "buttons should not register calls during the failure");
+                        "buttons should not register calls while resting");
             }
             if (landedAt.get() >= 0 && closedAt.get() < 0 && car.doorState() == DoorState.CLOSED) {
                 closedAt.set(now);
@@ -1001,33 +1002,33 @@ public class ElevatorCarGameTests {
                 helper.assertTrue(car.openDoor(Entrance.FRONT) && car.doorState() == DoorState.OPENING, "the open button should still work");
                 helper.setBlock(source, Blocks.REDSTONE_BLOCK);
             }
-            if (closedAt.get() >= 0 && !restored.get() && !car.isPowerFailure()) {
+            if (closedAt.get() >= 0 && !restored.get() && !car.isResting()) {
                 restored.set(true);
             }
         });
         helper.succeedWhen(() -> {
-            helper.assertTrue(restored.get(), "the power should come back");
+            helper.assertTrue(restored.get(), "the car should return to service");
             int floor = car.floorIndexAt(car.getY());
             helper.assertTrue(floor >= 1 && floor <= 3, "should have landed on a floor on the way: " + car.getY());
             long open = closedAt.get() - landedAt.get();
-            helper.assertTrue(open >= OperationTiming.OUTAGE_DOOR_OPEN_TICKS, "the doors should stay open for the passengers: " + open);
-            helper.assertTrue(car.pressCarCall(floor == 0 ? 1 : 0) == PressResult.REGISTERED, "calls work again after the power returns");
+            helper.assertTrue(open >= OperationTiming.REST_DOOR_OPEN_TICKS, "the doors should stay open for the passengers: " + open);
+            helper.assertTrue(car.pressCarCall(floor == 0 ? 1 : 0) == PressResult.REGISTERED, "calls work again after returning to service");
         });
     }
 
-    /** 止まっているときに停電すると、その階で戸を開けて休止する。受電盤を壊すと、受電している扱いに戻る。 */
+    /** 止まっているときに休止すると、その階で戸を開けて休止する。運転切替盤を壊すと、通常運転の扱いに戻る。 */
     @GameTest(template = TEMPLATE, timeoutTicks = 400)
-    public static void powerFailureWhileStoppedOpensTheDoorAndBreakingTheReceiverRestoresPower(GameTestHelper helper) {
+    public static void restingWhileStoppedOpensTheDoorAndBreakingTheReceiverRestoresPower(GameTestHelper helper) {
         ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
         BlockPos source = powerFromReceiver(helper, car);
         helper.runAfterDelay(5, () -> helper.setBlock(source, Blocks.AIR));
         helper.runAfterDelay(10, () -> {
-            helper.assertTrue(car.isPowerFailure() && car.doorState() == DoorState.OPENING, "the door should open on the failure");
+            helper.assertTrue(car.isResting() && car.doorState() == DoorState.OPENING, "the door should open when it starts resting");
             helper.setBlock(new BlockPos(0, 1, 0), Blocks.AIR);
         });
         helper.runAfterDelay(15, () -> {
             helper.assertTrue(car.powerReceiverPos() == null, "breaking the receiver should disconnect it");
-            helper.assertTrue(!car.isPowerFailure(), "without a receiver the car is always powered");
+            helper.assertTrue(!car.isResting(), "without a switch the car is always in service");
             helper.succeed();
         });
     }

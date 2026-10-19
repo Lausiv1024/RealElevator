@@ -11,7 +11,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
-/** 受電盤がつないでいるエレベーター（かごの UUID）を覚える。 */
+/** 運転切替盤がつないでいるエレベーター（かごの UUID）を覚える。 */
 public class PowerReceiverBlockEntity extends BlockEntity {
     @Nullable
     private UUID car;
