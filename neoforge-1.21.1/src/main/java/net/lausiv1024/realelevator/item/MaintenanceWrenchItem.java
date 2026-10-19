@@ -20,5 +20,6 @@ public class MaintenanceWrenchItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.realelevator.wrench"));
+        tooltip.add(Component.translatable("tooltip.realelevator.wrench_power"));
     }
 }

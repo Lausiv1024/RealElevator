@@ -82,6 +82,18 @@ class CancelReplanTest {
     }
 
     @Test
+    void clearAllForgetsEveryCallAndTheDirection() {
+        CollectiveControl control = control(3, 5);
+        control.pressHall(7, TravelDirection.DOWN, 0, true);
+        control.clearAll();
+        for (int floor = 0; floor < FLOORS.length; floor++) {
+            assertFalse(control.hasAnyCallAt(floor));
+        }
+        assertEquals(TravelDirection.NONE, control.direction());
+        assertEquals(-1, control.nextStop(0));
+    }
+
+    @Test
     void cancellingWhileStoppedClearsTheDirectionOnlyWhenNothingIsLeft() {
         CollectiveControl control = control(3, 5);
         assertTrue(control.cancelCar(3, true));

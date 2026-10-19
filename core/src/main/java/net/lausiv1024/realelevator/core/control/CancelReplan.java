@@ -43,7 +43,15 @@ public final class CancelReplan {
             Trip longer = trip.extend(now, floors[next]);
             return longer != null ? new Outcome(next, longer, true) : new Outcome(targetFloor, trip, false);
         }
-        int step = direction == TravelDirection.UP ? 1 : -1;
+        return nearestStop(trip, now, floors, currentFloor, targetFloor);
+    }
+
+    /**
+     * 走行中に、止まれる最寄りの階（元の行先より手前で減速が間に合う最初の階、なければ元の行先）に止まる。
+     * 2度押しキャンセルで呼びがなくなったときと、停電のとき（停電時自動着床）に使う。戸を開けるかは呼び出し側が決める。
+     */
+    public static Outcome nearestStop(Trip trip, long now, int[] floors, int currentFloor, int targetFloor) {
+        int step = trip.to() > trip.from() ? 1 : -1;
         for (int floor = currentFloor + step; floor != targetFloor; floor += step) {
             Trip shorter = trip.retarget(now, floors[floor]);
             if (shorter != null) {

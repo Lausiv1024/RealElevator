@@ -13,6 +13,8 @@ public final class ModItems {
 
     public static final DeferredItem<BlockItem> INSTALLER = ITEMS.registerSimpleBlockItem(ModBlocks.INSTALLER);
 
+    public static final DeferredItem<BlockItem> POWER_RECEIVER = ITEMS.registerSimpleBlockItem(ModBlocks.POWER_RECEIVER);
+
     /** 階床登録ツール。制御盤を右クリックしてつなぎ、各階に立って右クリックすると停止階を登録・解除する。 */
     public static final DeferredItem<FloorMarkerItem> FLOOR_MARKER = ITEMS.register("floor_marker",
             () -> new FloorMarkerItem(new Item.Properties().stacksTo(1)));

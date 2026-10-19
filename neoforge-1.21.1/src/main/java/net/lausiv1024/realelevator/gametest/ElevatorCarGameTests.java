@@ -9,12 +9,15 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import net.lausiv1024.realelevator.RealElevator;
+import net.lausiv1024.realelevator.block.PowerReceiverBlock;
+import net.lausiv1024.realelevator.block.PowerReceiverBlockEntity;
 import net.lausiv1024.realelevator.core.announce.Announcement;
 import net.lausiv1024.realelevator.core.announce.AnnouncementScript;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.car.Entrance;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.control.OperationTiming;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
@@ -27,6 +30,7 @@ import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
+import net.lausiv1024.realelevator.registry.ModBlocks;
 import net.lausiv1024.realelevator.registry.ModEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -34,6 +38,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -901,6 +906,89 @@ public class ElevatorCarGameTests {
             helper.assertTrue(cancelled.get() && !car.isMoving(), "still moving");
             helper.assertTrue(car.floorIndexAt(car.getY()) >= 1 && car.floorIndexAt(car.getY()) < 3, "should stop on the way: " + car.getY());
             helper.assertTrue(!opened.get() && car.doorState() == DoorState.CLOSED, "the doors should stay closed");
+        });
+    }
+
+    /** 受電盤を置いてかごにつなぎ、隣にレッドストーンブロックを置いて受電させる。レッドストーンブロックの位置を返す。 */
+    private static BlockPos powerFromReceiver(GameTestHelper helper, ElevatorCarEntity car) {
+        BlockPos receiverPos = new BlockPos(0, 1, 0);
+        BlockPos source = new BlockPos(0, 1, 1);
+        helper.setBlock(receiverPos, ModBlocks.POWER_RECEIVER.get().defaultBlockState());
+        helper.setBlock(source, Blocks.REDSTONE_BLOCK);
+        BlockPos absolute = helper.absolutePos(receiverPos);
+        if (!(helper.getLevel().getBlockEntity(absolute) instanceof PowerReceiverBlockEntity receiver)) {
+            throw new IllegalStateException("no power receiver");
+        }
+        receiver.setCar(car.getUUID());
+        car.linkPowerReceiver(absolute);
+        helper.assertTrue(helper.getLevel().getBlockState(absolute).getValue(PowerReceiverBlock.POWERED), "the receiver should be powered");
+        return source;
+    }
+
+    /**
+     * 停電時自動着床：走行中に受電盤の信号が切れると、止まれる最寄りの階に止まって戸を開け、10秒後に閉めて休止する。
+     * 停電中は呼びが消え、乗場ボタンも行先ボタンも受け付けず、表示器は消える。開ボタンでは開く。復電すると、また呼べる。
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = 1200)
+    public static void powerFailureLandsAtTheNearestFloor(GameTestHelper helper) {
+        Elevator elevator = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, 4, 8, 12);
+        ElevatorCarEntity car = elevator.car();
+        BlockPos source = powerFromReceiver(helper, car);
+        car.pressCarCall(3);
+        car.pressHallCall(2, TravelDirection.DOWN);
+        AtomicLong cutAt = new AtomicLong(-1);
+        AtomicLong landedAt = new AtomicLong(-1);
+        AtomicLong closedAt = new AtomicLong(-1);
+        AtomicBoolean restored = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            long now = helper.getLevel().getGameTime();
+            if (cutAt.get() < 0 && car.isMoving() && car.yAt(now) > car.floors()[0] + 1) {
+                helper.setBlock(source, Blocks.AIR);
+                cutAt.set(now);
+            }
+            if (cutAt.get() >= 0 && landedAt.get() < 0 && !car.isMoving()) {
+                landedAt.set(now);
+                helper.assertTrue(car.isPowerFailure(), "the car should know the power failed");
+                helper.assertTrue(!car.isCarCallLit(3) && !car.isHallCallLit(2, TravelDirection.DOWN), "the calls should be cleared");
+                helper.assertTrue(car.indicatorLabel(now).isEmpty() && car.indicatorDirection() == TravelDirection.NONE,
+                        "the indicators should go dark");
+                helper.assertTrue(car.pressHallCall(0, TravelDirection.UP) == PressResult.INVALID && car.pressCarCall(0) == PressResult.INVALID,
+                        "buttons should not register calls during the failure");
+            }
+            if (landedAt.get() >= 0 && closedAt.get() < 0 && car.doorState() == DoorState.CLOSED) {
+                closedAt.set(now);
+                // 休止中も、開ボタンでは開く
+                helper.assertTrue(car.openDoor(Entrance.FRONT) && car.doorState() == DoorState.OPENING, "the open button should still work");
+                helper.setBlock(source, Blocks.REDSTONE_BLOCK);
+            }
+            if (closedAt.get() >= 0 && !restored.get() && !car.isPowerFailure()) {
+                restored.set(true);
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(restored.get(), "the power should come back");
+            int floor = car.floorIndexAt(car.getY());
+            helper.assertTrue(floor >= 1 && floor <= 3, "should have landed on a floor on the way: " + car.getY());
+            long open = closedAt.get() - landedAt.get();
+            helper.assertTrue(open >= OperationTiming.OUTAGE_DOOR_OPEN_TICKS, "the doors should stay open for the passengers: " + open);
+            helper.assertTrue(car.pressCarCall(floor == 0 ? 1 : 0) == PressResult.REGISTERED, "calls work again after the power returns");
+        });
+    }
+
+    /** 止まっているときに停電すると、その階で戸を開けて休止する。受電盤を壊すと、受電している扱いに戻る。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 400)
+    public static void powerFailureWhileStoppedOpensTheDoorAndBreakingTheReceiverRestoresPower(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
+        BlockPos source = powerFromReceiver(helper, car);
+        helper.runAfterDelay(5, () -> helper.setBlock(source, Blocks.AIR));
+        helper.runAfterDelay(10, () -> {
+            helper.assertTrue(car.isPowerFailure() && car.doorState() == DoorState.OPENING, "the door should open on the failure");
+            helper.setBlock(new BlockPos(0, 1, 0), Blocks.AIR);
+        });
+        helper.runAfterDelay(15, () -> {
+            helper.assertTrue(car.powerReceiverPos() == null, "breaking the receiver should disconnect it");
+            helper.assertTrue(!car.isPowerFailure(), "without a receiver the car is always powered");
+            helper.succeed();
         });
     }
 

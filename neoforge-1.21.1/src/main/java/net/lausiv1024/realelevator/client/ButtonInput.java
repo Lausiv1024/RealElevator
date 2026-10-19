@@ -10,6 +10,7 @@ import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.entity.ButtonHost;
 import net.lausiv1024.realelevator.entity.ElevatorTracker;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
+import net.lausiv1024.realelevator.network.PowerPayloads;
 import net.lausiv1024.realelevator.network.PressButtonPayload;
 import net.lausiv1024.realelevator.network.RenewalPayloads;
 import net.minecraft.client.Minecraft;
@@ -67,7 +68,9 @@ public final class ButtonInput {
             if (door != null) {
                 event.setCanceled(true);
                 event.setSwingHand(true);
-                PacketDistributor.sendToServer(new RenewalPayloads.Open(door.getId()));
+                // しゃがんでいれば、受電盤をつなぐエレベーターに選ぶ。そうでなければリニューアルと解体のメニュー
+                PacketDistributor.sendToServer(player.isShiftKeyDown()
+                        ? new PowerPayloads.Select(door.getId()) : new RenewalPayloads.Open(door.getId()));
             }
             return;
         }

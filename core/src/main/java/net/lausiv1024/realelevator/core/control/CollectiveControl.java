@@ -90,6 +90,14 @@ public final class CollectiveControl {
         return true;
     }
 
+    /** すべての呼びを消し、進行方向もなくす（停電）。 */
+    public void clearAll() {
+        carCalls.clear();
+        upCalls.clear();
+        downCalls.clear();
+        direction = TravelDirection.NONE;
+    }
+
     /** floor に、かご呼びか、どちらかの向きの乗場呼びがあるか。 */
     public boolean hasAnyCallAt(int floor) {
         return carCalls.get(floor) || upCalls.get(floor) || downCalls.get(floor);

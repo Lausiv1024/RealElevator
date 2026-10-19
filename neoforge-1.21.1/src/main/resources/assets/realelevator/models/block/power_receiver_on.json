@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "minecraft:block/iron_block",
+    "side": "minecraft:block/iron_block",
+    "front": "realelevator:block/power_receiver_front_on"
+  }
+}

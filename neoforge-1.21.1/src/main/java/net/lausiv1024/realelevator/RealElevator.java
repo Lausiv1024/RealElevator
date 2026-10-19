@@ -10,6 +10,7 @@ import net.lausiv1024.realelevator.client.RenewalScreen;
 import net.lausiv1024.realelevator.network.AnnouncePayload;
 import net.lausiv1024.realelevator.network.PressButtonPayload;
 import net.lausiv1024.realelevator.network.PanelPayloads;
+import net.lausiv1024.realelevator.network.PowerPayloads;
 import net.lausiv1024.realelevator.network.RenewalPayloads;
 import net.lausiv1024.realelevator.registry.ModBlockEntities;
 import net.lausiv1024.realelevator.registry.ModBlocks;
@@ -54,6 +55,7 @@ public class RealElevator {
                 .playToServer(RenewalPayloads.Open.TYPE, RenewalPayloads.Open.STREAM_CODEC, RenewalPayloads.Open::handle)
                 .playToServer(RenewalPayloads.Apply.TYPE, RenewalPayloads.Apply.STREAM_CODEC, RenewalPayloads.Apply::handle)
                 .playToServer(RenewalPayloads.Dismantle.TYPE, RenewalPayloads.Dismantle.STREAM_CODEC, RenewalPayloads.Dismantle::handle)
+                .playToServer(PowerPayloads.Select.TYPE, PowerPayloads.Select.STREAM_CODEC, PowerPayloads.Select::handle)
                 // クライアント側の処理は、ラムダの中で呼ぶのでサーバーでは読み込まれない
                 .playToClient(AnnouncePayload.TYPE, AnnouncePayload.STREAM_CODEC, (payload, context) -> ClientAnnouncements.handle(payload))
                 .playToClient(RenewalPayloads.Show.TYPE, RenewalPayloads.Show.STREAM_CODEC, (payload, context) -> RenewalScreen.open(payload));
@@ -62,6 +64,7 @@ public class RealElevator {
     private static void addCreativeTabItems(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(ModItems.INSTALLER);
+            event.accept(ModItems.POWER_RECEIVER);
         } else if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(ModItems.FLOOR_MARKER);
             event.accept(ModItems.MAINTENANCE_WRENCH);

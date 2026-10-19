@@ -4,6 +4,7 @@ import net.lausiv1024.realelevator.RealElevator;
 import net.lausiv1024.realelevator.block.InstallerBlock;
 import net.lausiv1024.realelevator.block.ControllerBlock;
 import net.lausiv1024.realelevator.block.GuideRailBlock;
+import net.lausiv1024.realelevator.block.PowerReceiverBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
@@ -29,6 +30,11 @@ public final class ModBlocks {
     public static final DeferredBlock<GuideRailBlock> GUIDE_RAIL = BLOCKS.register("guide_rail",
             () -> new GuideRailBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL).strength(5.0F, 6.0F).sound(SoundType.METAL).noOcclusion().noLootTable()));
+
+    /** 受電盤。普通仕様のエレベーターの受電をレッドストーン信号で受ける。保守用レンチでエレベーターにつなぐ。 */
+    public static final DeferredBlock<PowerReceiverBlock> POWER_RECEIVER = BLOCKS.register("power_receiver",
+            () -> new PowerReceiverBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL).strength(3.0F, 6.0F).sound(SoundType.METAL).requiresCorrectToolForDrops()));
 
     private ModBlocks() {
     }

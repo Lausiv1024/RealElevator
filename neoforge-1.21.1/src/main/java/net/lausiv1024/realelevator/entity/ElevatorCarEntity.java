@@ -45,6 +45,8 @@ import net.lausiv1024.realelevator.core.motion.SpeedSetting;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.motion.TravelLimits;
 import net.lausiv1024.realelevator.core.motion.Trip;
+import net.lausiv1024.realelevator.block.PowerReceiverBlock;
+import net.lausiv1024.realelevator.block.PowerReceiverBlockEntity;
 import net.lausiv1024.realelevator.network.AnnouncePayload;
 import net.lausiv1024.realelevator.registry.ModSounds;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
@@ -68,6 +70,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -121,6 +124,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private boolean pendingWheelchair;
     /** 応答灯の点いた行先ボタン（ボタンの番号）を最後に押したゲーム時刻。2度押しキャンセルの判定に使う。サーバーだけで使う。 */
     private final Map<Integer, Long> litPressTicks = new HashMap<>();
+    /** つないでいる受電盤の位置。つないでいなければ null で、常に受電している扱い。サーバーだけで使う。 */
+    @Nullable
+    private BlockPos powerReceiverPos;
+    /** 停電中か（受電盤の信号が切れた）。表示器などを消すため、呼びと一緒に同期する。 */
+    private boolean powerFailure;
     /** ナッジング中に、次にブザーを鳴らすゲーム時刻。サーバーだけで使う。 */
     private long nextBuzzTick = Long.MIN_VALUE;
     /** 今向かっている階の呼びが取り消されたので、着いても戸を開けないか。サーバーだけで使う。 */
@@ -481,7 +489,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      * @param wheelchair 車椅子用操作盤で押したか（着いたら開放待機を延ばし、ゆっくり閉じる）
      */
     private PressResult pressCarCall(int floor, Entrance side, boolean wheelchair) {
-        if (level().isClientSide || control == null) {
+        if (level().isClientSide || control == null || powerFailure) {
             return PressResult.INVALID;
         }
         PressResult result = control.pressCar(floor, currentFloor, trip == null);
@@ -589,7 +597,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      * @param wheelchair 乗場の車椅子用ボタンで押したか（応えたときに開放待機を延ばし、ゆっくり閉じる）
      */
     public PressResult pressHallCall(int floor, TravelDirection direction, Entrance side, boolean wheelchair) {
-        if (level().isClientSide || control == null) {
+        if (level().isClientSide || control == null || powerFailure) {
             return PressResult.INVALID;
         }
         PressResult result = control.pressHall(floor, direction, currentFloor, trip == null);
@@ -846,11 +854,15 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     private void serverTick(long now) {
+        updatePower(now);
         // 到着したtickの最後の移動量も乗っているエンティティに加えられるよう、走行情報は1tick遅れて消す
         if (trip != null && trip.isArrivedAt(now - 1)) {
             setTrip(null);
             currentFloor = targetFloor;
-            if (skipDoorsOnArrival && (control == null || !control.hasAnyCallAt(currentFloor))) {
+            if (powerFailure) {
+                // 停電時自動着床：最寄りの階に着いたら、乗客が降りるまで戸を開け、そのあと閉めて休止する
+                openForOutage(now);
+            } else if (skipDoorsOnArrival && (control == null || !control.hasAnyCallAt(currentFloor))) {
                 // 取り消された行先に止まった。戸は開けずに、次の呼びへ向かう（なければここで待つ）
                 arrivalAnnounced = false;
                 announcedFloor = -1;
@@ -866,7 +878,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         }
 
         // 行先方向を流している間に自動で閉めるときは、戸閉アナウンスを流さず（待たず）に閉める
-        door.setCloseAnnouncementTicks(announcements.doorClose() && !isSpeakingDirection(now)
+        door.setCloseAnnouncementTicks(announcements.doorClose() && !isSpeakingDirection(now) && !powerFailure
                 ? AnnouncementScript.DOOR_CLOSE_WAIT_TICKS : 0);
         if (door.state() == DoorState.OPEN && isBeamBlocked()) {
             // 開ききっているあいだにビームが人を検知していたら、待機時間を数え直す（戸閉アナウンスも流さない）
@@ -1038,8 +1050,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         }
     }
 
-    /** このかごが見えているクライアントへアナウンスを送る。鳴らし方はクライアントに任せる。 */
+    /** このかごが見えているクライアントへアナウンスを送る。鳴らし方はクライアントに任せる。停電中は流さない。 */
     private void announce(Announcement announcement) {
+        if (powerFailure) {
+            return;
+        }
         PacketDistributor.sendToPlayersTrackingEntity(this, new AnnouncePayload(getId(), announcement));
         recentAnnouncements.addFirst(announcement);
         while (recentAnnouncements.size() > 8) {
@@ -1060,7 +1075,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      * チャイムの向きは、到着したあとの進行方向を先読みして決める。
      */
     private void announceArrivalIfCertain(long now) {
-        if (arrivalAnnounced || trip == null || control == null
+        if (arrivalAnnounced || trip == null || control == null || powerFailure
                 || (skipDoorsOnArrival && !control.hasAnyCallAt(targetFloor))) {
             return;
         }
@@ -1089,7 +1104,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 設定で有効なら、停止階 floor の乗場で、ホールランタンの位置から到着チャイムを鳴らす。下りは C6→G#5、それ以外は G#5→C6。 */
     private void playArrivalChime(int floor, TravelDirection direction) {
-        if (!announcements.chime()) {
+        if (!announcements.chime() || powerFailure) {
             return;
         }
         Vec3 position = lanternCenter(floor);
@@ -1146,6 +1161,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 側 side の乗場のホールランタン。二方向出入口では、開く（開いている）側の乗場だけ点ける。 */
     public Set<TravelDirection> lanternSections(int floor, Entrance side) {
+        if (powerFailure) {
+            return Set.of();
+        }
         if (trip != null) {
             if (floor != announcedFloor || !lanternSides(floor).contains(side)) {
                 return Set.of();
@@ -1190,6 +1208,104 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         AABB search = panels.stream().reduce(AABB::minmax).orElseThrow();
         return !level().getEntitiesOfClass(LivingEntity.class, search,
                 entity -> !entity.isSpectator() && panels.stream().anyMatch(entity.getBoundingBox()::intersects)).isEmpty();
+    }
+
+    // ---- 受電と停電 ----
+
+    /** 受電盤 pos につなぐ。サーバーで呼ぶ。 */
+    public void linkPowerReceiver(BlockPos pos) {
+        this.powerReceiverPos = pos.immutable();
+    }
+
+    /** 受電盤とのつなぎを外す。常に受電している扱いに戻る。サーバーで呼ぶ。 */
+    public void unlinkPowerReceiver() {
+        this.powerReceiverPos = null;
+    }
+
+    /** つないでいる受電盤の位置。つないでいなければ null。 */
+    @Nullable
+    public BlockPos powerReceiverPos() {
+        return powerReceiverPos;
+    }
+
+    /** 停電中か。 */
+    public boolean isPowerFailure() {
+        return powerFailure;
+    }
+
+    /**
+     * 受電盤の信号を見て、停電と復電を切り替える。受電盤が読み込まれていなければ今のまま。受電盤がなくなっていたり、
+     * ほかのエレベーターにつなぎ直されていたりしたら、つなぎを外して受電している扱いに戻す。
+     */
+    private void updatePower(long now) {
+        boolean powered = true;
+        if (powerReceiverPos != null) {
+            if (!level().isLoaded(powerReceiverPos)) {
+                return;
+            }
+            BlockState state = level().getBlockState(powerReceiverPos);
+            if (state.getBlock() instanceof PowerReceiverBlock
+                    && level().getBlockEntity(powerReceiverPos) instanceof PowerReceiverBlockEntity receiver
+                    && getUUID().equals(receiver.car())) {
+                powered = state.getValue(PowerReceiverBlock.POWERED);
+            } else {
+                powerReceiverPos = null;
+            }
+        }
+        if (powered == powerFailure) {
+            if (powered) {
+                // 復電。呼びは停電で消えているので、押し直すと動く
+                powerFailure = false;
+                syncCalls();
+            } else {
+                failPower(now);
+            }
+        }
+    }
+
+    /**
+     * 停電。呼びをすべて消し、ボタン・表示器・ランプを消す。走行中なら減速が間に合う最寄りの階に止まり（停電時自動着床）、
+     * 止まっていればその階で、乗客が降りるまで戸を開けてから閉めて休止する。
+     */
+    private void failPower(long now) {
+        powerFailure = true;
+        if (control != null) {
+            control.clearAll();
+        }
+        entranceCalls.restore(new long[0][]);
+        wheelchairCalls.restore(new long[0], new long[0], new long[0]);
+        pendingSides.clear();
+        pendingCarCall = false;
+        pendingHallDirection = TravelDirection.NONE;
+        pendingWheelchair = false;
+        litPressTicks.clear();
+        departureTick = -1;
+        skipDoorsOnArrival = false;
+        directionAnnouncementPending = false;
+        arrivalAnnounced = false;
+        announcedFloor = -1;
+        if (trip != null) {
+            CancelReplan.Outcome outcome = CancelReplan.nearestStop(trip, now, floors, currentFloor, targetFloor);
+            if (outcome.trip() != trip) {
+                setTrip(outcome.trip());
+            }
+            targetFloor = outcome.targetFloor();
+        } else {
+            openForOutage(now);
+        }
+        syncDoor();
+        syncCalls();
+    }
+
+    /** 停電で着床した（または止まっていた）階で、乗客が降りるまで戸を開ける。そのあとは普通に閉まって休止する。 */
+    private void openForOutage(long now) {
+        Set<Entrance> available = entrancesAt(currentFloor);
+        if (openSides.isEmpty() || !available.containsAll(openSides)) {
+            openSides.clear();
+            openSides.add(available.iterator().next());
+        }
+        door.open(now, OperationTiming.OUTAGE_DOOR_OPEN_TICKS);
+        syncDoor();
     }
 
     /** ナッジング中は、閉まりきるまでかごの中でブザーを断続的に鳴らす。 */
@@ -1267,11 +1383,18 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** ゲーム時刻 tick に階床表示器に出す階名。長い階間の途中ではハイフン。 */
     public String indicatorLabel(double tick) {
+        if (powerFailure) {
+            // 停電中は表示器を消す
+            return "";
+        }
         return floors.length > 0 ? FloorIndicator.displayedLabel(yAt(tick), floors, this::floorLabel) : floorLabel(0);
     }
 
     /** 階床表示器に出す矢印の向き。走行中はその向き、停止中は次に進む方向。 */
     public TravelDirection indicatorDirection() {
+        if (powerFailure) {
+            return TravelDirection.NONE;
+        }
         if (trip != null) {
             return trip.to() > trip.from() ? TravelDirection.UP : TravelDirection.DOWN;
         }
@@ -1506,6 +1629,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (controllerPos != null) {
             tag.put("Controller", NbtUtils.writeBlockPos(controllerPos));
         }
+        if (powerReceiverPos != null) {
+            tag.put("PowerReceiver", NbtUtils.writeBlockPos(powerReceiverPos));
+        }
         tag.putDouble("Acceleration", speed.acceleration());
         tag.putDouble("Jerk", speed.jerk());
         if (pitMode != null) {
@@ -1543,6 +1669,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         pitMode = tag.contains("Pit") ? parseEnum(PitMode.class, tag.getString("Pit"), PitMode.REAL) : null;
         counterweight = parseEnum(CounterweightPosition.class, tag.getString("Counterweight"), CounterweightPosition.REAR);
         controllerPos = NbtUtils.readBlockPos(tag, "Controller").orElse(null);
+        powerReceiverPos = NbtUtils.readBlockPos(tag, "PowerReceiver").orElse(null);
         SpeedSetting speed = SpeedSetting.standard(parseEnum(SpeedSpec.class, tag.getString("Speed"), SpeedSpec.NORMAL_LOW));
         if (tag.contains("Acceleration")) {
             speed = speed.withAcceleration(tag.getDouble("Acceleration")).withJerk(tag.getDouble("Jerk"));
@@ -1659,6 +1786,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.putLongArray("WheelchairCar", wheelchair[0]);
         tag.putLongArray("WheelchairUp", wheelchair[1]);
         tag.putLongArray("WheelchairDown", wheelchair[2]);
+        tag.putBoolean("PowerFailure", powerFailure);
         return tag;
     }
 
@@ -1684,6 +1812,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         }
         entranceCalls.restore(sideCalls.toArray(long[][]::new));
         wheelchairCalls.restore(tag.getLongArray("WheelchairCar"), tag.getLongArray("WheelchairUp"), tag.getLongArray("WheelchairDown"));
+        powerFailure = tag.getBoolean("PowerFailure");
     }
 
     private static <E extends Enum<E>> E parseEnum(Class<E> type, String name, E fallback) {
