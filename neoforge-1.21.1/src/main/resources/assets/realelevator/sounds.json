@@ -11,10 +11,10 @@
       "realelevator:chime_down"
     ]
   },
-  "nudge_buzzer": {
-    "subtitle": "subtitles.realelevator.nudge",
+  "door_buzzer": {
+    "subtitle": "subtitles.realelevator.door_buzzer",
     "sounds": [
-      "realelevator:nudge_buzzer"
+      "realelevator:door_buzzer"
     ]
   },
   "announce.floor_1": {

@@ -2,7 +2,7 @@
   "entity.realelevator.elevator_car": "Elevator Car",
   "entity.realelevator.landing_door": "Landing Door",
   "subtitles.realelevator.chime": "Elevator chimes",
-  "subtitles.realelevator.nudge": "Elevator door buzzer",
+  "subtitles.realelevator.door_buzzer": "Elevator door buzzer",
   "subtitles.realelevator.announcement": "Elevator announcement",
   "block.realelevator.installer": "Elevator Installer",
   "block.realelevator.guide_rail": "Guide Rail",

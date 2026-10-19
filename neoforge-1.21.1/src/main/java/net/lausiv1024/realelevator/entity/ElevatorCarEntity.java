@@ -96,7 +96,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** セーフティシューの検知に使う、戸板のまわりのわずかな余裕。 */
     private static final double SAFETY_SHOE_MARGIN = 0.01;
-    /** ナッジング中にブザーを鳴らす間隔 [tick]。ブザーの音は0.5秒なので、鳴る・止むを繰り返す断続音になる。 */
+    /** 強制戸閉中にブザーを鳴らす間隔 [tick]。ブザーの音は0.5秒なので、鳴る・止むを繰り返す断続音になる。 */
     private static final int BUZZER_INTERVAL_TICKS = 20;
     /** ブザーを鳴らす高さ（かごの床から）。アナウンスと同じかごの中のスピーカー。 */
     private static final double BUZZER_HEIGHT = 2.5;
@@ -133,7 +133,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private BlockPos powerReceiverPos;
     /** 停電中か（受電盤の信号が切れた）。表示器などを消すため、呼びと一緒に同期する。 */
     private boolean powerFailure;
-    /** ナッジング中に、次にブザーを鳴らすゲーム時刻。サーバーだけで使う。 */
+    /** 強制戸閉中に、次にブザーを鳴らすゲーム時刻。サーバーだけで使う。 */
     private long nextBuzzTick = Long.MIN_VALUE;
     /** 今向かっている階の呼びが取り消されたので、着いても戸を開けないか。サーバーだけで使う。 */
     private boolean skipDoorsOnArrival;
@@ -661,8 +661,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      */
     private boolean requestOpen(Entrance side, CallType callType, boolean wheelchair) {
         Entrance target = doorFor(side);
-        if (door.isNudging() && openSides.contains(target)) {
-            // ナッジング中は、閉めている扉を開く操作を受け付けない
+        if (door.isForcedClosing() && openSides.contains(target)) {
+            // 強制戸閉中は、閉めている扉を開く操作を受け付けない
             return false;
         }
         if (!door.isClosed() && !openSides.contains(target)) {
@@ -683,8 +683,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      * @param wheelchair 車椅子用のボタンで押したか
      */
     private void handlePress(PressResult result, CallType callType, Entrance side, boolean wheelchair) {
-        if (result == PressResult.SERVED_HERE && door.isNudging() && openSides.contains(doorFor(side))) {
-            // ナッジングで閉めている扉は開かないので、チャイムも鳴らさない
+        if (result == PressResult.SERVED_HERE && door.isForcedClosing() && openSides.contains(doorFor(side))) {
+            // 強制戸閉で閉めている扉は開かないので、チャイムも鳴らさない
             syncCalls();
             return;
         }
@@ -925,7 +925,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             // 開放待機が終わった。戸閉アナウンスを流し終わってから閉め始める
             announce(Announcement.doorClose());
         }
-        boolean doorChanged = doorEvent == DoorController.Event.STATE_CHANGED || doorEvent == DoorController.Event.NUDGING_STARTED;
+        boolean doorChanged = doorEvent == DoorController.Event.STATE_CHANGED || doorEvent == DoorController.Event.FORCED_CLOSE_STARTED;
         if (doorChanged && directionAnnouncementPending) {
             if (door.state() == DoorState.OPEN) {
                 // 戸が開ききったら行先方向を流す
@@ -943,7 +943,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (doorChanged) {
             syncDoor();
         }
-        soundNudgingBuzzer(now);
+        soundForcedCloseBuzzer(now);
 
         if (trip == null && door.isClosed() && !pendingSides.isEmpty()) {
             // 扉が開いているあいだに反対側で呼ばれていたら、発車せずにその側を開く
@@ -1251,8 +1251,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                     panels.add(CarShapes.toAabb(box, getX(), getY(), getZ()).inflate(SAFETY_SHOE_MARGIN));
                 }
             }
-            if (!door.isNudging()) {
-                // ナッジング中は多光軸ビームを使わず、セーフティシューだけで止める
+            if (!door.isForcedClosing()) {
+                // 強制戸閉中は多光軸ビームを使わず、セーフティシューだけで止める
                 panels.add(CarShapes.toAabb(CarShapes.beamZone(spec(), facing(), entrance), getX(), getY(), getZ()));
             }
         }
@@ -1362,21 +1362,21 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         syncDoor();
     }
 
-    /** ナッジング中は、閉まりきるまでかごの中でブザーを断続的に鳴らす。 */
-    private void soundNudgingBuzzer(long now) {
-        if (!door.isNudging() || door.isClosed()) {
+    /** 強制戸閉中は、閉まりきるまでかごの中でブザーを断続的に鳴らす。 */
+    private void soundForcedCloseBuzzer(long now) {
+        if (!door.isForcedClosing() || door.isClosed()) {
             nextBuzzTick = Long.MIN_VALUE;
             return;
         }
         if (now >= nextBuzzTick) {
-            level().playSound(null, getX(), getY() + BUZZER_HEIGHT, getZ(), ModSounds.NUDGE_BUZZER.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
+            level().playSound(null, getX(), getY() + BUZZER_HEIGHT, getZ(), ModSounds.DOOR_BUZZER.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
             nextBuzzTick = now + BUZZER_INTERVAL_TICKS;
         }
     }
 
-    /** ナッジング（強制戸閉）中か。 */
-    public boolean isNudging() {
-        return door.isNudging();
+    /** 強制戸閉中か。 */
+    public boolean isForcedClosing() {
+        return door.isForcedClosing();
     }
 
     /** 多光軸ビームセンサー：開いている側の出入口の、かごの戸と乗場の戸の間に生き物がいるかどうか。 */
@@ -1788,7 +1788,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.putDouble("StartFraction", door.startFraction());
         tag.putInt("Dwell", door.dwellTicks());
         tag.putBoolean("Slow", door.isSlowClose());
-        tag.putBoolean("Nudge", door.isNudging());
+        tag.putBoolean("ForcedClose", door.isForcedClosing());
         return tag;
     }
 
@@ -1813,7 +1813,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private static void readDoor(CompoundTag tag, DoorController door) {
         door.restore(parseEnum(DoorState.class, tag.getString("State"), DoorState.CLOSED),
                 tag.getLong("StartTick"), tag.getDouble("StartFraction"), tag.getInt("Dwell"), tag.getBoolean("Slow"),
-                tag.getBoolean("Nudge"));
+                tag.getBoolean("ForcedClose"));
     }
 
     private static byte sideMask(Set<Entrance> sides) {

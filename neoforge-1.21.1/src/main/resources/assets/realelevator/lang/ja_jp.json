@@ -2,7 +2,7 @@
   "entity.realelevator.elevator_car": "エレベーターのかご",
   "entity.realelevator.landing_door": "乗場の扉",
   "subtitles.realelevator.chime": "エレベーターのチャイム",
-  "subtitles.realelevator.nudge": "エレベーターのブザー",
+  "subtitles.realelevator.door_buzzer": "エレベーターのブザー",
   "subtitles.realelevator.announcement": "エレベーターのアナウンス",
   "block.realelevator.installer": "エレベーター設置ブロック",
   "block.realelevator.guide_rail": "ガイドレール",

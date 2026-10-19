@@ -20,10 +20,10 @@ package net.lausiv1024.realelevator.core.door;
  * <p>車椅子用のボタンで開いたときは、ゆっくり閉じる（{@link DoorTiming#wheelchairCloseTicks}）。閉まりきるまで続き、
  * その間に普通のボタンで開き直しても、ゆっくりのまま、開放待機も短くしない。
  *
- * <p>ナッジング（強制戸閉）：閉まりきる前に {@value #NUDGE_REVERSALS} 回反転したら、または開き始めてから閉まりきらないまま
- * {@value #NUDGE_OPEN_TICKS} tick（60秒）たったら、ブザーを鳴らしながら低速（{@value #NUDGE_CLOSE_TICKS} tick）で閉める。
- * ナッジング中は開く操作（{@link #open}）と多光軸ビーム（{@link #hold}）を受け付けない。セーフティシュー（{@link #obstruct}）では
- * 開き直すが、開ききったらすぐにまた閉め始め、閉まりきるまでナッジングを続ける。
+ * <p>強制戸閉：閉まりきる前に {@value #FORCED_CLOSE_REVERSALS} 回反転したら、または開き始めてから閉まりきらないまま
+ * {@value #FORCED_CLOSE_OPEN_TICKS} tick（60秒）たったら、ブザーを鳴らしながら低速（{@value #FORCED_CLOSE_TICKS} tick）で閉める。
+ * 強制戸閉中は開く操作（{@link #open}）と多光軸ビーム（{@link #hold}）を受け付けない。セーフティシュー（{@link #obstruct}）では
+ * 開き直すが、開ききったらすぐにまた閉め始め、閉まりきるまで強制戸閉を続ける。
  */
 public final class DoorController {
     /** {@link #tick} で起きたこと。 */
@@ -33,16 +33,16 @@ public final class DoorController {
         STATE_CHANGED,
         /** 開放待機が終わり、戸閉アナウンスを流して閉め始めるのを待ち始めた。 */
         CLOSE_ANNOUNCED,
-        /** 開放が長く続いたので、ナッジングで閉め始めた。 */
-        NUDGING_STARTED
+        /** 開放が長く続いたので、強制戸閉で閉め始めた。 */
+        FORCED_CLOSE_STARTED
     }
 
-    /** ナッジングに入る反転の回数（閉まりきるまでに続けて反転した回数）。 */
-    public static final int NUDGE_REVERSALS = 5;
-    /** ナッジングに入る、開き始めてから閉まりきらないまま続いた時間 [tick]（60秒）。 */
-    public static final int NUDGE_OPEN_TICKS = 1200;
-    /** ナッジングで閉じるのにかかる時間 [tick]（普通の2倍）。 */
-    public static final int NUDGE_CLOSE_TICKS = 100;
+    /** 強制戸閉に入る反転の回数（閉まりきるまでに続けて反転した回数）。 */
+    public static final int FORCED_CLOSE_REVERSALS = 5;
+    /** 強制戸閉に入る、開き始めてから閉まりきらないまま続いた時間 [tick]（60秒）。 */
+    public static final int FORCED_CLOSE_OPEN_TICKS = 1200;
+    /** 強制戸閉で閉じるのにかかる時間 [tick]（普通の2倍）。 */
+    public static final int FORCED_CLOSE_TICKS = 100;
 
     private final DoorTiming timing;
     /** 自動で閉めるとき、戸閉アナウンスを流してから閉め始めるまでの時間 [tick]。0なら待たない。 */
@@ -55,8 +55,8 @@ public final class DoorController {
     private int dwellTicks;
     /** 車椅子用のボタンで開いたので、ゆっくり閉じるか。 */
     private boolean slowClose;
-    /** ナッジング中か。閉まりきると終わる。 */
-    private boolean nudging;
+    /** 強制戸閉中か。閉まりきると終わる。 */
+    private boolean forcedClosing;
     /** 閉まりきってから開き始めたゲーム時刻。サーバーだけが使う。 */
     private long openedAt;
     /** 閉まりきるまでに続けて反転した回数。サーバーだけが使う。 */
@@ -77,8 +77,8 @@ public final class DoorController {
      * @param slowClose 車椅子用のボタンで開いたか（ゆっくり閉じる）
      */
     public void open(long now, int dwellTicks, boolean slowClose) {
-        if (nudging) {
-            // ナッジング中は開く操作を受け付けない
+        if (forcedClosing) {
+            // 強制戸閉中は開く操作を受け付けない
             return;
         }
         reopen(now, dwellTicks, slowClose);
@@ -117,10 +117,10 @@ public final class DoorController {
 
     /**
      * 開放待機中に、多光軸ビームが人を検知している。待機時間を数え直し、戸閉アナウンスを流して閉め始めるのを待っていたら、それも取りやめる。
-     * 検知がなくなってから待機時間がたつと閉め始める。反転の回数（ナッジング）には数えない。
+     * 検知がなくなってから待機時間がたつと閉め始める。反転の回数（強制戸閉）には数えない。
      */
     public void hold(long now) {
-        if (state == DoorState.OPEN && !nudging) {
+        if (state == DoorState.OPEN && !forcedClosing) {
             startTick = now;
             closeAt = -1;
         }
@@ -147,16 +147,16 @@ public final class DoorController {
     public void obstruct(long now) {
         if (state == DoorState.CLOSING) {
             reversals++;
-            if (reversals >= NUDGE_REVERSALS) {
-                nudging = true;
+            if (reversals >= FORCED_CLOSE_REVERSALS) {
+                forcedClosing = true;
             }
             reopen(now, dwellTicks, slowClose);
         }
     }
 
-    /** ナッジング中か。 */
-    public boolean isNudging() {
-        return nudging;
+    /** 強制戸閉中か。 */
+    public boolean isForcedClosing() {
+        return forcedClosing;
     }
 
     /** 時間の経過による遷移を進める。 */
@@ -171,15 +171,15 @@ public final class DoorController {
                 }
             }
             case OPEN -> {
-                if (nudging) {
-                    // ナッジング中は、開ききったらすぐにまた閉める
+                if (forcedClosing) {
+                    // 強制戸閉中は、開ききったらすぐにまた閉める
                     startClosing(now);
                     return Event.STATE_CHANGED;
                 }
-                if (now - openedAt >= NUDGE_OPEN_TICKS) {
-                    nudging = true;
+                if (now - openedAt >= FORCED_CLOSE_OPEN_TICKS) {
+                    forcedClosing = true;
                     startClosing(now);
-                    return Event.NUDGING_STARTED;
+                    return Event.FORCED_CLOSE_STARTED;
                 }
                 if (closeAt >= 0) {
                     if (now >= closeAt) {
@@ -200,7 +200,7 @@ public final class DoorController {
                     state = DoorState.CLOSED;
                     startTick = now;
                     startFraction = 0;
-                    nudging = false;
+                    forcedClosing = false;
                     reversals = 0;
                     return Event.STATE_CHANGED;
                 }
@@ -232,9 +232,9 @@ public final class DoorController {
     }
 
     /** サーバーから届いた状態をそのまま反映する（クライアント用、読み込み用）。 */
-    public void restore(DoorState state, long startTick, double startFraction, int dwellTicks, boolean slowClose, boolean nudging) {
+    public void restore(DoorState state, long startTick, double startFraction, int dwellTicks, boolean slowClose, boolean forcedClosing) {
         this.slowClose = slowClose;
-        this.nudging = nudging;
+        this.forcedClosing = forcedClosing;
         this.openedAt = startTick;
         this.reversals = 0;
         this.state = state;
@@ -258,7 +258,7 @@ public final class DoorController {
 
     private double closingDuration() {
         int ticks = slowClose ? timing.wheelchairCloseTicks() : timing.closeTicks();
-        return startFraction * (nudging ? Math.max(ticks, NUDGE_CLOSE_TICKS) : ticks);
+        return startFraction * (forcedClosing ? Math.max(ticks, FORCED_CLOSE_TICKS) : ticks);
     }
 
     private double progress(double tick, double duration) {

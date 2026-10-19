@@ -276,27 +276,27 @@ class DoorControllerTest {
     }
 
     @Test
-    void fiveReversalsInARowStartNudging() {
+    void fiveReversalsInARowStartForcedClosing() {
         DoorController door = new DoorController(TIMING);
         door.open(0, TIMING.dwellTicks(CallType.CAR));
         long t = 0;
-        for (int i = 1; i <= DoorController.NUDGE_REVERSALS; i++) {
+        for (int i = 1; i <= DoorController.FORCED_CLOSE_REVERSALS; i++) {
             t = runUntilClosing(door, t);
-            assertFalse(door.isNudging(), "not yet after " + (i - 1) + " reversals");
+            assertFalse(door.isForcedClosing(), "not yet after " + (i - 1) + " reversals");
             door.obstruct(++t);
             assertEquals(DoorState.OPENING, door.state());
         }
-        assertTrue(door.isNudging());
-        // ナッジング中は開く操作を受け付けない
+        assertTrue(door.isForcedClosing());
+        // 強制戸閉中は開く操作を受け付けない
         long closing = runUntilClosing(door, t);
         door.open(closing + 1, TIMING.dwellTicks(CallType.HALL));
         assertEquals(DoorState.CLOSING, door.state(), "the open button should be ignored");
         // 低速で閉める（普通なら50tickのところ100tick）
         run(door, closing + 1, closing + 60);
         assertEquals(DoorState.CLOSING, door.state());
-        run(door, closing + 61, closing + DoorController.NUDGE_CLOSE_TICKS);
+        run(door, closing + 61, closing + DoorController.FORCED_CLOSE_TICKS);
         assertEquals(DoorState.CLOSED, door.state());
-        assertFalse(door.isNudging(), "nudging ends once closed");
+        assertFalse(door.isForcedClosing(), "forced closing ends once closed");
     }
 
     @Test
@@ -304,7 +304,7 @@ class DoorControllerTest {
         DoorController door = new DoorController(TIMING);
         door.open(0, TIMING.dwellTicks(CallType.CAR));
         long t = 0;
-        for (int i = 0; i < DoorController.NUDGE_REVERSALS - 1; i++) {
+        for (int i = 0; i < DoorController.FORCED_CLOSE_REVERSALS - 1; i++) {
             t = runUntilClosing(door, t);
             door.obstruct(++t);
         }
@@ -315,22 +315,22 @@ class DoorControllerTest {
         door.open(++t, TIMING.dwellTicks(CallType.CAR));
         t = runUntilClosing(door, t);
         door.obstruct(++t);
-        assertFalse(door.isNudging(), "the count starts over after the door closed");
+        assertFalse(door.isForcedClosing(), "the count starts over after the door closed");
     }
 
     @Test
-    void aSafetyShoeDuringNudgingReopensAndClosesAgainRightAway() {
+    void aSafetyShoeDuringForcedClosingReopensAndClosesAgainRightAway() {
         DoorController door = new DoorController(TIMING);
         door.open(0, TIMING.dwellTicks(CallType.CAR));
         long t = 0;
-        for (int i = 0; i < DoorController.NUDGE_REVERSALS; i++) {
+        for (int i = 0; i < DoorController.FORCED_CLOSE_REVERSALS; i++) {
             t = runUntilClosing(door, t);
             door.obstruct(++t);
         }
         t = runUntilClosing(door, t);
         door.obstruct(++t);
         assertEquals(DoorState.OPENING, door.state());
-        assertTrue(door.isNudging());
+        assertTrue(door.isForcedClosing());
         long opened = t;
         while (door.state() != DoorState.OPEN) {
             door.tick(++t);
@@ -342,7 +342,7 @@ class DoorControllerTest {
     }
 
     @Test
-    void sixtySecondsOpenStartNudgingEvenWhileHeld() {
+    void sixtySecondsOpenStartForcedClosingEvenWhileHeld() {
         DoorController door = new DoorController(TIMING);
         door.setCloseAnnouncementTicks(30);
         door.open(0, TIMING.dwellTicks(CallType.CAR));
@@ -353,25 +353,25 @@ class DoorControllerTest {
             door.hold(t);
             event = door.tick(t);
         }
-        assertEquals(DoorController.NUDGE_OPEN_TICKS, t);
-        assertEquals(DoorController.Event.NUDGING_STARTED, event);
-        assertTrue(door.isNudging());
+        assertEquals(DoorController.FORCED_CLOSE_OPEN_TICKS, t);
+        assertEquals(DoorController.Event.FORCED_CLOSE_STARTED, event);
+        assertTrue(door.isForcedClosing());
         door.hold(t + 1);
         assertEquals(DoorState.CLOSING, door.state(), "the beam no longer holds the door");
     }
 
     @Test
-    void nudgingIsRestoredOnTheClient() {
+    void forcedClosingIsRestoredOnTheClient() {
         DoorController server = new DoorController(TIMING);
         server.open(0, 40);
         long t = 0;
-        while (server.state() != DoorState.CLOSING || !server.isNudging()) {
+        while (server.state() != DoorState.CLOSING || !server.isForcedClosing()) {
             t++;
             server.hold(t);
             server.tick(t);
         }
         DoorController client = new DoorController(TIMING);
-        client.restore(server.state(), server.startTick(), server.startFraction(), server.dwellTicks(), server.isSlowClose(), server.isNudging());
+        client.restore(server.state(), server.startTick(), server.startFraction(), server.dwellTicks(), server.isSlowClose(), server.isForcedClosing());
         assertEquals(server.fractionAt(t + 70), client.fractionAt(t + 70), EPS);
         assertTrue(client.fractionAt(t + 70) > 0, "still closing slowly");
     }
