@@ -124,6 +124,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private boolean pendingWheelchair;
     /** 応答灯の点いた行先ボタン（ボタンの番号）を最後に押したゲーム時刻。2度押しキャンセルの判定に使う。サーバーだけで使う。 */
     private final Map<Integer, Long> litPressTicks = new HashMap<>();
+    /** ランディングオープン（着床の直前に戸を開き始める）か。サーバーだけで使う。 */
+    private boolean landingOpen;
+    /** ランディングオープンで、着床する前にこの走行の行先に着いた扱いにしたか（戸が開き始めている）。 */
+    private boolean landingOpened;
     /** つないでいる受電盤の位置。つないでいなければ null で、常に受電している扱い。サーバーだけで使う。 */
     @Nullable
     private BlockPos powerReceiverPos;
@@ -443,6 +447,34 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         return trip != null;
     }
 
+    /** ランディングオープンにするか。サーバーで呼ぶ。 */
+    public void setLandingOpen(boolean landingOpen) {
+        this.landingOpen = landingOpen;
+    }
+
+    public boolean landingOpen() {
+        return landingOpen;
+    }
+
+    /**
+     * 呼びや開ボタンについて、止まっているとみなすか。着床しているときと、ランディングオープンで行先に着いた扱いになった
+     * （戸が開き始めた）あとの着床までのあいだ。
+     */
+    private boolean isStoppedForCalls() {
+        return trip == null || landingOpened;
+    }
+
+    /**
+     * 乗場の扉が、床面のY座標 y の階でかごの戸と一緒に動くか。着床しているとき（ランディングオープンでは、
+     * 着床の直前に戸が開き始めたときから）その階の扉だけが動く。クライアントでも、同期した走行情報と戸の状態から決まる。
+     */
+    public boolean isAtLanding(double y) {
+        if (trip == null) {
+            return getY() == y;
+        }
+        return trip.to() == y && door.state() != DoorState.CLOSED;
+    }
+
     public DoorState doorState() {
         return door.state();
     }
@@ -492,7 +524,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (level().isClientSide || control == null || powerFailure) {
             return PressResult.INVALID;
         }
-        PressResult result = control.pressCar(floor, currentFloor, trip == null);
+        PressResult result = control.pressCar(floor, currentFloor, isStoppedForCalls());
         if (result == PressResult.REGISTERED || result == PressResult.ALREADY_REGISTERED) {
             entranceCalls.pressCar(floor, side);
             if (wheelchair) {
@@ -533,8 +565,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             }
         }
         wheelchairCalls.cancelCar(floor);
-        control.cancelCar(floor, trip == null);
-        if (trip != null && floor == targetFloor) {
+        control.cancelCar(floor, isStoppedForCalls());
+        if (!isStoppedForCalls() && floor == targetFloor) {
             replanAfterCancel(level().getGameTime());
         }
         syncCalls();
@@ -600,7 +632,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (level().isClientSide || control == null || powerFailure) {
             return PressResult.INVALID;
         }
-        PressResult result = control.pressHall(floor, direction, currentFloor, trip == null);
+        PressResult result = control.pressHall(floor, direction, currentFloor, isStoppedForCalls());
         if (result == PressResult.REGISTERED || result == PressResult.ALREADY_REGISTERED) {
             entranceCalls.press(floor, direction, side);
             if (wheelchair) {
@@ -683,7 +715,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 側 side の操作盤の開ボタン。その側の扉を開く（反対側が開いていれば、閉まってから）。走行中は効かない。 */
     public boolean openDoor(Entrance side) {
-        if (level().isClientSide || trip != null) {
+        if (level().isClientSide || !isStoppedForCalls()) {
             return false;
         }
         requestOpen(side, CallType.CAR, false);
@@ -692,7 +724,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 車椅子用操作盤の開ボタン。今（または最後に）開いた側の扉を開き、開放待機を延ばしてゆっくり閉じる。走行中は効かない。 */
     public boolean openDoorForWheelchair() {
-        if (level().isClientSide || trip != null) {
+        if (level().isClientSide || !isStoppedForCalls()) {
             return false;
         }
         requestOpen(openSides.isEmpty() ? Entrance.FRONT : openSides.iterator().next(), CallType.CAR, true);
@@ -710,7 +742,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      * @param wheelchair 車椅子用のボタンで開いたか（開放待機を延ばし、ゆっくり閉じる）
      */
     private boolean openDoor(CallType callType, boolean wheelchair) {
-        if (level().isClientSide || trip != null) {
+        if (level().isClientSide || !isStoppedForCalls()) {
             return false;
         }
         Set<Entrance> available = entrancesAt(currentFloor);
@@ -859,7 +891,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (trip != null && trip.isArrivedAt(now - 1)) {
             setTrip(null);
             currentFloor = targetFloor;
-            if (powerFailure) {
+            if (landingOpened) {
+                // ランディングオープンで、着いた扱いはもう済んでいる
+                landingOpened = false;
+            } else if (powerFailure) {
                 // 停電時自動着床：最寄りの階に着いたら、乗客が降りるまで戸を開け、そのあと閉めて休止する
                 openForOutage(now);
             } else if (skipDoorsOnArrival && (control == null || !control.hasAnyCallAt(currentFloor))) {
@@ -872,9 +907,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                 serveCurrentFloor(now);
             }
             skipDoorsOnArrival = false;
-        } else if (trip != null) {
+        } else if (trip != null && !landingOpened) {
             stopOnTheWayIfPossible(now);
             announceArrivalIfCertain(now);
+            openBeforeLandingIfEnabled(now);
         }
 
         // 行先方向を流している間に自動で閉めるときは、戸閉アナウンスを流さず（待たず）に閉める
@@ -960,6 +996,22 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     /**
+     * ランディングオープン：着床の {@value OperationTiming#LANDING_OPEN_TICKS} tick前になったら、その時点で行先に着いた扱いにする
+     * （呼びの記録を消し、チャイムを鳴らし、戸を開き始める）。かごは運転曲線どおりに着床まで動き続ける。
+     * 停電時自動着床と、取り消した行先に戸を開けずに止まるときは使わない。戸を開き始める時刻は到着tickから決まるので、同期は増やさない。
+     */
+    private void openBeforeLandingIfEnabled(long now) {
+        if (!landingOpen || trip == null || powerFailure || now < trip.arrivalTick() - OperationTiming.LANDING_OPEN_TICKS
+                || (skipDoorsOnArrival && (control == null || !control.hasAnyCallAt(targetFloor)))) {
+            return;
+        }
+        landingOpened = true;
+        currentFloor = targetFloor;
+        skipDoorsOnArrival = false;
+        serveCurrentFloor(now);
+    }
+
+    /**
      * 走行中、行先より手前に止まるべき階があれば、近い順に、減速が間に合う最初の階へ行先を変える。
      * 間に合わない階は通過し、その呼びは残して後で応える。
      */
@@ -1040,7 +1092,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      * 戸閉アナウンスを流して閉め始めるのを待っている間は、そちらを途中で切らないよう流さない。
      */
     private void announceDirectionIfChanged() {
-        if (!announcements.arrival() || control == null || trip != null || directionAnnouncementPending
+        if (!announcements.arrival() || control == null || !isStoppedForCalls() || directionAnnouncementPending
                 || door.state() != DoorState.OPEN || door.isWaitingToClose()) {
             return;
         }
@@ -1164,13 +1216,15 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (powerFailure) {
             return Set.of();
         }
-        if (trip != null) {
+        if (trip != null && !isAtLanding(trip.to())) {
             if (floor != announcedFloor || !lanternSides(floor).contains(side)) {
                 return Set.of();
             }
             return HallLantern.litSections(floor, floors.length, announcedDirection, true);
         }
-        boolean doorOpenHere = floorIndexAt(getY()) == floor && door.state() != DoorState.CLOSED && openSides.contains(side);
+        // 着床している（ランディングオープンで戸が開き始めた）階
+        double here = trip != null ? trip.to() : getY();
+        boolean doorOpenHere = floorIndexAt(here) == floor && door.state() != DoorState.CLOSED && openSides.contains(side);
         return HallLantern.litSections(floor, floors.length, control != null ? control.direction() : TravelDirection.NONE, doorOpenHere);
     }
 
@@ -1284,7 +1338,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         directionAnnouncementPending = false;
         arrivalAnnounced = false;
         announcedFloor = -1;
-        if (trip != null) {
+        if (trip != null && !landingOpened) {
             CancelReplan.Outcome outcome = CancelReplan.nearestStop(trip, now, floors, currentFloor, targetFloor);
             if (outcome.trip() != trip) {
                 setTrip(outcome.trip());
@@ -1644,6 +1698,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.putString("PendingHallDirection", pendingHallDirection.name());
         tag.putBoolean("PendingWheelchair", pendingWheelchair);
         tag.putBoolean("SkipDoors", skipDoorsOnArrival);
+        tag.putBoolean("LandingOpen", landingOpen);
+        tag.putBoolean("LandingOpened", landingOpened);
         if (trip != null) {
             tag.put("Trip", writeTrip(trip));
         }
@@ -1682,6 +1738,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         pendingHallDirection = parseEnum(TravelDirection.class, tag.getString("PendingHallDirection"), TravelDirection.NONE);
         pendingWheelchair = tag.getBoolean("PendingWheelchair");
         skipDoorsOnArrival = tag.getBoolean("SkipDoors");
+        landingOpen = tag.getBoolean("LandingOpen");
+        landingOpened = tag.getBoolean("LandingOpened");
         setup(new CarSpec(model, door), facing, tag.getIntArray("Floors"), speed);
         setFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")));
         setLabels(readLabels(tag));

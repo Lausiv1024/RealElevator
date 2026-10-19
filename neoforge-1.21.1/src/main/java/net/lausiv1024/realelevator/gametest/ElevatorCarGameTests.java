@@ -909,6 +909,46 @@ public class ElevatorCarGameTests {
         });
     }
 
+    /**
+     * ランディングオープン：着床の0.75秒前に戸を開き始め、その時点で行先の呼びが消え、乗場の扉も一緒に開き始める。
+     * かごは運転曲線どおりに着床する。
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = 400)
+    public static void landingOpenStartsOpeningBeforeTheCarLands(GameTestHelper helper) {
+        Elevator elevator = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE);
+        ElevatorCarEntity car = elevator.car();
+        LandingDoorEntity upper = elevator.landingDoors().get(1);
+        car.setLandingOpen(true);
+        car.pressCarCall(1);
+        int top = car.floors()[1];
+        AtomicLong openingAt = new AtomicLong(-1);
+        AtomicLong landedAt = new AtomicLong(-1);
+        AtomicBoolean landingDoorMovedEarly = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            long now = helper.getLevel().getGameTime();
+            if (openingAt.get() < 0 && car.doorState() == DoorState.OPENING) {
+                openingAt.set(now);
+                helper.assertTrue(car.isMoving(), "the doors should start opening before the car lands");
+                helper.assertTrue(!car.isCarCallLit(1), "the call should be answered when the doors start opening");
+                helper.assertTrue(Math.abs(car.yAt(now) - top) < 3 / 16.0, "the car should be within about 2px: " + (top - car.yAt(now)));
+            }
+            if (car.isMoving() && upper.fractionAt(now) > 0) {
+                landingDoorMovedEarly.set(true);
+            }
+            if (openingAt.get() >= 0 && landedAt.get() < 0 && !car.isMoving()) {
+                landedAt.set(now);
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(landedAt.get() >= 0, "not landed yet");
+            long early = landedAt.get() - openingAt.get();
+            helper.assertTrue(early >= OperationTiming.LANDING_OPEN_TICKS - 1 && early <= OperationTiming.LANDING_OPEN_TICKS + 2,
+                    "opened " + early + " ticks before landing");
+            helper.assertTrue(landingDoorMovedEarly.get(), "the landing doors should open together");
+            helper.assertTrue(car.getY() == top, "the car should land exactly");
+        });
+    }
+
     /** 受電盤を置いてかごにつなぎ、隣にレッドストーンブロックを置いて受電させる。レッドストーンブロックの位置を返す。 */
     private static BlockPos powerFromReceiver(GameTestHelper helper, ElevatorCarEntity car) {
         BlockPos receiverPos = new BlockPos(0, 1, 0);

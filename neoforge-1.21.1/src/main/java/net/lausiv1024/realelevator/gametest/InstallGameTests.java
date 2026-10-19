@@ -192,10 +192,13 @@ public class InstallGameTests {
         labels.putString(Integer.toString(car.floors()[1]), "R");
         renewal.put("Labels", labels);
         renewal.putString("Speed", SpeedSpec.NORMAL_HIGH.name());
+        helper.assertTrue(!car.landingOpen(), "landing open is off by default");
+        renewal.putBoolean("LandingOpen", true);
         controller.applyRenewal(renewal);
         helper.assertTrue(car.fixtures().panelSides() == FixtureConfig.PanelSides.BOTH, "the fixtures should change");
         helper.assertTrue(car.floorLabel(1).equals("R"), "the label should change: " + car.floorLabel(1));
         helper.assertTrue(car.speed().spec() == SpeedSpec.NORMAL_LOW, "the speed should not change");
+        helper.assertTrue(car.landingOpen() && controller.renewalTag().getBoolean("LandingOpen"), "landing open should be turned on");
         helper.succeed();
     }
 

@@ -47,6 +47,7 @@ final class SettingsForm {
 
     private FixtureConfig fixtures;
     private AnnouncementConfig announcements;
+    private boolean landingOpen;
     private int[] floors;
     /** 停止階のY座標ごとの階名。入力欄の内容で更新する。 */
     private final Map<Integer, String> labels = new HashMap<>();
@@ -62,6 +63,7 @@ final class SettingsForm {
     SettingsForm(CompoundTag settings) {
         this.fixtures = ConfigTags.readFixtures(settings.getCompound("Fixtures"));
         this.announcements = ConfigTags.readAnnouncements(settings.getCompound("Announcements"));
+        this.landingOpen = settings.getBoolean("LandingOpen");
         setFloors(settings.getIntArray("Floors"));
         CompoundTag labelTag = settings.getCompound("Labels");
         CompoundTag entranceTag = settings.getCompound("Entrances");
@@ -110,6 +112,7 @@ final class SettingsForm {
         widgets.add(onOff("arrival_announcement", announcements.arrival(), v -> announcements = announcements.withArrival(v), send));
         widgets.add(onOff("close_announcement", announcements.doorClose(), v -> announcements = announcements.withDoorClose(v), send));
         widgets.add(onOff("chime", announcements.chime(), v -> announcements = announcements.withChime(v), send));
+        widgets.add(onOff("landing_open", landingOpen, v -> landingOpen = v, send));
         return widgets;
     }
 
@@ -214,6 +217,7 @@ final class SettingsForm {
     void writeTo(CompoundTag tag) {
         tag.put("Fixtures", ConfigTags.writeFixtures(fixtures));
         tag.put("Announcements", ConfigTags.writeAnnouncements(announcements));
+        tag.putBoolean("LandingOpen", landingOpen);
         CompoundTag labelTag = new CompoundTag();
         for (int floorY : floors) {
             labelTag.putString(Integer.toString(floorY), labels.getOrDefault(floorY, ""));

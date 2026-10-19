@@ -87,6 +87,7 @@ public class ControllerBlockEntity extends BlockEntity {
         if (car != null) {
             car.setFixtures(plan.fixtures());
             car.setAnnouncements(plan.announcements());
+            car.setLandingOpen(plan.landingOpen());
             car.setLabels(plan.labelArray());
         }
         setChanged();

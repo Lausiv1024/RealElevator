@@ -56,6 +56,7 @@
   "gui.realelevator.hall_lantern.over_door": "扉の上",
   "gui.realelevator.hall_lantern.beside_door": "扉の横",
   "gui.realelevator.panel.chime": "到着チャイム",
+  "gui.realelevator.panel.landing_open": "ランディングオープン",
   "gui.realelevator.hall_lantern.none": "なし",
   "gui.realelevator.panel.no_over_door": "停止階の間隔が5ブロック未満なので、乗場の表示器とランタンは扉の上に付けられません（上の階の床で隠れるため）",
   "gui.realelevator.panel.acceleration": "加速度: %s ブロック/s²",

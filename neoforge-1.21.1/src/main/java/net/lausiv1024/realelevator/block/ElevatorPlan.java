@@ -51,6 +51,8 @@ public final class ElevatorPlan {
     private final Map<Integer, FloorEntrances> entrances = new HashMap<>();
     private FixtureConfig fixtures = FixtureConfig.DEFAULT;
     private AnnouncementConfig announcements = AnnouncementConfig.DEFAULT;
+    /** ランディングオープン（着床の直前に戸を開き始める）か。 */
+    private boolean landingOpen;
 
     /**
      * @param origin 設置用ブロックの場所（最下階の乗場の壁）
@@ -139,6 +141,10 @@ public final class ElevatorPlan {
         return announcements;
     }
 
+    public boolean landingOpen() {
+        return landingOpen;
+    }
+
     /** 乗場の器具を出入口の上に付けられるか（停止階の間隔が5ブロック以上か）。 */
     public boolean allowsOverDoorHallFixtures() {
         return ShaftLayout.allowsOverDoorHallFixtures(floorYs());
@@ -195,6 +201,7 @@ public final class ElevatorPlan {
     public void applyRenewal(CompoundTag tag) {
         fixtures = ShaftLayout.fitFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")), floorYs());
         announcements = ConfigTags.readAnnouncements(tag.getCompound("Announcements"));
+        landingOpen = tag.getBoolean("LandingOpen");
         CompoundTag labelTag = tag.getCompound("Labels");
         labels.clear();
         for (int floorY : floors) {
@@ -221,6 +228,7 @@ public final class ElevatorPlan {
         tag.put("Entrances", entranceTag);
         tag.put("Fixtures", ConfigTags.writeFixtures(fixtures));
         tag.put("Announcements", ConfigTags.writeAnnouncements(announcements));
+        tag.putBoolean("LandingOpen", landingOpen);
         CompoundTag labelTag = new CompoundTag();
         labels.forEach((y, label) -> labelTag.putString(Integer.toString(y), label));
         tag.put("Labels", labelTag);
@@ -314,6 +322,7 @@ public final class ElevatorPlan {
         plan.through = tag.getBoolean("Through");
         plan.fixtures = ConfigTags.readFixtures(tag.getCompound("Fixtures"));
         plan.announcements = ConfigTags.readAnnouncements(tag.getCompound("Announcements"));
+        plan.landingOpen = tag.getBoolean("LandingOpen");
         plan.readEntrances(tag.getCompound("Entrances"));
         CompoundTag labelTag = tag.getCompound("Labels");
         for (String key : labelTag.getAllKeys()) {

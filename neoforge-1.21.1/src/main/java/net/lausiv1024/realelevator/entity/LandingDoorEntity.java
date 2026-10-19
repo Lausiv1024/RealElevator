@@ -122,10 +122,10 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         return cachedCar;
     }
 
-    /** かごがこの階に着床しているかどうか。 */
+    /** かごがこの階に着床しているかどうか（ランディングオープンでは、着床の直前に戸が開き始めたときから）。 */
     public boolean isCarHere() {
         ElevatorCarEntity car = car();
-        return car != null && !car.isMoving() && car.getY() == getY();
+        return car != null && car.isAtLanding(getY());
     }
 
     /** ゲーム時刻 tick での開き具合。かごがこの階にいなければ全閉。 */

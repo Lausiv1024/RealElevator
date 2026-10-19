@@ -244,6 +244,7 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
         car.setHoistway(plan.pitMode(), plan.counterweight());
         car.setFixtures(plan.fixtures());
         car.setAnnouncements(plan.announcements());
+        car.setLandingOpen(plan.landingOpen());
         car.setLabels(plan.labelArray());
         car.setController(controllerPos);
         if (plan.isThrough()) {
