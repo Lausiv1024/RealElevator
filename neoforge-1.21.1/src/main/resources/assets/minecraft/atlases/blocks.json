@@ -1,0 +1,12 @@
+{
+  "sources": [
+    {
+      "type": "single",
+      "resource": "realelevator:block/wired_glass"
+    },
+    {
+      "type": "single",
+      "resource": "realelevator:block/clear_glass"
+    }
+  ]
+}

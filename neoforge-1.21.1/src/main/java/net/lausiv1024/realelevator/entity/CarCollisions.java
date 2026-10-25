@@ -34,8 +34,8 @@ public final class CarCollisions {
         }
 
         AABB search = area.inflate(SEARCH_MARGIN);
-        // かごとこのエンティティのどちらが先にtickしても同じ位置になるよう、ゲーム時刻から求める
-        long now = entity.level().getGameTime();
+        // かごとこのエンティティのどちらが先にtickしても同じ位置になるよう、時刻から求める
+        double now = ElevatorClock.now(entity.level());
         List<VoxelShape> result = null;
         for (ElevatorCarEntity car : cars) {
             if (car.isRemoved()) {

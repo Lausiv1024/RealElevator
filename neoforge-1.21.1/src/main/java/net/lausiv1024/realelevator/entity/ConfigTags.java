@@ -45,6 +45,7 @@ public final class ConfigTags {
         }
         tag.putString("Ceiling", interior.ceiling().name());
         tag.putString("Handrail", interior.handrail().name());
+        tag.putString("SecurityWindow", interior.securityWindow().name());
         InteriorConfig.Landing landing = interior.landing();
         tag.putString("LandingFrame", landing.frame().name());
         tag.putString("LandingPanel", landing.panel().name());
@@ -58,6 +59,7 @@ public final class ConfigTags {
         InteriorConfig interior = new InteriorConfig(defaults.wall(), defaults.front(), defaults.door(), defaults.floor(), defaults.baseboard(),
                 parseEnum(InteriorConfig.CeilingType.class, tag.getString("Ceiling"), defaults.ceiling()),
                 parseEnum(InteriorConfig.HandrailPlacement.class, tag.getString("Handrail"), defaults.handrail()),
+                parseEnum(InteriorConfig.SecurityWindow.class, tag.getString("SecurityWindow"), defaults.securityWindow()),
                 new InteriorConfig.Landing(
                         parseEnum(InteriorConfig.FrameStyle.class, tag.getString("LandingFrame"), defaults.landing().frame()),
                         parseEnum(InteriorConfig.PanelStyle.class, tag.getString("LandingPanel"), defaults.landing().panel()),

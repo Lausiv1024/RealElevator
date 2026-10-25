@@ -1,5 +1,7 @@
 package net.lausiv1024.realelevator.client;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -19,6 +21,7 @@ import net.lausiv1024.realelevator.entity.LandingDoorEntity;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.TextureAtlas;
@@ -56,8 +59,9 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
 
         TextureAtlasSprite doorSprite = MaterialSprites.side(interior.door());
         double fraction = door.renderFraction(partialTick);
+        List<Box> glass = new ArrayList<>();
         for (Box panel : CarShapes.doorPanels(door.spec(), door.facing(), DoorGeometry.Side.LANDING, fraction, door.entrance())) {
-            BoxRenderer.renderBox(pose, consumer, panel, doorSprite, light);
+            BoxRenderer.renderDoorPanel(pose, consumer, panel, doorSprite, light, interior.securityWindow(), glass);
         }
         InteriorConfig.Landing landing = interior.landing();
         BoxRenderer.renderLanding(pose, consumer, layout.parts(), turns, light, MaterialSprites.side(landing.frameMaterial()),
@@ -81,6 +85,11 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
                 ? door.litLanternSections() : Set.of();
         boolean terminal = car != null && door.floorIndex() >= 0 && car.isTerminalFloor(door.floorIndex());
         BoxRenderer.renderLantern(pose, consumer, layout.lantern(terminal), lit, turns, light, rgb);
+        // 防犯窓のガラスは半透明なので、最後に描く
+        if (!glass.isEmpty()) {
+            BoxRenderer.renderGlass(pose, bufferSource.getBuffer(Sheets.translucentCullBlockSheet()), glass,
+                    BoxRenderer.WIRED_GLASS, light);
+        }
         super.render(door, entityYaw, partialTick, poseStack, bufferSource, packedLight);
     }
 

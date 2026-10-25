@@ -150,7 +150,7 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     }
 
     /** 当たり判定の箱（ワールド座標）。戸と三方枠。 */
-    public List<AABB> collisionBoxesAt(long tick) {
+    public List<AABB> collisionBoxesAt(double tick) {
         List<AABB> boxes = new ArrayList<>();
         for (Box box : CarShapes.doorPanels(spec(), facing(), DoorGeometry.Side.LANDING, fractionAt(tick), entrance())) {
             boxes.add(CarShapes.toAabb(box, getX(), getY(), getZ()));

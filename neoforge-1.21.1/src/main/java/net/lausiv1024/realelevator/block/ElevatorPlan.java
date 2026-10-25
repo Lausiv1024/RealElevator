@@ -49,6 +49,8 @@ public final class ElevatorPlan {
     private CounterweightPosition counterweight = CounterweightPosition.REAR;
     /** 二方向出入口（前後）か。 */
     private boolean through;
+    /** 展望仕様（奥壁が腰壁とガラス）。二方向出入口（前後）とは組み合わせない。 */
+    private boolean observation;
     /** 二方向出入口のときの、停止階のY座標ごとの出入口。書かれていない階は前だけ。 */
     private final Map<Integer, FloorEntrances> entrances = new HashMap<>();
     private FixtureConfig fixtures = FixtureConfig.DEFAULT;
@@ -112,9 +114,14 @@ public final class ElevatorPlan {
         return pitMode;
     }
 
-    /** 釣合い重りの位置（後ろ落とし／横落とし）。二方向出入口では横落としに決まる。 */
+    /** 釣合い重りの位置（後ろ落とし／横落とし）。二方向出入口と展望仕様では横落としに決まる。 */
     public CounterweightPosition counterweight() {
-        return through ? CounterweightPosition.SIDE : counterweight;
+        return through || observation ? CounterweightPosition.SIDE : counterweight;
+    }
+
+    /** 展望仕様か。 */
+    public boolean isObservation() {
+        return observation && !through;
     }
 
     /** 二方向出入口（前後）か。 */
@@ -201,6 +208,7 @@ public final class ElevatorPlan {
         pitMode = ConfigTags.parseEnum(PitMode.class, tag.getString("Pit"), pitMode);
         counterweight = ConfigTags.parseEnum(CounterweightPosition.class, tag.getString("Counterweight"), counterweight);
         through = tag.getBoolean("Through");
+        observation = tag.getBoolean("Observation") && !through;
         readEntrances(tag.getCompound("Entrances"));
     }
 
@@ -231,6 +239,7 @@ public final class ElevatorPlan {
         tag.putString("Pit", pitMode.name());
         tag.putString("Counterweight", counterweight.name());
         tag.putBoolean("Through", through);
+        tag.putBoolean("Observation", observation);
         CompoundTag entranceTag = new CompoundTag();
         entrances.forEach((y, value) -> entranceTag.putString(Integer.toString(y), value.name()));
         tag.put("Entrances", entranceTag);
@@ -329,6 +338,7 @@ public final class ElevatorPlan {
         plan.pitMode = ConfigTags.parseEnum(PitMode.class, tag.getString("Pit"), PitMode.REAL);
         plan.counterweight = ConfigTags.parseEnum(CounterweightPosition.class, tag.getString("Counterweight"), CounterweightPosition.REAR);
         plan.through = tag.getBoolean("Through");
+        plan.observation = tag.getBoolean("Observation");
         plan.fixtures = ConfigTags.readFixtures(tag.getCompound("Fixtures"));
         plan.announcements = ConfigTags.readAnnouncements(tag.getCompound("Announcements"));
         plan.landingOpen = tag.getBoolean("LandingOpen");

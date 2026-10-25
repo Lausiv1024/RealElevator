@@ -17,6 +17,8 @@ import net.lausiv1024.realelevator.core.car.CarSpec;
  * <li>天井：ダウンライト（四角い照明4つ）、間接照明風（まわりを一段下げた縁取りと中央の光る板）、全面照明（全体が光る板）。
  * 全面照明のほかは、板の継ぎ目（奥行きを3つに分ける細い線）を描く。</li>
  * <li>手すり：車椅子用操作盤のすぐ下の高さに、暗い色の四角い棒を金具3つで支える。</li>
+ * <li>展望仕様：奥壁のガラスを、壁の継ぎ目と同じ位置の縦のステンレスの枠（1px）で分ける。継ぎ目は腰壁の分だけ。
+ * 手すりがあれば、奥壁（ガラスの前）にも付ける。</li>
  * </ul>
  */
 public final class InteriorGeometry {
@@ -47,7 +49,9 @@ public final class InteriorGeometry {
         /** 手すりの棒（暗い色）。 */
         HANDRAIL,
         /** 手すりの金具（ステンレス）。 */
-        HANDRAIL_BRACKET
+        HANDRAIL_BRACKET,
+        /** 展望仕様の奥壁のガラスを分ける縦の枠（ステンレス）。 */
+        MULLION
     }
 
     public record Part(Type type, Box box) {
@@ -58,6 +62,12 @@ public final class InteriorGeometry {
 
     /** 内装の細部。through なら二方向出入口（前後）で、奥壁はない。 */
     public static List<Part> parts(CarSpec spec, boolean through, InteriorConfig config) {
+        return parts(spec, through, false, config);
+    }
+
+    /** 内装の細部。observation なら展望仕様（奥壁が腰壁とガラス。through とは組み合わせない）。 */
+    public static List<Part> parts(CarSpec spec, boolean through, boolean observation, InteriorConfig config) {
+        boolean glass = observation && !through;
         Box in = CarGeometry.interior(spec);
         List<Part> parts = new ArrayList<>();
         // 側壁（−X と +X）
@@ -71,8 +81,14 @@ public final class InteriorGeometry {
         }
         if (!through) {
             double face = in.minZ();
+            double waist = CarGeometry.WAIST_PX * PX;
             for (double x : divisions(in.minX(), in.maxX())) {
-                parts.add(new Part(Type.SEAM, box(face, face + LIFT, BASEBOARD_PX * PX, in.maxY(), x - LINE / 2, x + LINE / 2, false)));
+                parts.add(new Part(Type.SEAM, box(face, face + LIFT, BASEBOARD_PX * PX, glass ? waist : in.maxY(), x - LINE / 2, x + LINE / 2,
+                        false)));
+                if (glass) {
+                    parts.add(new Part(Type.MULLION, box(face - CarGeometry.WALL_PX * PX - LIFT, face + LIFT, waist, in.maxY(),
+                            x - PX / 2, x + PX / 2, false)));
+                }
             }
             parts.add(new Part(Type.BASEBOARD, box(face, face + LIFT * 2, 0, BASEBOARD_PX * PX, in.minX(), in.maxX(), false)));
         }
@@ -80,7 +96,7 @@ public final class InteriorGeometry {
         if (config.handrail() != InteriorConfig.HandrailPlacement.NONE) {
             addHandrail(parts, in.minX(), 1, in.minZ(), in.maxZ(), true);
             addHandrail(parts, in.maxX(), -1, in.minZ(), in.maxZ(), true);
-            if (config.handrail() == InteriorConfig.HandrailPlacement.SIDES_AND_BACK && !through) {
+            if ((config.handrail() == InteriorConfig.HandrailPlacement.SIDES_AND_BACK || glass) && !through) {
                 addHandrail(parts, in.minZ(), 1, in.minX(), in.maxX(), false);
             }
         }

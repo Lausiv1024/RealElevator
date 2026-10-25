@@ -41,7 +41,7 @@ public final class CarTransport {
             return;
         }
 
-        long now = level.getGameTime();
+        double now = ElevatorClock.now(level);
         for (ElevatorCarEntity car : cars) {
             if (car.isRemoved()) {
                 continue;

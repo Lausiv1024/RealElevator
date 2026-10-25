@@ -10,18 +10,19 @@ package net.lausiv1024.realelevator.core.design;
  * @param floor     床
  * @param baseboard 幅木（側壁と奥壁の下端の帯）
  * @param ceiling   天井の種類
- * @param handrail  手すりの位置
- * @param landing   乗場の意匠
+ * @param handrail       手すりの位置
+ * @param securityWindow かごと乗場の戸の防犯窓
+ * @param landing        乗場の意匠
  */
 public record InteriorConfig(String wall, String front, String door, String floor, String baseboard, CeilingType ceiling,
-                             HandrailPlacement handrail, Landing landing) {
+                             HandrailPlacement handrail, SecurityWindow securityWindow, Landing landing) {
     /** 乗場の壁の素材を、まわりの壁に合わせる（カメレオン）ときの値。 */
     public static final String AUTO = "";
 
     /** 標準のプリセットと同じ内装。 */
     public static final InteriorConfig DEFAULT = new InteriorConfig("realelevator:woodgrain_medium", "realelevator:stainless_hairline",
             "realelevator:bronze_hairline", "realelevator:vinyl_gray", "realelevator:stainless_hairline", CeilingType.DOWNLIGHT,
-            HandrailPlacement.SIDES, Landing.DEFAULT);
+            HandrailPlacement.SIDES, SecurityWindow.NONE, Landing.DEFAULT);
 
     /**
      * 乗場の意匠。
@@ -111,6 +112,37 @@ public record InteriorConfig(String wall, String front, String door, String floo
         FULL
     }
 
+    /**
+     * 戸板の防犯窓（縦長、角は四角、網入りガラス）。大きさは戸板の幅と戸の高さに対する割合で、戸の上から約1/6の位置から下へ伸ばす。
+     */
+    public enum SecurityWindow {
+        NONE(0, 0),
+        /** 細め（戸板の幅の約1/3）で、戸の高さの約1/3の長さ。 */
+        STANDARD(1.0 / 3, 1.0 / 3),
+        /** 広め（戸板の幅の約2/3）で、戸の高さの約3/5の長さ。 */
+        LARGE(2.0 / 3, 3.0 / 5),
+        /** 大型と同じ幅で、戸の高さの約4/5の長さ。 */
+        EXTRA_LARGE(2.0 / 3, 4.0 / 5);
+
+        private final double widthRatio;
+        private final double heightRatio;
+
+        SecurityWindow(double widthRatio, double heightRatio) {
+            this.widthRatio = widthRatio;
+            this.heightRatio = heightRatio;
+        }
+
+        /** 戸板の幅に対する窓の幅の割合。 */
+        public double widthRatio() {
+            return widthRatio;
+        }
+
+        /** 戸の高さに対する窓の高さの割合。 */
+        public double heightRatio() {
+            return heightRatio;
+        }
+    }
+
     public enum HandrailPlacement {
         NONE,
         /** 両側の側壁。 */
@@ -135,18 +167,22 @@ public record InteriorConfig(String wall, String front, String door, String floo
         Landing newLanding = new Landing(landing.frame(), landing.panel(), part == Part.LANDING_FRAME ? value : landing.frameMaterial(),
                 part == Part.LANDING_WALL ? value : landing.wallMaterial(), landing.lanternPlate());
         return new InteriorConfig(part == Part.WALL ? value : wall, part == Part.FRONT ? value : front, part == Part.DOOR ? value : door,
-                part == Part.FLOOR ? value : floor, part == Part.BASEBOARD ? value : baseboard, ceiling, handrail, newLanding);
+                part == Part.FLOOR ? value : floor, part == Part.BASEBOARD ? value : baseboard, ceiling, handrail, securityWindow, newLanding);
     }
 
     public InteriorConfig withCeiling(CeilingType value) {
-        return new InteriorConfig(wall, front, door, floor, baseboard, value, handrail, landing);
+        return new InteriorConfig(wall, front, door, floor, baseboard, value, handrail, securityWindow, landing);
     }
 
     public InteriorConfig withHandrail(HandrailPlacement value) {
-        return new InteriorConfig(wall, front, door, floor, baseboard, ceiling, value, landing);
+        return new InteriorConfig(wall, front, door, floor, baseboard, ceiling, value, securityWindow, landing);
     }
 
     public InteriorConfig withLanding(Landing value) {
-        return new InteriorConfig(wall, front, door, floor, baseboard, ceiling, handrail, value);
+        return new InteriorConfig(wall, front, door, floor, baseboard, ceiling, handrail, securityWindow, value);
+    }
+
+    public InteriorConfig withSecurityWindow(SecurityWindow value) {
+        return new InteriorConfig(wall, front, door, floor, baseboard, ceiling, handrail, value, landing);
     }
 }

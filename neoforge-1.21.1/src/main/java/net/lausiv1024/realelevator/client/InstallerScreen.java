@@ -60,6 +60,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
     private PitMode pitMode;
     private CounterweightPosition counterweight;
     private boolean through;
+    private boolean observation;
     private boolean preview;
     @Nullable
     private SettingsForm form;
@@ -98,6 +99,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
             pitMode = installer.pitMode();
             counterweight = installer.plan().counterweight();
             through = installer.plan().isThrough();
+            observation = installer.plan().isObservation();
             preview = installer.isPreviewing();
             hadStar = installer.hasNetherStar();
             form = new SettingsForm(installer.settingsTag());
@@ -172,19 +174,29 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
         settings.add(CycleButton.onOffBuilder(through)
                 .create(0, 0, SettingsForm.MAX_SETTING_WIDTH, 20, Component.translatable("gui.realelevator.panel.through"), (b, v) -> {
                     through = v;
+                    // 展望仕様とは組み合わせない
+                    observation &= !v;
                     send();
                     // 停止階の出入口のボタンと、釣合い重りの選べる値が変わる
                     rebuildWidgets();
                 }));
-        // 二方向出入口では横落としに決まる
+        settings.add(CycleButton.onOffBuilder(observation)
+                .create(0, 0, SettingsForm.MAX_SETTING_WIDTH, 20, Component.translatable("gui.realelevator.panel.observation"), (b, v) -> {
+                    observation = v;
+                    through &= !v;
+                    send();
+                    rebuildWidgets();
+                }));
+        // 二方向出入口と展望仕様では横落としに決まる
+        boolean sideOnly = through || observation;
         CycleButton<CounterweightPosition> counterweightButton = CycleButton.<CounterweightPosition>builder(c -> Component.translatable(
                         "gui.realelevator.counterweight." + c.name().toLowerCase(Locale.ROOT)))
-                .withValues(CounterweightPosition.values()).withInitialValue(through ? CounterweightPosition.SIDE : counterweight)
+                .withValues(CounterweightPosition.values()).withInitialValue(sideOnly ? CounterweightPosition.SIDE : counterweight)
                 .create(0, 0, SettingsForm.MAX_SETTING_WIDTH, 20, Component.translatable("gui.realelevator.panel.counterweight"), (b, v) -> {
                     counterweight = v;
                     send();
                 });
-        counterweightButton.active = !through;
+        counterweightButton.active = !sideOnly;
         settings.add(counterweightButton);
         settings.addAll(form.fixtureWidgets(this::send, this::rebuildWidgets));
         form.setEditableEntrances(through);
@@ -282,6 +294,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
         tag.putString("Pit", pitMode.name());
         tag.putString("Counterweight", counterweight.name());
         tag.putBoolean("Through", through);
+        tag.putBoolean("Observation", observation);
         tag.putBoolean("Preview", preview);
         form.writeTo(tag);
         PacketDistributor.sendToServer(new PanelPayloads.Settings(menu.pos(), tag));

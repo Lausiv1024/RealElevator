@@ -251,6 +251,7 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
         if (plan.isThrough()) {
             car.setThrough(plan.entranceArray());
         }
+        car.setObservation(plan.isObservation());
         serverLevel.addFreshEntity(car);
         // 階ごとに、使う出入口の乗場の扉を出す（二方向出入口なら奥も）
         for (int floorY : floorYs()) {

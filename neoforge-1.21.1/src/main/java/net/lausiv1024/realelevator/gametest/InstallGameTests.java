@@ -8,6 +8,7 @@ import net.lausiv1024.realelevator.block.ControllerBlock;
 import net.lausiv1024.realelevator.block.ControllerBlockEntity;
 import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.block.InstallerBlockEntity;
+import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.registry.ModEntities;
@@ -381,6 +382,31 @@ public class InstallGameTests {
         helper.assertTrue(controllerPos.getX() == panelPos.getX() + layout.leftColumn(), "the controller should be in the left column");
         helper.assertTrue(car.pressCarCall(1) == PressResult.REGISTERED, "the call should be registered");
         helper.succeedWhen(() -> helper.assertTrue(!car.isMoving() && car.getY() == panelPos.getY() + RISE, "not arrived yet"));
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 100)
+    public static void observationCarHasAGlassBackWallAndASideCounterweight(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        // 展望仕様は二方向出入口とは組み合わせない
+        CompoundTag both = panel.settingsTag();
+        both.putBoolean("Through", true);
+        both.putBoolean("Observation", true);
+        panel.applySettings(both);
+        helper.assertTrue(!panel.plan().isObservation(), "a through car cannot be an observation car");
+        CompoundTag settings = panel.settingsTag();
+        settings.putBoolean("Through", false);
+        settings.putBoolean("Observation", true);
+        settings.putString("Counterweight", ShaftLayout.CounterweightPosition.REAR.name());
+        panel.applySettings(settings);
+        ElevatorPlan plan = panel.plan();
+        helper.assertTrue(plan.isObservation() && plan.counterweight() == ShaftLayout.CounterweightPosition.SIDE,
+                "observation cars use the side counterweight");
+        helper.assertTrue(panel.obstructions(helper.getLevel()).isEmpty(), "the shaft should be clear: " + panel.obstructions(helper.getLevel()));
+        panel.install();
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        helper.assertTrue(car.isObservation(), "the car should be an observation car");
+        helper.assertTrue(car.parts().stream().anyMatch(part -> part.type() == CarGeometry.PartType.GLASS), "the back wall should be glass");
+        helper.succeed();
     }
 
     @GameTest(template = TEMPLATE, timeoutTicks = 600)

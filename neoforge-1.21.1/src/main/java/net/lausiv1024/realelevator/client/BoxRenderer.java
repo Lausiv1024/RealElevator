@@ -10,9 +10,11 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
+import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.design.InteriorGeometry;
 import net.lausiv1024.realelevator.core.design.LandingLayout;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
+import net.lausiv1024.realelevator.core.door.DoorWindows;
 import net.lausiv1024.realelevator.core.display.HallLantern;
 import net.lausiv1024.realelevator.core.panel.ButtonGlyphs;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
@@ -117,8 +119,37 @@ final class BoxRenderer {
                 case CEILING_PANEL -> renderBox(pose, consumer, box, base, light, CEILING_COLOR);
                 case CEILING_GLOW -> renderBox(pose, consumer, box, base, LightTexture.FULL_BRIGHT, GLOW_COLOR);
                 case HANDRAIL -> renderBox(pose, consumer, box, base, light, HANDRAIL_COLOR);
-                case HANDRAIL_BRACKET -> renderBox(pose, consumer, box, base, light, BRACKET_COLOR);
+                case HANDRAIL_BRACKET, MULLION -> renderBox(pose, consumer, box, base, light, BRACKET_COLOR);
             }
+        }
+    }
+
+    /** 防犯窓の網入りガラスと、展望仕様のガラスのテクスチャ（半透明）。 */
+    static final ResourceLocation WIRED_GLASS = ResourceLocation.fromNamespaceAndPath("realelevator", "block/wired_glass");
+    static final ResourceLocation CLEAR_GLASS = ResourceLocation.fromNamespaceAndPath("realelevator", "block/clear_glass");
+
+    /**
+     * 戸板を描く。防犯窓があれば、窓のまわりの枠だけを描き、穴にはめるガラスの箱を glass に加える（あとで {@link #renderGlass} で描く）。
+     */
+    static void renderDoorPanel(PoseStack.Pose pose, VertexConsumer consumer, Box panel, TextureAtlasSprite sprite, int light,
+                                InteriorConfig.SecurityWindow window, List<Box> glass) {
+        DoorWindows.Pieces pieces = DoorWindows.split(panel, window);
+        for (Box piece : pieces.frame()) {
+            renderBox(pose, consumer, piece, sprite, light);
+        }
+        if (pieces.glass() != null) {
+            glass.add(pieces.glass());
+        }
+    }
+
+    /**
+     * 半透明のガラスを描く。consumer は {@code Sheets#translucentCullBlockSheet} のもの。この描画は不透明なもの（かご・戸・三方枠）を
+     * 描き終えてからまとめて描かれるので、ガラス越しにそれらが見える（ほかの半透明の描画では、先に描かれて奥のものを隠してしまう）。
+     */
+    static void renderGlass(PoseStack.Pose pose, VertexConsumer consumer, List<Box> boxes, ResourceLocation texture, int light) {
+        TextureAtlasSprite sprite = blockSprite(texture);
+        for (Box box : boxes) {
+            renderBox(pose, consumer, box, sprite, light);
         }
     }
 

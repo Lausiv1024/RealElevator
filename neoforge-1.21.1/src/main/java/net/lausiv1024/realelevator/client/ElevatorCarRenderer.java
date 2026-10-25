@@ -1,5 +1,8 @@
 package net.lausiv1024.realelevator.client;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
@@ -7,10 +10,10 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.Entrance;
-import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.design.InteriorGeometry;
 import net.lausiv1024.realelevator.core.design.LandingLayout;
+import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.CarPanelLayout;
@@ -21,6 +24,7 @@ import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.TextureAtlas;
@@ -55,22 +59,26 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
         TextureAtlasSprite wall = MaterialSprites.side(interior.wall());
         TextureAtlasSprite front = MaterialSprites.side(interior.front());
         TextureAtlasSprite floor = MaterialSprites.side(interior.floor());
+        // ガラスは半透明なので、ほかを描き終えてから描く
+        List<Box> clearGlass = new ArrayList<>();
+        List<Box> wiredGlass = new ArrayList<>();
         for (Part part : car.parts()) {
             switch (part.type()) {
                 case FLOOR -> BoxRenderer.renderBox(pose, consumer, part.box(), floor, light);
                 case WALL -> BoxRenderer.renderBox(pose, consumer, part.box(), wall, light);
                 case FRONT_WALL -> BoxRenderer.renderBox(pose, consumer, part.box(), front, light);
                 case CEILING -> BoxRenderer.renderCeiling(pose, consumer, part.box(), light);
+                case GLASS -> clearGlass.add(part.box());
             }
         }
-        BoxRenderer.renderInterior(pose, consumer, InteriorGeometry.parts(car.spec(), car.isThrough(), interior),
+        BoxRenderer.renderInterior(pose, consumer, InteriorGeometry.parts(car.spec(), car.isThrough(), car.isObservation(), interior),
                 car.facing().get2DDataValue(), light, MaterialSprites.side(interior.baseboard()));
         double tick = car.renderTick(partialTick);
         TextureAtlasSprite door = MaterialSprites.side(interior.door());
         for (Entrance entrance : car.entrances()) {
             double fraction = car.doorFractionAt(tick, entrance);
             for (Box panel : CarShapes.doorPanels(car.spec(), car.facing(), DoorGeometry.Side.CAR, fraction, entrance)) {
-                BoxRenderer.renderBox(pose, consumer, panel, door, light);
+                BoxRenderer.renderDoorPanel(pose, consumer, panel, door, light, interior.securityWindow(), wiredGlass);
             }
             // 敷居（かごの床と同じ高さ）
             BoxRenderer.renderLanding(pose, consumer, LandingLayout.sill(car.spec(), DoorGeometry.Side.CAR, 0),
@@ -102,6 +110,9 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
                 BoxRenderer.renderIndicator(pose, consumer, indicator, turns, light, rgb);
             }
         }
+        VertexConsumer glass = bufferSource.getBuffer(Sheets.translucentCullBlockSheet());
+        BoxRenderer.renderGlass(pose, glass, clearGlass, BoxRenderer.CLEAR_GLASS, light);
+        BoxRenderer.renderGlass(pose, glass, wiredGlass, BoxRenderer.WIRED_GLASS, light);
         poseStack.popPose();
         // シーブの側面は向きを気にせず描けるよう、裏面も描く
         HoistRenderer.render(car, partialTick, poseStack, bufferSource.getBuffer(RenderType.entityCutoutNoCull(TextureAtlas.LOCATION_BLOCKS)));

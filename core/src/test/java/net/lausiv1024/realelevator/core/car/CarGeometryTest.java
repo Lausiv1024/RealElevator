@@ -96,4 +96,23 @@ class CarGeometryTest {
         assertEquals(front, front.rotateQuarterTurns(4));
         assertEquals(front.rotateQuarterTurns(3), front.rotateQuarterTurns(-1));
     }
+
+    @ParameterizedTest
+    @EnumSource(CarModel.class)
+    void observationSplitsTheBackWallIntoWaistAndGlass(CarModel model) {
+        CarSpec spec = CarSpec.of(model);
+        List<Part> plain = CarGeometry.parts(spec, false);
+        List<Part> observation = CarGeometry.parts(spec, false, true);
+        assertEquals(plain.size() + 1, observation.size());
+        List<Part> glass = observation.stream().filter(p -> p.type() == PartType.GLASS).toList();
+        assertEquals(1, glass.size());
+        Box back = plain.get(4).box();
+        Box waist = observation.get(4).box();
+        assertEquals(CarGeometry.WAIST_PX / 16.0, waist.maxY(), 1e-12);
+        assertEquals(waist.maxY(), glass.get(0).box().minY(), 1e-12);
+        assertEquals(back.maxY(), glass.get(0).box().maxY(), 1e-12);
+        assertEquals(back.minZ(), glass.get(0).box().minZ(), 1e-12);
+        // 二方向出入口（前後）とは組み合わせない
+        assertEquals(CarGeometry.parts(spec, true), CarGeometry.parts(spec, true, true));
+    }
 }

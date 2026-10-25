@@ -102,4 +102,27 @@ class InteriorGeometryTest {
         assertFalse(of(Type.HANDRAIL_BRACKET, InteriorGeometry.parts(spec, false, InteriorConfig.DEFAULT)).get(0).box()
                 .intersects(sides.get(0).box()));
     }
+
+    @Test
+    void observationGlassIsDividedByMullionsWithAHandrailInFront() {
+        CarSpec spec = CarSpec.of(CarModel.P11);
+        List<Part> parts = InteriorGeometry.parts(spec, false, true, InteriorConfig.DEFAULT);
+        List<Part> mullions = of(Type.MULLION, parts);
+        // 奥壁（幅34px）は3枚に分ける
+        assertEquals(2, mullions.size());
+        double waist = CarGeometry.WAIST_PX * PX;
+        for (Part mullion : mullions) {
+            assertEquals(waist, mullion.box().minY(), EPS);
+            assertEquals(PX, mullion.box().sizeX(), EPS);
+        }
+        // 奥壁の継ぎ目は腰壁の分だけ
+        double backFace = CarGeometry.interior(spec).minZ();
+        assertTrue(of(Type.SEAM, parts).stream().filter(p -> Math.abs(p.box().minZ() - backFace) < 0.01 && p.box().sizeY() > 0.1)
+                .allMatch(p -> p.box().maxY() <= waist + EPS));
+        // 手すりが両側の側壁だけの設定でも、ガラスの前に付ける
+        assertEquals(3, of(Type.HANDRAIL, parts).size());
+        assertTrue(of(Type.HANDRAIL, InteriorGeometry.parts(spec, false, true,
+                InteriorConfig.DEFAULT.withHandrail(InteriorConfig.HandrailPlacement.NONE))).isEmpty());
+        assertTrue(of(Type.MULLION, InteriorGeometry.parts(spec, false, false, InteriorConfig.DEFAULT)).isEmpty());
+    }
 }

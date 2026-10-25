@@ -140,6 +140,8 @@ final class SettingsForm {
         widgets.add(enumButton("ceiling", InteriorConfig.CeilingType.values(), interior.ceiling(), v -> interior = interior.withCeiling(v), send));
         widgets.add(enumButton("handrail", InteriorConfig.HandrailPlacement.values(), interior.handrail(),
                 v -> interior = interior.withHandrail(v), send));
+        widgets.add(enumButton("security_window", InteriorConfig.SecurityWindow.values(), interior.securityWindow(),
+                v -> interior = interior.withSecurityWindow(v), send));
         widgets.add(enumButton("landing_frame", InteriorConfig.FrameStyle.values(), interior.landing().frame(),
                 v -> interior = interior.withLanding(interior.landing().withFrame(v)), sendAndRebuild));
         widgets.add(enumButton("landing_panel", InteriorConfig.PanelStyle.values(), interior.landing().panel(),

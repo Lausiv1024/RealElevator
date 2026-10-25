@@ -135,5 +135,11 @@
   "gui.realelevator.panel.material_landing_frame": "乗場の枠の素材",
   "gui.realelevator.panel.material_landing_wall": "乗場の壁",
   "gui.realelevator.material.auto": "まわりに合わせる",
-  "gui.realelevator.hall_lantern.right_of_door": "扉の右"
+  "gui.realelevator.hall_lantern.right_of_door": "扉の右",
+  "gui.realelevator.panel.observation": "展望仕様（奥壁がガラス）",
+  "gui.realelevator.panel.security_window": "防犯窓",
+  "gui.realelevator.security_window.none": "なし",
+  "gui.realelevator.security_window.standard": "標準",
+  "gui.realelevator.security_window.large": "大型",
+  "gui.realelevator.security_window.extra_large": "超大型"
 }

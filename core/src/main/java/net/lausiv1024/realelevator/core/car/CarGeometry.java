@@ -16,6 +16,8 @@ public final class CarGeometry {
     public static final int FLOOR_PX = 2;
     /** 天井の厚み（実機 約100〜150 mm）。 */
     public static final int CEILING_PX = 2;
+    /** 展望仕様の奥壁の腰壁の高さ（ガラスの下端）[px]（実機 約900 mm）。 */
+    public static final int WAIST_PX = 15;
 
     public enum PartType {
         FLOOR,
@@ -23,7 +25,9 @@ public final class CarGeometry {
         WALL,
         /** 正面の袖壁とトランサム（二方向出入口では奥のものも）。 */
         FRONT_WALL,
-        CEILING
+        CEILING,
+        /** 展望仕様の奥壁のガラス（腰壁より上）。 */
+        GLASS
     }
 
     public record Part(PartType type, Box box) {
@@ -50,9 +54,25 @@ public final class CarGeometry {
      * （正面の袖壁とトランサムを、かごの中心のまわりに180°回したもの）。
      */
     public static List<Part> parts(CarSpec model, boolean through) {
+        return parts(model, through, false);
+    }
+
+    /**
+     * かごを構成する部位。observation なら展望仕様で、奥壁を腰壁（高さ{@value #WAIST_PX}px）とその上のガラスに分ける。
+     * 展望仕様は二方向出入口（前後）とは組み合わせない（through が優先）。
+     */
+    public static List<Part> parts(CarSpec model, boolean through, boolean observation) {
         List<Part> single = single(model);
         if (!through) {
-            return single;
+            if (!observation) {
+                return single;
+            }
+            Box back = single.get(BACK_WALL).box();
+            double waist = WAIST_PX / (double) CarModel.PIXELS_PER_BLOCK;
+            List<Part> parts = new ArrayList<>(single);
+            parts.set(BACK_WALL, new Part(PartType.WALL, new Box(back.minX(), back.minY(), back.minZ(), back.maxX(), waist, back.maxZ())));
+            parts.add(new Part(PartType.GLASS, new Box(back.minX(), waist, back.minZ(), back.maxX(), back.maxY(), back.maxZ())));
+            return List.copyOf(parts);
         }
         // 奥壁を除き、正面の袖壁とトランサムを180°回したものを奥に足す
         List<Part> parts = new ArrayList<>(single.subList(0, BACK_WALL));

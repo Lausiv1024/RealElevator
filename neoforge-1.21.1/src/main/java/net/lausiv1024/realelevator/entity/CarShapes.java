@@ -21,7 +21,7 @@ import net.minecraft.world.phys.AABB;
  * coreのかごと戸の形状を、向きに合わせて回す。動かない部分はキャッシュする。
  */
 public final class CarShapes {
-    private record PartsKey(CarSpec spec, boolean through) {
+    private record PartsKey(CarSpec spec, boolean through, boolean observation) {
     }
 
     private static final Map<PartsKey, List<List<Part>>> PARTS = new ConcurrentHashMap<>();
@@ -55,8 +55,13 @@ public final class CarShapes {
 
     /** through なら、奥壁にも出入口を開けたかご（二方向出入口の前後）。 */
     public static List<Part> parts(CarSpec spec, Direction facing, boolean through) {
-        return PARTS.computeIfAbsent(new PartsKey(spec, through), key -> {
-            List<Part> parts = CarGeometry.parts(key.spec(), key.through());
+        return parts(spec, facing, through, false);
+    }
+
+    /** observation なら展望仕様（奥壁が腰壁とガラス）。 */
+    public static List<Part> parts(CarSpec spec, Direction facing, boolean through, boolean observation) {
+        return PARTS.computeIfAbsent(new PartsKey(spec, through, observation), key -> {
+            List<Part> parts = CarGeometry.parts(key.spec(), key.through(), key.observation());
             return List.of(rotate(parts, 0), rotate(parts, 1), rotate(parts, 2), rotate(parts, 3));
         }).get(facing.get2DDataValue());
     }

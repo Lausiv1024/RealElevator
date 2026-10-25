@@ -135,5 +135,11 @@
   "gui.realelevator.panel.material_landing_frame": "Landing frame material",
   "gui.realelevator.panel.material_landing_wall": "Landing wall",
   "gui.realelevator.material.auto": "Match surroundings",
-  "gui.realelevator.hall_lantern.right_of_door": "Right of the door"
+  "gui.realelevator.hall_lantern.right_of_door": "Right of the door",
+  "gui.realelevator.panel.observation": "Observation car (glass back wall)",
+  "gui.realelevator.panel.security_window": "Door window",
+  "gui.realelevator.security_window.none": "None",
+  "gui.realelevator.security_window.standard": "Standard",
+  "gui.realelevator.security_window.large": "Large",
+  "gui.realelevator.security_window.extra_large": "Extra large"
 }

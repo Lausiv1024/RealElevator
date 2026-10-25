@@ -112,6 +112,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private int[] floors = new int[0];
     /** 二方向出入口（前後）か。 */
     private boolean through;
+    /** 展望仕様（奥壁が腰壁とガラス）か。 */
+    private boolean observation;
     /** 二方向出入口のときの、階ごとの出入口（下から順）。 */
     private FloorEntrances[] floorEntrances = new FloorEntrances[0];
     /** 乗場呼びがどちらの側で押されたか（二方向出入口）。 */
@@ -182,8 +184,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private int currentFloor;
     /** 走行中の行先の階。サーバーだけが使う。 */
     private int targetFloor;
-    /** 最後に位置を計算したゲーム時刻。描画の補間に使う。 */
-    private long lastTick;
+    /** 最後に位置を計算した時刻（{@link ElevatorClock}）。描画の補間に使う。 */
+    private double lastTick;
     /** この走行の到着チャイムをもう鳴らしたか。サーバーだけが使う。 */
     private boolean arrivalAnnounced;
     /** ホールランタンの点滅を始めたゲーム時刻（到着チャイムを鳴らした時刻）。点滅の位相の起点。 */
@@ -195,7 +197,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     /** 発車を決めたあと、実際に動き始めるゲーム時刻。発車待ちでなければ −1。サーバーだけが使う。 */
     private long departureTick = -1;
     /** 運搬の移動量を最後に評価したゲーム時刻と、そのときと前のtickのかごの位置。 */
-    private long carryTick = Long.MIN_VALUE;
+    private double carryTick = Double.NaN;
     private double carryFromY;
     private double carryToY;
 
@@ -251,7 +253,21 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         rebuildButtons();
     }
 
+    /** 展望仕様にする（設置したとき）。サーバーで呼ぶ。二方向出入口（前後）とは組み合わせない。 */
+    public void setObservation(boolean observation) {
+        this.observation = observation && !through;
+        CompoundTag tag = this.entityData.get(DATA_FLOORS).copy();
+        writeEntrances(tag);
+        this.entityData.set(DATA_FLOORS, tag);
+    }
+
+    /** 展望仕様（奥壁が腰壁とガラス）か。 */
+    public boolean isObservation() {
+        return observation;
+    }
+
     private void writeEntrances(CompoundTag tag) {
+        tag.putBoolean("Observation", observation);
         if (!through) {
             tag.remove("Entrances");
             return;
@@ -265,6 +281,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     private void readEntrances(CompoundTag tag) {
         through = tag.contains("Entrances");
+        observation = tag.getBoolean("Observation") && !through;
         byte[] bytes = tag.getByteArray("Entrances");
         FloorEntrances[] values = FloorEntrances.values();
         floorEntrances = new FloorEntrances[bytes.length];
@@ -905,15 +922,16 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     @Override
     public void tick() {
         super.tick();
-        long now = level().getGameTime();
-        lastTick = now;
+        // クライアントでは、ゲーム時刻の巻き戻りで跳ねないよう、なめらかに進む時計で位置を求める
+        double clock = ElevatorClock.now(level());
+        lastTick = clock;
         if (trip != null) {
-            setPos(getX(), trip.positionAt(now), getZ());
+            setPos(getX(), trip.positionAt(clock), getZ());
         }
         // 誰も乗っていないtickでも、運搬の基準の位置を進めておく
-        carryDelta(now);
+        carryDelta(clock);
         if (!level().isClientSide) {
-            serverTick(now);
+            serverTick(level().getGameTime());
         }
     }
 
@@ -1495,15 +1513,14 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     // ---- 位置と形状 ----
 
     /**
-     * ゲーム時刻 now のtickに、かごが前のtickから実際に動いた量。乗っているエンティティの運搬に使う。
+     * 時刻 now（{@link ElevatorClock}）のtickに、かごが前のtickから実際に動いた量。乗っているエンティティの運搬に使う。
      *
-     * <p>クライアントのゲーム時刻はサーバーの時刻に合わせて数tick飛んだり戻ったりすることがあるので、
-     * 「1tick分の移動量」ではなく、前に評価したtickの位置からの差を返す。同じtickに何度呼んでも同じ値になり、
-     * かごとエンティティのどちらが先にtickしても変わらない。
+     * <p>時刻が飛んだり戻ったりしても合うよう、「1tick分の移動量」ではなく、前に評価したtickの位置からの差を返す。
+     * 同じtickに何度呼んでも同じ値になり、かごとエンティティのどちらが先にtickしても変わらない。
      */
-    public double carryDelta(long now) {
+    public double carryDelta(double now) {
         if (now != carryTick) {
-            carryFromY = carryTick == Long.MIN_VALUE ? yAt(now) : carryToY;
+            carryFromY = Double.isNaN(carryTick) ? yAt(now) : carryToY;
             carryToY = yAt(now);
             carryTick = now;
         }
@@ -1511,7 +1528,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     /** {@link #carryDelta} の基準にした、前のtickでのかごの床面のY座標。 */
-    public double carryFromY(long now) {
+    public double carryFromY(double now) {
         carryDelta(now);
         return carryFromY;
     }
@@ -1544,7 +1561,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     /** ゲーム時刻 tick での当たり判定の箱（ワールド座標）。床・壁・天井とかごの戸。 */
-    public List<AABB> collisionBoxesAt(long tick) {
+    public List<AABB> collisionBoxesAt(double tick) {
         double y = yAt(tick);
         List<AABB> boxes = new ArrayList<>();
         for (Part part : parts()) {
@@ -1559,7 +1576,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     public List<Part> parts() {
-        return CarShapes.parts(spec(), facing(), through);
+        return CarShapes.parts(spec(), facing(), through, observation);
     }
 
     /** かごの出入口（二方向出入口なら正面と奥）。 */
@@ -1597,7 +1614,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      * <p>クライアントのゲーム時刻はサーバーの時刻に合わせて数tick飛ぶことがあり、そのときかごの床は1tick分より大きく動く。
      * 運搬では1tick分の移動量しか加えないので、上昇中は床の中に取り残されて下へ抜けてしまう。それを防ぐために使う。
      */
-    public double sunkSurface(Entity entity, long tick) {
+    public double sunkSurface(Entity entity, double tick) {
         double y = yAt(tick);
         double feet = entity.getY();
         for (Part part : parts()) {
