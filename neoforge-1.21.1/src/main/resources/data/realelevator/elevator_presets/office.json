@@ -1,0 +1,25 @@
+{
+  "name": "preset.realelevator.office",
+  "order": 20,
+  "interior": {
+    "wall": "realelevator:stainless_hairline",
+    "front": "realelevator:stainless_hairline",
+    "transom": "#front",
+    "door": "realelevator:stainless_hairline",
+    "floor": "minecraft:deepslate_tiles",
+    "baseboard": "realelevator:stainless_hairline",
+    "carpet": "none",
+    "ceiling": "indirect",
+    "handrail": "sides",
+    "security_window": "none"
+  },
+  "landing": {
+    "frame": "fascia",
+    "panel": "embedded",
+    "frame_material": "realelevator:stainless_hairline",
+    "wall_material": "",
+    "lantern_plate": true
+  },
+  "car_indicator": "over_door",
+  "observation": false
+}

@@ -58,6 +58,7 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
         InteriorConfig interior = car.interior();
         TextureAtlasSprite wall = MaterialSprites.side(interior.wall());
         TextureAtlasSprite front = MaterialSprites.side(interior.front());
+        TextureAtlasSprite transom = MaterialSprites.side(interior.transomMaterial());
         TextureAtlasSprite floor = MaterialSprites.side(interior.floor());
         // ガラスは半透明なので、ほかを描き終えてから描く
         List<Box> clearGlass = new ArrayList<>();
@@ -67,12 +68,14 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
                 case FLOOR -> BoxRenderer.renderBox(pose, consumer, part.box(), floor, light);
                 case WALL -> BoxRenderer.renderBox(pose, consumer, part.box(), wall, light);
                 case FRONT_WALL -> BoxRenderer.renderBox(pose, consumer, part.box(), front, light);
+                case TRANSOM -> BoxRenderer.renderBox(pose, consumer, part.box(), transom, light);
                 case CEILING -> BoxRenderer.renderCeiling(pose, consumer, part.box(), light);
                 case GLASS -> clearGlass.add(part.box());
             }
         }
         BoxRenderer.renderInterior(pose, consumer, InteriorGeometry.parts(car.spec(), car.isThrough(), car.isObservation(), interior),
-                car.facing().get2DDataValue(), light, MaterialSprites.side(interior.baseboard()));
+                car.facing().get2DDataValue(), light, MaterialSprites.side(interior.baseboard()),
+                interior.carpet().blockId() != null ? MaterialSprites.side(interior.carpet().blockId()) : wall);
         double tick = car.renderTick(partialTick);
         TextureAtlasSprite door = MaterialSprites.side(interior.door());
         for (Entrance entrance : car.entrances()) {

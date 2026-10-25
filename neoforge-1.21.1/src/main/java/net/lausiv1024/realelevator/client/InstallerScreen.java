@@ -103,6 +103,11 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
             preview = installer.isPreviewing();
             hadStar = installer.hasNetherStar();
             form = new SettingsForm(installer.settingsTag());
+            // プリセットの「展望」を選んだら展望仕様にする（設置する前だけ）
+            form.setObservationHandler(v -> {
+                observation = v;
+                through &= !v;
+            });
         }
         form.setFloors(installer.floorYs());
         menu.setSlotsVisible(showPower);

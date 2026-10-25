@@ -107,9 +107,10 @@ final class BoxRenderer {
      * かご内装の細部（壁の継ぎ目、幅木、天井の板と照明、手すり）を描く。天井の光る部分は、まわりの明るさによらず光って見えるようにする。
      *
      * @param baseboard 幅木の素材のテクスチャ
+     * @param carpet    カーペットのテクスチャ（カーペットがなければ使わない）
      */
     static void renderInterior(PoseStack.Pose pose, VertexConsumer consumer, List<InteriorGeometry.Part> parts, int quarterTurns, int light,
-                               TextureAtlasSprite baseboard) {
+                               TextureAtlasSprite baseboard, TextureAtlasSprite carpet) {
         TextureAtlasSprite base = blockSprite(WHITE_BASE);
         for (InteriorGeometry.Part part : parts) {
             Box box = part.box().rotateQuarterTurns(quarterTurns);
@@ -120,6 +121,7 @@ final class BoxRenderer {
                 case CEILING_GLOW -> renderBox(pose, consumer, box, base, LightTexture.FULL_BRIGHT, GLOW_COLOR);
                 case HANDRAIL -> renderBox(pose, consumer, box, base, light, HANDRAIL_COLOR);
                 case HANDRAIL_BRACKET, MULLION -> renderBox(pose, consumer, box, base, light, BRACKET_COLOR);
+                case CARPET -> renderBox(pose, consumer, box, carpet, light);
             }
         }
     }

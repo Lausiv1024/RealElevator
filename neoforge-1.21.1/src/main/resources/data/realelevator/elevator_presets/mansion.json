@@ -1,0 +1,25 @@
+{
+  "name": "preset.realelevator.mansion",
+  "order": 10,
+  "interior": {
+    "wall": "realelevator:woodgrain_light",
+    "front": "realelevator:stainless_hairline",
+    "transom": "#front",
+    "door": "realelevator:stainless_hairline",
+    "floor": "realelevator:vinyl_beige",
+    "baseboard": "realelevator:stainless_hairline",
+    "carpet": "none",
+    "ceiling": "full",
+    "handrail": "sides",
+    "security_window": "standard"
+  },
+  "landing": {
+    "frame": "thin",
+    "panel": "embedded",
+    "frame_material": "realelevator:stainless_hairline",
+    "wall_material": "",
+    "lantern_plate": true
+  },
+  "car_indicator": "over_panel",
+  "observation": false
+}

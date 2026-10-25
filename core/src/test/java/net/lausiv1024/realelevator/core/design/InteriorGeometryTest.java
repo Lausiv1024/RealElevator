@@ -125,4 +125,24 @@ class InteriorGeometryTest {
                 InteriorConfig.DEFAULT.withHandrail(InteriorConfig.HandrailPlacement.NONE))).isEmpty());
         assertTrue(of(Type.MULLION, InteriorGeometry.parts(spec, false, false, InteriorConfig.DEFAULT)).isEmpty());
     }
+
+    @Test
+    void carpetLeavesTheFloorEdgeAndTransomFollowsTheFrontOrTheDoor() {
+        CarSpec spec = CarSpec.of(CarModel.P11);
+        assertTrue(of(Type.CARPET, InteriorGeometry.parts(spec, false, InteriorConfig.DEFAULT)).isEmpty());
+        List<Part> carpet = of(Type.CARPET, InteriorGeometry.parts(spec, false, InteriorConfig.DEFAULT.withCarpet(InteriorConfig.Carpet.RED)));
+        assertEquals(1, carpet.size());
+        Box in = CarGeometry.interior(spec);
+        Box box = carpet.get(0).box();
+        assertEquals(in.minX() + 2 * PX, box.minX(), EPS);
+        assertEquals(in.maxZ() - 2 * PX, box.maxZ(), EPS);
+        assertEquals(PX, box.maxY(), EPS);
+        assertEquals("minecraft:red_carpet", InteriorConfig.Carpet.RED.blockId());
+
+        InteriorConfig config = InteriorConfig.DEFAULT.withMaterial(InteriorConfig.Part.FRONT, "minecraft:oak_planks");
+        assertEquals("minecraft:oak_planks", config.transomMaterial());
+        assertEquals(config.door(), config.withMaterial(InteriorConfig.Part.TRANSOM, InteriorConfig.SAME_AS_DOOR).transomMaterial());
+        assertEquals("minecraft:white_concrete",
+                config.withMaterial(InteriorConfig.Part.TRANSOM, "minecraft:white_concrete").transomMaterial());
+    }
 }

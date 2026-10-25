@@ -1,0 +1,25 @@
+{
+  "name": "preset.realelevator.luxury",
+  "order": 30,
+  "interior": {
+    "wall": "realelevator:woodgrain_dark",
+    "front": "realelevator:bronze_hairline",
+    "transom": "#front",
+    "door": "realelevator:bronze_hairline",
+    "floor": "minecraft:polished_granite",
+    "baseboard": "realelevator:bronze_hairline",
+    "carpet": "none",
+    "ceiling": "indirect",
+    "handrail": "sides",
+    "security_window": "none"
+  },
+  "landing": {
+    "frame": "fascia",
+    "panel": "wall_mounted",
+    "frame_material": "minecraft:smooth_quartz",
+    "wall_material": "",
+    "lantern_plate": true
+  },
+  "car_indicator": "over_panel",
+  "observation": false
+}

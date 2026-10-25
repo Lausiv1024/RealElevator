@@ -70,7 +70,7 @@ class CarGeometryTest {
     @EnumSource(CarModel.class)
     void frontWallLeavesEntranceOpen(CarModel model) {
         List<Part> front = CarGeometry.parts(model).stream()
-                .filter(p -> p.type() == PartType.FRONT_WALL && p.box().minZ() >= CarGeometry.interior(model).maxZ())
+                .filter(p -> (p.type() == PartType.FRONT_WALL || p.type() == PartType.TRANSOM) && p.box().minZ() >= CarGeometry.interior(model).maxZ())
                 .toList();
         assertEquals(3, front.size());
 
@@ -80,7 +80,10 @@ class CarGeometryTest {
         assertEquals(frontArea - entranceArea, wallArea, EPS);
 
         // トランサムの高さは 5px（実機 200 mm）
-        Box transom = front.stream().filter(p -> p.box().minY() > 0).findFirst().orElseThrow().box();
+        List<Part> transoms = front.stream().filter(p -> p.type() == PartType.TRANSOM).toList();
+        assertEquals(1, transoms.size());
+        Box transom = transoms.get(0).box();
+        assertTrue(transom.minY() > 0);
         assertEquals(5 * PX, transom.sizeY(), EPS);
         assertEquals(model.entranceWidthPx() * PX, transom.sizeX(), EPS);
     }

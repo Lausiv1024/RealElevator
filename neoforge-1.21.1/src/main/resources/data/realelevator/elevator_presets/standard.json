@@ -1,0 +1,25 @@
+{
+  "name": "preset.realelevator.standard",
+  "order": 0,
+  "interior": {
+    "wall": "realelevator:woodgrain_medium",
+    "front": "realelevator:stainless_hairline",
+    "transom": "#front",
+    "door": "realelevator:bronze_hairline",
+    "floor": "realelevator:vinyl_gray",
+    "baseboard": "realelevator:stainless_hairline",
+    "carpet": "none",
+    "ceiling": "downlight",
+    "handrail": "sides",
+    "security_window": "none"
+  },
+  "landing": {
+    "frame": "thin",
+    "panel": "wall_mounted",
+    "frame_material": "realelevator:bronze_hairline",
+    "wall_material": "",
+    "lantern_plate": true
+  },
+  "car_indicator": "over_panel",
+  "observation": false
+}

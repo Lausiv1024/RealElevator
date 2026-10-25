@@ -6,11 +6,13 @@ import com.mojang.logging.LogUtils;
 
 import net.lausiv1024.realelevator.command.DebugCommands;
 import net.lausiv1024.realelevator.client.ClientAnnouncements;
+import net.lausiv1024.realelevator.client.ClientPresets;
 import net.lausiv1024.realelevator.client.RenewalScreen;
 import net.lausiv1024.realelevator.network.AnnouncePayload;
 import net.lausiv1024.realelevator.network.PressButtonPayload;
 import net.lausiv1024.realelevator.network.PanelPayloads;
 import net.lausiv1024.realelevator.network.PowerPayloads;
+import net.lausiv1024.realelevator.network.PresetPayloads;
 import net.lausiv1024.realelevator.network.RenewalPayloads;
 import net.lausiv1024.realelevator.registry.ModBlockEntities;
 import net.lausiv1024.realelevator.registry.ModBlocks;
@@ -22,6 +24,7 @@ import net.lausiv1024.realelevator.registry.ModSounds;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
@@ -43,6 +46,7 @@ public class RealElevator {
         ModSounds.SOUND_EVENTS.register(modEventBus);
         ModMenus.MENU_TYPES.register(modEventBus);
         modEventBus.addListener(RealElevator::registerPayloads);
+        modContainer.registerConfig(ModConfig.Type.SERVER, RealElevatorConfig.SPEC);
         modEventBus.addListener(RealElevator::addCreativeTabItems);
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> DebugCommands.register(event.getDispatcher()));
     }
@@ -58,7 +62,8 @@ public class RealElevator {
                 .playToServer(PowerPayloads.Select.TYPE, PowerPayloads.Select.STREAM_CODEC, PowerPayloads.Select::handle)
                 // クライアント側の処理は、ラムダの中で呼ぶのでサーバーでは読み込まれない
                 .playToClient(AnnouncePayload.TYPE, AnnouncePayload.STREAM_CODEC, (payload, context) -> ClientAnnouncements.handle(payload))
-                .playToClient(RenewalPayloads.Show.TYPE, RenewalPayloads.Show.STREAM_CODEC, (payload, context) -> RenewalScreen.open(payload));
+                .playToClient(RenewalPayloads.Show.TYPE, RenewalPayloads.Show.STREAM_CODEC, (payload, context) -> RenewalScreen.open(payload))
+                .playToClient(PresetPayloads.Sync.TYPE, PresetPayloads.Sync.STREAM_CODEC, (payload, context) -> ClientPresets.handle(payload));
     }
 
     private static void addCreativeTabItems(BuildCreativeModeTabContentsEvent event) {

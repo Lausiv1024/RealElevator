@@ -23,8 +23,10 @@ public final class CarGeometry {
         FLOOR,
         /** 側壁と奥壁。 */
         WALL,
-        /** 正面の袖壁とトランサム（二方向出入口では奥のものも）。 */
+        /** 正面の袖壁（二方向出入口では奥のものも）。 */
         FRONT_WALL,
+        /** 出入口の上のトランサム（二方向出入口では奥のものも）。 */
+        TRANSOM,
         CEILING,
         /** 展望仕様の奥壁のガラス（腰壁より上）。 */
         GLASS
@@ -108,7 +110,7 @@ public final class CarGeometry {
                 // 袖壁（正面）とトランサム
                 new Part(PartType.FRONT_WALL, Box.ofPixels(-outerX, 0, halfDepth, entranceMinX, height, outerZ)),
                 new Part(PartType.FRONT_WALL, Box.ofPixels(entranceMaxX, 0, halfDepth, outerX, height, outerZ)),
-                new Part(PartType.FRONT_WALL, Box.ofPixels(entranceMinX, CarModel.ENTRANCE_HEIGHT_PX, halfDepth,
+                new Part(PartType.TRANSOM, Box.ofPixels(entranceMinX, CarModel.ENTRANCE_HEIGHT_PX, halfDepth,
                         entranceMaxX, height, outerZ)));
     }
 

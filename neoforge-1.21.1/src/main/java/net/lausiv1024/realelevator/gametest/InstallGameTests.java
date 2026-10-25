@@ -12,6 +12,9 @@ import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.registry.ModEntities;
+import net.lausiv1024.realelevator.design.DesignPreset;
+import net.lausiv1024.realelevator.design.Materials;
+import net.lausiv1024.realelevator.design.Presets;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.car.FloorEntrances;
@@ -203,8 +206,14 @@ public class InstallGameTests {
                 .withLanding(InteriorConfig.Landing.DEFAULT.withFrame(InteriorConfig.FrameStyle.FASCIA).withPanel(InteriorConfig.PanelStyle.EMBEDDED)
                         .withLanternPlate(false))
                 .withMaterial(InteriorConfig.Part.LANDING_FRAME, "minecraft:smooth_quartz");
+        wanted = wanted.withCarpet(InteriorConfig.Carpet.RED).withMaterial(InteriorConfig.Part.TRANSOM, InteriorConfig.SAME_AS_DOOR);
         renewal.put("Interior", ConfigTags.writeInterior(wanted));
+        int boxesBefore = car.collisionBoxesAt(helper.getLevel().getGameTime()).size();
         controller.applyRenewal(renewal);
+        // カーペットは1pxの段として当たり判定を持つ
+        helper.assertTrue(car.interior().carpet() == InteriorConfig.Carpet.RED
+                && car.collisionBoxesAt(helper.getLevel().getGameTime()).size() == boxesBefore + 1, "the carpet should collide");
+        helper.assertTrue(car.interior().transom().equals(InteriorConfig.SAME_AS_DOOR), "the transom should follow the doors");
         helper.assertTrue(car.fixtures().panelSides() == FixtureConfig.PanelSides.BOTH, "the fixtures should change");
         helper.assertTrue(car.floorLabel(1).equals("R"), "the label should change: " + car.floorLabel(1));
         helper.assertTrue(car.speed().spec() == SpeedSpec.NORMAL_LOW, "the speed should not change");
@@ -382,6 +391,34 @@ public class InstallGameTests {
         helper.assertTrue(controllerPos.getX() == panelPos.getX() + layout.leftColumn(), "the controller should be in the left column");
         helper.assertTrue(car.pressCarCall(1) == PressResult.REGISTERED, "the call should be registered");
         helper.succeedWhen(() -> helper.assertTrue(!car.isMoving() && car.getY() == panelPos.getY() + RISE, "not arrived yet"));
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void presetsAreLoadedFromTheDataPack(GameTestHelper helper) {
+        List<DesignPreset> presets = Presets.all();
+        helper.assertTrue(presets.stream().map(p -> p.id().getPath()).toList()
+                        .equals(List.of("standard", "mansion", "office", "luxury", "observation")),
+                "the five presets in order: " + presets.stream().map(DesignPreset::id).toList());
+        helper.assertTrue(presets.get(0).interior().equals(InteriorConfig.DEFAULT), "the standard preset is the default interior");
+        helper.assertTrue(presets.get(2).carIndicator() == FixtureConfig.CarIndicator.OVER_DOOR, "the office has the indicator in the transom");
+        helper.assertTrue(presets.get(3).interior().landing().frameMaterial().equals("minecraft:smooth_quartz"), "the luxury frame is quartz");
+        helper.assertTrue(presets.get(4).observation() && !presets.get(3).observation(), "only the observation preset is an observation car");
+        // どのプリセットの素材も、タグの候補に入っている
+        for (DesignPreset preset : presets) {
+            helper.assertTrue(Materials.sanitize(preset.interior()).equals(preset.interior()), "materials should be in the tags: " + preset.id());
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void freeMaterialsAcceptOnlyOpaqueFullBlocks(GameTestHelper helper) {
+        helper.assertTrue(!Materials.isAllowed(InteriorConfig.Part.WALL, "minecraft:stone", false), "stone is not in the tag");
+        helper.assertTrue(Materials.isAllowed(InteriorConfig.Part.WALL, "minecraft:stone", true), "stone is an opaque full block");
+        helper.assertTrue(!Materials.isAllowed(InteriorConfig.Part.WALL, "minecraft:glass", true), "glass is not opaque");
+        helper.assertTrue(!Materials.isAllowed(InteriorConfig.Part.WALL, "minecraft:chest", true), "a chest has a block entity");
+        helper.assertTrue(Materials.isAllowed(InteriorConfig.Part.TRANSOM, InteriorConfig.SAME_AS_DOOR, false), "the transom can follow the doors");
+        helper.assertTrue(!Materials.isAllowed(InteriorConfig.Part.WALL, InteriorConfig.SAME_AS_DOOR, true), "only the transom can follow the doors");
+        helper.succeed();
     }
 
     @GameTest(template = TEMPLATE, timeoutTicks = 100)

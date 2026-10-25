@@ -3,17 +3,23 @@ package net.lausiv1024.realelevator.design;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.lausiv1024.realelevator.RealElevatorConfig;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * 内装の素材（ブロック）の候補。候補はブロックタグで決まり、データパックから足せる。
+ * サーバーのコンフィグで自由設定をオンにすると、任意の不透明な立方体のブロックも使える（{@link #isFreeMaterial}）。
  */
 public final class Materials {
     private Materials() {
@@ -40,18 +46,42 @@ public final class Materials {
         return location != null ? BuiltInRegistries.BLOCK.get(location) : Blocks.AIR;
     }
 
+    /** block のID。 */
+    public static String id(Block block) {
+        return BuiltInRegistries.BLOCK.getKey(block).toString();
+    }
+
+    /** 自由設定で素材にできるブロックか（不透明な立方体で、ブロックエンティティを持たず、ふつうのモデルで描くもの）。 */
+    public static boolean isFreeMaterial(Block block) {
+        BlockState state = block.defaultBlockState();
+        return !state.isAir() && !state.hasBlockEntity() && state.getRenderShape() == RenderShape.MODEL
+                && state.isSolidRender(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+    }
+
+    /** 部位 part の素材にできるか。タグの候補か、自由設定がオンなら不透明な立方体のブロック。 */
+    public static boolean isAllowed(InteriorConfig.Part part, String id, boolean freeMaterials) {
+        if (part == InteriorConfig.Part.LANDING_WALL && InteriorConfig.AUTO.equals(id)) {
+            return true;
+        }
+        if (part == InteriorConfig.Part.TRANSOM && (InteriorConfig.SAME_AS_FRONT.equals(id) || InteriorConfig.SAME_AS_DOOR.equals(id))) {
+            return true;
+        }
+        Block block = block(id);
+        if (block == Blocks.AIR) {
+            return false;
+        }
+        return block.defaultBlockState().is(tag(part.tag())) || freeMaterials && isFreeMaterial(block);
+    }
+
     /**
-     * 部位ごとの素材のうち、その部位のタグに入っていないものを初期値に戻す（不正な設定や、データパックから外された素材）。
-     * 乗場の壁の「まわりに合わせる」（{@link InteriorConfig#AUTO}）はそのまま。
+     * 部位ごとの素材のうち、選べないもの（不正な設定や、データパックから外された素材）を初期値に戻す。
+     * 自由設定はサーバーのコンフィグに従う。
      */
     public static InteriorConfig sanitize(InteriorConfig config) {
+        boolean free = RealElevatorConfig.freeMaterials();
         InteriorConfig result = config;
         for (InteriorConfig.Part part : InteriorConfig.Part.values()) {
-            if (part == InteriorConfig.Part.LANDING_WALL && InteriorConfig.AUTO.equals(config.material(part))) {
-                continue;
-            }
-            Block block = block(config.material(part));
-            if (block == Blocks.AIR || !block.defaultBlockState().is(tag(part.tag()))) {
+            if (!isAllowed(part, config.material(part), free)) {
                 result = result.withMaterial(part, InteriorConfig.DEFAULT.material(part));
             }
         }

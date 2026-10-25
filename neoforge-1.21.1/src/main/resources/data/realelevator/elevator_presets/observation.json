@@ -1,0 +1,25 @@
+{
+  "name": "preset.realelevator.observation",
+  "order": 40,
+  "interior": {
+    "wall": "realelevator:stainless_hairline",
+    "front": "realelevator:stainless_hairline",
+    "transom": "#front",
+    "door": "realelevator:stainless_hairline",
+    "floor": "minecraft:polished_blackstone",
+    "baseboard": "realelevator:stainless_hairline",
+    "carpet": "none",
+    "ceiling": "downlight",
+    "handrail": "sides_and_back",
+    "security_window": "none"
+  },
+  "landing": {
+    "frame": "thin",
+    "panel": "wall_mounted",
+    "frame_material": "realelevator:stainless_hairline",
+    "wall_material": "",
+    "lantern_plate": true
+  },
+  "car_indicator": "over_panel",
+  "observation": true
+}

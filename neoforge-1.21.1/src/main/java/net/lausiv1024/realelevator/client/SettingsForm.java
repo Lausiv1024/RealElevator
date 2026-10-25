@@ -7,6 +7,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import javax.annotation.Nullable;
+
 import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.core.car.FloorEntrances;
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
@@ -14,8 +16,8 @@ import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.design.LandingLayout;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
-import net.lausiv1024.realelevator.design.Materials;
 import net.lausiv1024.realelevator.entity.ConfigTags;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -52,6 +54,8 @@ final class SettingsForm {
     private AnnouncementConfig announcements;
     private boolean landingOpen;
     private InteriorConfig interior;
+    @Nullable
+    private Consumer<Boolean> observationHandler;
     private int[] floors;
     /** 停止階のY座標ごとの階名。入力欄の内容で更新する。 */
     private final Map<Integer, String> labels = new HashMap<>();
@@ -92,6 +96,32 @@ final class SettingsForm {
         labels.put(floorY, label);
     }
 
+    InteriorConfig interior() {
+        return interior;
+    }
+
+    void setInterior(InteriorConfig interior) {
+        this.interior = interior;
+    }
+
+    FixtureConfig fixtures() {
+        return fixtures;
+    }
+
+    void setFixtures(FixtureConfig fixtures) {
+        this.fixtures = fixtures;
+    }
+
+    /** 展望仕様を変えられるときの受け取り先（設置する前の画面だけ）。変えられなければ null。 */
+    @Nullable
+    Consumer<Boolean> observationHandler() {
+        return observationHandler;
+    }
+
+    void setObservationHandler(@Nullable Consumer<Boolean> handler) {
+        this.observationHandler = handler;
+    }
+
     boolean allowsOverDoorHallFixtures() {
         return ShaftLayout.allowsOverDoorHallFixtures(floors);
     }
@@ -125,8 +155,6 @@ final class SettingsForm {
         widgets.add(enumButton("hall_lantern", LandingLayout.lanternChoices(fixtures, interior.landing(), overDoor)
                         .toArray(FixtureConfig.HallLanternPlacement[]::new),
                 fixtures.hallLantern(), v -> fixtures = fixtures.withHallLantern(v), send));
-        widgets.add(onOff("lantern_plate", interior.landing().lanternPlate(),
-                v -> interior = interior.withLanding(interior.landing().withLanternPlate(v)), send));
         widgets.add(enumButton("indicator_color", FixtureConfig.IndicatorColor.values(), fixtures.indicatorColor(),
                 v -> fixtures = fixtures.withIndicatorColor(v), send));
         widgets.add(onOff("wheelchair_panel", fixtures.wheelchairPanel(), v -> fixtures = fixtures.withWheelchairPanel(v), send));
@@ -134,18 +162,11 @@ final class SettingsForm {
         widgets.add(onOff("close_announcement", announcements.doorClose(), v -> announcements = announcements.withDoorClose(v), send));
         widgets.add(onOff("chime", announcements.chime(), v -> announcements = announcements.withChime(v), send));
         widgets.add(onOff("landing_open", landingOpen, v -> landingOpen = v, send));
-        for (InteriorConfig.Part part : InteriorConfig.Part.values()) {
-            widgets.add(materialButton(part, send));
-        }
-        widgets.add(enumButton("ceiling", InteriorConfig.CeilingType.values(), interior.ceiling(), v -> interior = interior.withCeiling(v), send));
-        widgets.add(enumButton("handrail", InteriorConfig.HandrailPlacement.values(), interior.handrail(),
-                v -> interior = interior.withHandrail(v), send));
-        widgets.add(enumButton("security_window", InteriorConfig.SecurityWindow.values(), interior.securityWindow(),
-                v -> interior = interior.withSecurityWindow(v), send));
-        widgets.add(enumButton("landing_frame", InteriorConfig.FrameStyle.values(), interior.landing().frame(),
-                v -> interior = interior.withLanding(interior.landing().withFrame(v)), sendAndRebuild));
-        widgets.add(enumButton("landing_panel", InteriorConfig.PanelStyle.values(), interior.landing().panel(),
-                v -> interior = interior.withLanding(interior.landing().withPanel(v)), send));
+        // 素材・天井・手すり・防犯窓・乗場の意匠は、デザインの画面で選ぶ
+        widgets.add(Button.builder(Component.translatable("gui.realelevator.panel.design"), button -> {
+            Minecraft minecraft = Minecraft.getInstance();
+            minecraft.setScreen(new DesignScreen(minecraft.screen, this, send));
+        }).size(MAX_SETTING_WIDTH, 20).build());
         return widgets;
     }
 
@@ -271,26 +292,6 @@ final class SettingsForm {
                     setter.set(v);
                     send.run();
                 });
-    }
-
-    /** 部位 part の素材を、タグの候補の順に切り替えるボタン。表示はブロックの名前。乗場の壁は「まわりに合わせる」から始まる。 */
-    private CycleButton<String> materialButton(InteriorConfig.Part part, Runnable send) {
-        List<String> values = new ArrayList<>(Materials.candidates(part));
-        if (part == InteriorConfig.Part.LANDING_WALL) {
-            values.add(0, InteriorConfig.AUTO);
-        }
-        String current = interior.material(part);
-        if (!values.contains(current)) {
-            values.add(0, current);
-        }
-        return CycleButton.<String>builder(id -> InteriorConfig.AUTO.equals(id)
-                        ? Component.translatable("gui.realelevator.material.auto") : Materials.block(id).getName())
-                .withValues(values).withInitialValue(current)
-                .create(0, 0, MAX_SETTING_WIDTH, 20,
-                        Component.translatable("gui.realelevator.panel.material_" + part.name().toLowerCase(Locale.ROOT)), (b, v) -> {
-                            interior = interior.withMaterial(part, v);
-                            send.run();
-                        });
     }
 
     static CycleButton<Boolean> onOff(String key, boolean initial, Setter<Boolean> setter, Runnable send) {

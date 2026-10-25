@@ -46,6 +46,7 @@ public final class ConfigTags {
         tag.putString("Ceiling", interior.ceiling().name());
         tag.putString("Handrail", interior.handrail().name());
         tag.putString("SecurityWindow", interior.securityWindow().name());
+        tag.putString("Carpet", interior.carpet().name());
         InteriorConfig.Landing landing = interior.landing();
         tag.putString("LandingFrame", landing.frame().name());
         tag.putString("LandingPanel", landing.panel().name());
@@ -56,7 +57,8 @@ public final class ConfigTags {
     /** 書かれていない項目は初期値にする。 */
     public static InteriorConfig readInterior(CompoundTag tag) {
         InteriorConfig defaults = InteriorConfig.DEFAULT;
-        InteriorConfig interior = new InteriorConfig(defaults.wall(), defaults.front(), defaults.door(), defaults.floor(), defaults.baseboard(),
+        InteriorConfig interior = new InteriorConfig(defaults.wall(), defaults.front(), defaults.transom(), defaults.door(), defaults.floor(),
+                defaults.baseboard(), parseEnum(InteriorConfig.Carpet.class, tag.getString("Carpet"), defaults.carpet()),
                 parseEnum(InteriorConfig.CeilingType.class, tag.getString("Ceiling"), defaults.ceiling()),
                 parseEnum(InteriorConfig.HandrailPlacement.class, tag.getString("Handrail"), defaults.handrail()),
                 parseEnum(InteriorConfig.SecurityWindow.class, tag.getString("SecurityWindow"), defaults.securityWindow()),

@@ -32,6 +32,7 @@ import net.lausiv1024.realelevator.core.control.OperationTiming;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.control.WheelchairCalls;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
+import net.lausiv1024.realelevator.core.design.InteriorGeometry;
 import net.lausiv1024.realelevator.core.design.LandingLayout;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.display.HallLantern;
@@ -1566,6 +1567,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         List<AABB> boxes = new ArrayList<>();
         for (Part part : parts()) {
             boxes.add(CarShapes.toAabb(part.box(), getX(), y, getZ()));
+        }
+        // カーペットはバニラと同じく1pxの段になる
+        if (interior.carpet() != InteriorConfig.Carpet.NONE) {
+            boxes.add(CarShapes.toAabb(InteriorGeometry.carpet(spec()).rotateQuarterTurns(facing().get2DDataValue()), getX(), y, getZ()));
         }
         for (Entrance entrance : entrances()) {
             for (Box panel : CarShapes.doorPanels(spec(), facing(), DoorGeometry.Side.CAR, doorFractionAt(tick, entrance), entrance)) {

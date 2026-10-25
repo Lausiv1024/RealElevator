@@ -29,6 +29,8 @@ public final class InteriorGeometry {
     public static final int HANDRAIL_MARGIN_PX = 3;
     /** 間接照明風の天井の縁取りの幅 [px]。 */
     public static final int CEILING_FRAME_PX = 3;
+    /** カーペットの、床の縁から空ける幅 [px]。 */
+    public static final int CARPET_MARGIN_PX = 2;
     /** ダウンライトの大きさ [px]。 */
     public static final int DOWNLIGHT_PX = 2;
     private static final double PX = 1.0 / CarModel.PIXELS_PER_BLOCK;
@@ -51,7 +53,9 @@ public final class InteriorGeometry {
         /** 手すりの金具（ステンレス）。 */
         HANDRAIL_BRACKET,
         /** 展望仕様の奥壁のガラスを分ける縦の枠（ステンレス）。 */
-        MULLION
+        MULLION,
+        /** 床に重ねるカーペット（カーペットの色で描く）。 */
+        CARPET
     }
 
     public record Part(Type type, Box box) {
@@ -93,6 +97,9 @@ public final class InteriorGeometry {
             parts.add(new Part(Type.BASEBOARD, box(face, face + LIFT * 2, 0, BASEBOARD_PX * PX, in.minX(), in.maxX(), false)));
         }
         addCeiling(parts, in, config.ceiling());
+        if (config.carpet() != InteriorConfig.Carpet.NONE) {
+            parts.add(new Part(Type.CARPET, carpet(spec)));
+        }
         if (config.handrail() != InteriorConfig.HandrailPlacement.NONE) {
             addHandrail(parts, in.minX(), 1, in.minZ(), in.maxZ(), true);
             addHandrail(parts, in.maxX(), -1, in.minZ(), in.maxZ(), true);
@@ -101,6 +108,13 @@ public final class InteriorGeometry {
             }
         }
         return parts;
+    }
+
+    /** カーペット：床の縁を{@value #CARPET_MARGIN_PX}px残して敷く、厚み1px（バニラのカーペットと同じ）の板。当たり判定も持つ。 */
+    public static Box carpet(CarSpec spec) {
+        Box in = CarGeometry.interior(spec);
+        double margin = CARPET_MARGIN_PX * PX;
+        return new Box(in.minX() + margin, 0, in.minZ() + margin, in.maxX() - margin, PX, in.maxZ() - margin);
     }
 
     /** 壁を板に分ける継ぎ目の位置。幅が1.5ブロック以下なら2枚、それより広ければ3枚。 */
