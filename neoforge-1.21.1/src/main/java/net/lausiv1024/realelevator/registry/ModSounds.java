@@ -17,6 +17,9 @@ public final class ModSounds {
     /** ナッジング（強制戸閉）のブザー（0.5秒の1回分）。音は tools/sounds/make_buzzer.py で合成したもの。 */
     public static final DeferredHolder<SoundEvent, SoundEvent> NUDGE_BUZZER = register("nudge_buzzer");
 
+    /** 非常呼びボタン（飾り）を押したときの短い音。音は tools/sounds/make_beep.py で合成したもの。 */
+    public static final DeferredHolder<SoundEvent, SoundEvent> EMERGENCY_BEEP = register("emergency_beep");
+
     private ModSounds() {
     }
 

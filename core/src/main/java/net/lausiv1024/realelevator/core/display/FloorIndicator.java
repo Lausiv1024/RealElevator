@@ -8,10 +8,13 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.car.Normal;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
+import net.lausiv1024.realelevator.core.panel.CarPanelLayout;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
+import net.lausiv1024.realelevator.core.panel.WheelchairPanelLayout;
 
 /**
  * 階床表示器。表示する階の決め方と、ドットの配置。
@@ -30,7 +33,9 @@ import net.lausiv1024.realelevator.core.panel.FixtureConfig;
  * <li>乗場・扉の上：出入口の上の中央に、横長（ふち1px、16×7px）。</li>
  * <li>乗場・ボタンの上：乗場のボタンの上に、縦長。</li>
  * <li>かご・扉の上：出入口の上のトランサム（高さ5px）に、横長（ふちなし）で埋め込む。</li>
- * <li>かご・操作盤の上：操作盤の袖壁の、行先ボタンより上に、縦長。両側の操作盤の場合は、設定により左側にも付ける。</li>
+ * <li>かご・操作盤の上：主操作盤の板の上部の表示窓（{@link CarPanelLayout#window}）に、0.5px のドットで縦長
+ * （上に矢印、下に 5×7 ドットの階名）。両側の操作盤の場合は、設定により左側にも付ける。</li>
+ * <li>車椅子用操作盤：板の上の黒い帯の表示窓に、0.5px のドットで横長（矢印、5×7 ドットの階名）。両側の側壁に付ける。</li>
  * </ul>
  */
 public final class FloorIndicator {
@@ -45,8 +50,10 @@ public final class FloorIndicator {
     /** 階名の欄の幅（2文字と、その間の1px）。 */
     private static final int LABEL_WIDTH = DotFont.WIDTH * 2 + 1;
     private static final int ARROW_SIZE = 5;
-    /** かごの操作盤の上の表示器の下端の最低の高さ（実機 約1800 mm）。 */
-    private static final int CAR_PANEL_BOTTOM_PX = 40;
+    /** 主操作盤・車椅子用操作盤の表示窓のドットの大きさ（0.5px）。 */
+    private static final double LARGE_DOT = 0.5 / PX;
+    /** 0.5px のドットの表示での、階名の欄の幅（2文字と、その間の1ドット）。 */
+    private static final int LARGE_LABEL_WIDTH = LargeDotFont.WIDTH * 2 + 1;
     /** 乗場の扉の上の表示器の下端の、出入口の上端からの高さ。上にホールランタンを重ねても三方枠に収まるよう、1px。 */
     private static final int HALL_GAP_PX = 1;
 
@@ -136,20 +143,79 @@ public final class FloorIndicator {
             return List.of(build(Arrangement.HORIZONTAL, Viewer.INSIDE_CAR, left, px(entrance.maxY()), 0, face, EMBEDDED_DEPTH,
                     label, direction));
         }
-        int bottom = Math.max(CAR_PANEL_BOTTOM_PX, ButtonLayout.carPanelTopPx(floorCount) + 2);
         List<Boolean> jambs = ButtonLayout.panelJambs(model, config.panelSides());
         List<Frame> frames = new ArrayList<>(2);
-        frames.add(overPanel(model, jambs.get(0), bottom, face, label, direction));
-        if (jambs.size() > 1 && config.leftPanelIndicator()) {
-            frames.add(overPanel(model, jambs.get(1), bottom, face, label, direction));
+        for (int i = 0; i < jambs.size(); i++) {
+            if (i == 0 || config.leftPanelIndicator()) {
+                frames.add(large(CarPanelLayout.window(model, jambs.get(i)), Normal.NEG_Z, true, label, direction));
+            }
         }
         return frames;
     }
 
-    private static Frame overPanel(CarSpec model, boolean right, int bottom, int face, String label, TravelDirection direction) {
-        int minX = ButtonLayout.jambMinPx(model, right) + (ButtonLayout.jambWidthPx(model, right) - Arrangement.VERTICAL.width) / 2;
-        return build(Arrangement.VERTICAL, Viewer.INSIDE_CAR, minX + Arrangement.VERTICAL.width, bottom, 0, face, 1.0 / PX,
-                label, direction);
+    /** 主操作盤の、表示窓を付ける袖壁（かごの中から見て右側なら true）。並びは {@link #car} の表示器と同じ。 */
+    public static List<Boolean> carWindowJambs(CarSpec model, FixtureConfig config) {
+        if (config.carIndicator() == FixtureConfig.CarIndicator.OVER_DOOR) {
+            return List.of();
+        }
+        List<Boolean> jambs = ButtonLayout.panelJambs(model, config.panelSides());
+        return jambs.size() > 1 && !config.leftPanelIndicator() ? jambs.subList(0, 1) : jambs;
+    }
+
+    /** 車椅子用操作盤の表示器（右の側壁、左の側壁の順）。 */
+    public static List<Frame> wheelchair(CarSpec model, int floorCount, String label, TravelDirection direction) {
+        WheelchairPanelLayout layout = WheelchairPanelLayout.of(model, floorCount);
+        return List.of(
+                large(layout.window(model, true), WheelchairPanelLayout.normal(true), false, label, direction),
+                large(layout.window(model, false), WheelchairPanelLayout.normal(false), false, label, direction));
+    }
+
+    /**
+     * 0.5px のドットで描く表示器。vertical なら上に矢印、下に階名。そうでなければ矢印、階名の順に横に並べる。
+     *
+     * @param window 表示窓。ドットはその normal の側の面に描く
+     */
+    private static Frame large(Box window, Normal normal, boolean vertical, String label, TravelDirection direction) {
+        boolean alongX = normal.x() == 0;
+        double plane = switch (normal) {
+            case POS_X -> window.maxX();
+            case NEG_X -> window.minX();
+            case POS_Z -> window.maxZ();
+            case NEG_Z -> window.minZ();
+        };
+        int rightSign = alongX ? normal.rightX() : normal.rightZ();
+        double left = alongX ? (rightSign > 0 ? window.minX() : window.maxX()) : (rightSign > 0 ? window.minZ() : window.maxZ());
+        double width = alongX ? window.sizeX() : window.sizeZ();
+        int columns = (int) Math.round(width / LARGE_DOT);
+        int rows = (int) Math.round(window.sizeY() / LARGE_DOT);
+        FaceGrid face = new FaceGrid(normal, plane, left, window.maxY(), LARGE_DOT);
+        DotGrid grid = face::dot;
+        List<Box> dots = new ArrayList<>();
+        if (vertical) {
+            addArrow(dots, grid, direction, (columns - ARROW_SIZE) / 2, 1);
+            addLargeLabel(dots, grid, label, (columns - LARGE_LABEL_WIDTH) / 2, rows - 1 - LargeDotFont.HEIGHT);
+        } else {
+            int start = (columns - (ARROW_SIZE + 1 + LARGE_LABEL_WIDTH)) / 2;
+            addArrow(dots, grid, direction, start, (rows - ARROW_SIZE) / 2);
+            addLargeLabel(dots, grid, label, start + ARROW_SIZE + 1, (rows - LargeDotFont.HEIGHT) / 2);
+        }
+        return new Frame(window, dots);
+    }
+
+    /** 階名を 5×7 ドットの文字で欄に描く。1文字なら欄の中央に置く。 */
+    private static void addLargeLabel(List<Box> dots, DotGrid grid, String label, int column, int row) {
+        String text = label.length() > MAX_LABEL_LENGTH ? label.substring(0, MAX_LABEL_LENGTH) : label;
+        int start = column + (LARGE_LABEL_WIDTH - (text.length() * (LargeDotFont.WIDTH + 1) - 1)) / 2;
+        for (int i = 0; i < text.length(); i++) {
+            int charColumn = start + i * (LargeDotFont.WIDTH + 1);
+            for (int y = 0; y < LargeDotFont.HEIGHT; y++) {
+                for (int x = 0; x < LargeDotFont.WIDTH; x++) {
+                    if (LargeDotFont.isLit(text.charAt(i), x, y)) {
+                        dots.add(grid.dot(charColumn + x, row + y));
+                    }
+                }
+            }
+        }
     }
 
     /** 乗場の表示器。 */

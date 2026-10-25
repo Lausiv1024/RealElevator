@@ -6,9 +6,14 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
 import net.lausiv1024.realelevator.core.car.CarGeometry.PartType;
+import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.Entrance;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
+import net.lausiv1024.realelevator.core.panel.ButtonLayout;
+import net.lausiv1024.realelevator.core.panel.CarPanelLayout;
+import net.lausiv1024.realelevator.core.panel.FixtureConfig;
+import net.lausiv1024.realelevator.core.panel.WheelchairPanelLayout;
 import net.lausiv1024.realelevator.entity.CarShapes;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -54,12 +59,30 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
                 BoxRenderer.renderBox(pose, consumer, panel, door, packedLight);
             }
         }
-        BoxRenderer.renderButtons(pose, consumer, car, car.facing().get2DDataValue(), packedLight);
-        // 二方向出入口では、奥の出入口にも同じ表示器を180°回して付ける
+        FixtureConfig fixtures = car.fixtures();
+        CarSpec spec = car.spec();
+        int turns = car.facing().get2DDataValue();
+        int rgb = fixtures.indicatorColor().rgb();
+        BoxRenderer.renderButtons(pose, consumer, car, turns, packedLight, rgb);
+        String label = car.indicatorLabel(tick);
+        // 二方向出入口では、奥の出入口にも同じ操作盤と表示器を180°回して付ける
+        CarPanelLayout panel = CarPanelLayout.of(spec, car.floorCount());
         for (Entrance entrance : car.entrances()) {
-            for (FloorIndicator.Frame indicator : FloorIndicator.car(car.spec(), car.floorCount(), car.fixtures(),
-                    car.indicatorLabel(tick), car.indicatorDirection())) {
-                BoxRenderer.renderIndicator(pose, consumer, indicator, car.facing().get2DDataValue() + entrance.quarterTurns(), packedLight);
+            int entranceTurns = turns + entrance.quarterTurns();
+            for (boolean right : ButtonLayout.panelJambs(spec, fixtures.panelSides())) {
+                BoxRenderer.renderParts(pose, consumer, panel.parts(spec, right, false), entranceTurns, packedLight);
+            }
+            for (FloorIndicator.Frame indicator : FloorIndicator.car(spec, car.floorCount(), fixtures, label, car.indicatorDirection())) {
+                BoxRenderer.renderIndicator(pose, consumer, indicator, entranceTurns, packedLight, rgb);
+            }
+        }
+        if (fixtures.wheelchairPanel()) {
+            WheelchairPanelLayout wheelchair = WheelchairPanelLayout.of(spec, car.floorCount());
+            for (boolean right : new boolean[] {true, false}) {
+                BoxRenderer.renderParts(pose, consumer, wheelchair.parts(spec, right), turns, packedLight);
+            }
+            for (FloorIndicator.Frame indicator : FloorIndicator.wheelchair(spec, car.floorCount(), label, car.indicatorDirection())) {
+                BoxRenderer.renderIndicator(pose, consumer, indicator, turns, packedLight, rgb);
             }
         }
         poseStack.popPose();

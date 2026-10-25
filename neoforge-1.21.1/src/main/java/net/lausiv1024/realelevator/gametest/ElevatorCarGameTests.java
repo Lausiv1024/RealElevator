@@ -36,6 +36,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.level.block.Blocks;
@@ -836,7 +837,7 @@ public class ElevatorCarGameTests {
         ElevatorCarEntity car = elevator.car();
         int usual = car.buttons().size();
         car.setFixtures(car.fixtures().withWheelchairPanel(true));
-        helper.assertTrue(car.buttons().size() == usual + (2 + 2) * 2, "a wheelchair panel on each side wall");
+        helper.assertTrue(car.buttons().size() == usual + (2 + 3) * 2, "a wheelchair panel (open, close, 2 floors, emergency) on each side wall");
         int wheelchairSecond = wheelchairIndexOf(car.buttons(), ButtonLayout.Kind.CAR_CALL, 1);
         int usualSecond = indexOf(car.buttons(), ButtonLayout.Kind.CAR_CALL, 1);
         car.pressButton(usualSecond);
@@ -1041,6 +1042,21 @@ public class ElevatorCarGameTests {
             }
         }
         throw new IllegalStateException("no wheelchair button " + kind + " " + floor);
+    }
+
+    /** 非常呼びボタンは飾りで、押しても呼びは登録されず戸も動かない。表示器の色の設定は保存と同期で残る。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 40)
+    public static void emergencyButtonIsDecorationAndIndicatorColorIsKept(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_HIGH, 0, RISE).car();
+        car.pressButton(indexOf(car.buttons(), ButtonLayout.Kind.EMERGENCY, -1));
+        helper.assertTrue(!car.isCarCallLit(0) && !car.isCarCallLit(1) && car.doorState() == DoorState.CLOSED && !car.isMoving(),
+                "the emergency button should do nothing but beep");
+        helper.assertTrue(car.buttonLabel(indexOf(car.buttons(), ButtonLayout.Kind.CAR_CALL, 1)).equals("2"), "the car call shows its floor");
+        car.setFixtures(car.fixtures().withIndicatorColor(FixtureConfig.IndicatorColor.BLUE));
+        ElevatorCarEntity copy = ModEntities.ELEVATOR_CAR.get().create(helper.getLevel());
+        copy.load(car.saveWithoutId(new CompoundTag()));
+        helper.assertTrue(copy.fixtures().indicatorColor() == FixtureConfig.IndicatorColor.BLUE, "the color should be saved");
+        helper.succeed();
     }
 
     private static int indexOf(List<ButtonLayout.Button> buttons, ButtonLayout.Kind kind, int floor) {

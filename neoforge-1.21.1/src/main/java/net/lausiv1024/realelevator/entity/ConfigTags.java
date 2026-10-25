@@ -19,6 +19,7 @@ public final class ConfigTags {
         tag.putString("HallIndicator", fixtures.hallIndicator().name());
         tag.putString("HallLantern", fixtures.hallLantern().name());
         tag.putBoolean("WheelchairPanel", fixtures.wheelchairPanel());
+        tag.putString("IndicatorColor", fixtures.indicatorColor().name());
         return tag;
     }
 
@@ -30,7 +31,8 @@ public final class ConfigTags {
                 tag.getBoolean("LeftPanelIndicator"),
                 parseEnum(FixtureConfig.HallIndicator.class, tag.getString("HallIndicator"), defaults.hallIndicator()),
                 parseEnum(FixtureConfig.HallLanternPlacement.class, tag.getString("HallLantern"), defaults.hallLantern()),
-                tag.getBoolean("WheelchairPanel"));
+                tag.getBoolean("WheelchairPanel"),
+                parseEnum(FixtureConfig.IndicatorColor.class, tag.getString("IndicatorColor"), defaults.indicatorColor()));
     }
 
     public static CompoundTag writeAnnouncements(AnnouncementConfig announcements) {

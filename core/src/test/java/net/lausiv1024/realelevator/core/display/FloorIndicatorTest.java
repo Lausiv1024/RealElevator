@@ -14,6 +14,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
+import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.display.FloorIndicator.Frame;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
@@ -65,11 +66,13 @@ class FloorIndicatorTest {
         Box face = frame.face();
         Box interior = CarGeometry.interior(model);
         assertTrue(face.minX() >= interior.minX() - EPS && face.maxX() <= CarGeometry.entrance(model).minX() + EPS);
-        assertEquals(interior.maxZ(), face.maxZ(), EPS);
+        // 主操作盤の板（袖壁から1px）の面の表示窓
+        assertEquals(interior.maxZ() - PX, face.maxZ(), EPS);
         double buttonsTop = ButtonLayout.carPanel(model, 4).stream().mapToDouble(b -> b.box().maxY()).max().orElseThrow();
         assertTrue(face.minY() > buttonsTop);
         assertTrue(face.maxY() <= interior.maxY());
-        assertDotsInside(frame);
+        // 0.5px のドット
+        assertDotsInside(frame, PX / 2);
     }
 
     @ParameterizedTest
@@ -173,16 +176,40 @@ class FloorIndicatorTest {
     }
 
     private static void assertDotsInside(Frame frame) {
+        assertDotsInside(frame, PX);
+    }
+
+    private static void assertDotsInside(Frame frame, double dotSize) {
         Box face = frame.face();
         assertFalse(frame.dots().isEmpty());
         for (Box dot : frame.dots()) {
-            assertEquals(PX, dot.sizeX(), EPS);
-            assertEquals(PX, dot.sizeY(), EPS);
-            assertTrue(dot.minX() >= face.minX() - EPS && dot.maxX() <= face.maxX() + EPS
-                    && dot.minY() >= face.minY() - EPS && dot.maxY() <= face.maxY() + EPS, dot.toString());
-            // ドットは表示面の手前（見る人の側）に浮いている
-            assertTrue(dot.maxZ() <= face.minZ() + EPS || dot.minZ() >= face.maxZ() - EPS, dot.toString());
+            assertEquals(dotSize, Math.max(dot.sizeX(), dot.sizeZ()), EPS);
+            assertEquals(dotSize, dot.sizeY(), EPS);
+            assertTrue(dot.minY() >= face.minY() - EPS && dot.maxY() <= face.maxY() + EPS, dot.toString());
+            boolean onX = dot.sizeX() < dot.sizeZ();
+            if (onX) {
+                // 側壁の表示器：ドットは X の向きに浮く
+                assertTrue(dot.minZ() >= face.minZ() - EPS && dot.maxZ() <= face.maxZ() + EPS, dot.toString());
+                assertTrue(dot.maxX() <= face.minX() + EPS || dot.minX() >= face.maxX() - EPS, dot.toString());
+            } else {
+                assertTrue(dot.minX() >= face.minX() - EPS && dot.maxX() <= face.maxX() + EPS, dot.toString());
+                // ドットは表示面の手前（見る人の側）に浮いている
+                assertTrue(dot.maxZ() <= face.minZ() + EPS || dot.minZ() >= face.maxZ() - EPS, dot.toString());
+            }
         }
+    }
+
+    @Test
+    void wheelchairDisplaysSitInTheBandOfBothPanels() {
+        CarSpec spec = CarSpec.of(CarModel.P11);
+        List<Frame> frames = FloorIndicator.wheelchair(spec, 6, "12", TravelDirection.UP);
+        assertEquals(2, frames.size());
+        for (Frame frame : frames) {
+            assertDotsInside(frame, PX / 2);
+        }
+        // 右の側壁（−X）のドットは +X の側、左の側壁（+X）のドットは −X の側に浮く
+        assertTrue(frames.get(0).dots().get(0).minX() >= frames.get(0).face().maxX() - EPS);
+        assertTrue(frames.get(1).dots().get(0).maxX() <= frames.get(1).face().minX() + EPS);
     }
 
     @Test

@@ -366,7 +366,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         if (through) {
             // 奥の出入口の袖壁にも、同じ操作盤を180°回して置く
             for (Button button : front) {
-                all.add(new Button(button.kind(), button.floor(), button.box().rotateQuarterTurns(Entrance.REAR.quarterTurns())));
+                all.add(button.rotateQuarterTurns(Entrance.REAR.quarterTurns()));
             }
         }
         if (fixtures.wheelchairPanel()) {
@@ -838,6 +838,19 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     @Override
+    public String buttonLabel(int index) {
+        Button button = buttons.get(index);
+        return button.kind() == ButtonLayout.Kind.CAR_CALL ? floorLabel(button.floor()) : "";
+    }
+
+    /** 非常呼びボタン。飾りで、押すと短い音が鳴るだけ。 */
+    private void pressEmergency(Button button) {
+        Box box = button.box().rotateQuarterTurns(facing().get2DDataValue());
+        level().playSound(null, getX() + (box.minX() + box.maxX()) / 2, getY() + (box.minY() + box.maxY()) / 2,
+                getZ() + (box.minZ() + box.maxZ()) / 2, ModSounds.EMERGENCY_BEEP.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
+    }
+
+    @Override
     public void pressButton(int index) {
         Button button = buttons.get(index);
         if (button.wheelchair()) {
@@ -849,6 +862,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                         pressWheelchairCarCall(button.floor());
                     }
                 }
+                case EMERGENCY -> pressEmergency(button);
                 case HALL_UP, HALL_DOWN -> {
                 }
             }
@@ -863,6 +877,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                     pressCarCall(button.floor(), side);
                 }
             }
+            case EMERGENCY -> pressEmergency(button);
             case HALL_UP, HALL_DOWN -> {
             }
         }

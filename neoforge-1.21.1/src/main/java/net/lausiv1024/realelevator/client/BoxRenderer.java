@@ -1,7 +1,9 @@
 package net.lausiv1024.realelevator.client;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -10,7 +12,9 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.display.HallLantern;
+import net.lausiv1024.realelevator.core.panel.ButtonGlyphs;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
+import net.lausiv1024.realelevator.core.panel.PanelPart;
 import net.lausiv1024.realelevator.entity.ButtonHost;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
@@ -23,68 +27,104 @@ import net.minecraft.resources.ResourceLocation;
  * 箱を描く。ブロックのテクスチャを、各面に1ブロック単位で敷き詰める。
  */
 final class BoxRenderer {
-    private static final ResourceLocation BUTTON = ResourceLocation.withDefaultNamespace("block/polished_deepslate");
-    private static final ResourceLocation BUTTON_LIT = ResourceLocation.withDefaultNamespace("block/glowstone");
+    /** 色を掛けて使う白い下地。 */
+    private static final ResourceLocation WHITE_BASE = ResourceLocation.withDefaultNamespace("block/white_concrete");
     private static final ResourceLocation INDICATOR_FACE = ResourceLocation.withDefaultNamespace("block/black_concrete");
     private static final ResourceLocation INDICATOR_DOT = ResourceLocation.withDefaultNamespace("block/white_concrete");
+    /** 操作盤の板（仮のステンレス。デザインシステムの素材で差し替える）。 */
+    private static final ResourceLocation PLATE = ResourceLocation.withDefaultNamespace("block/iron_block");
     private static final int WHITE = 0xFFFFFF;
-    /** 階床表示器のドットの色（アンバー）。 */
-    private static final int AMBER = 0xFFAA00;
-    /** 車椅子用のボタン（消灯中）の色。車椅子マークの代わりの仮の色で、デザインシステムで差し替える。 */
+    /** ボタンの地の色（明るいステンレス）。 */
+    private static final int BUTTON_BODY = 0xC9CDD1;
+    /** 消灯している図柄の色。 */
+    private static final int GLYPH_OFF = 0x4A4D52;
+    /** 車椅子マークの色。 */
     private static final int WHEELCHAIR_BLUE = 0x2F5FB8;
     /** 消灯しているホールランタンの色（くすんだ乳白色）。 */
     private static final int LANTERN_OFF = 0x6E6A60;
+    /** ボタンの図柄は毎フレーム組み立て直さないよう覚えておく。 */
+    private static final Map<GlyphKey, ButtonGlyphs.Glyph> GLYPHS = new ConcurrentHashMap<>();
+    private static final int MAX_GLYPHS = 4096;
+
+    private record GlyphKey(ButtonLayout.Button button, String label) {
+    }
 
     private BoxRenderer() {
     }
 
     /**
-     * ボタンを描く。応答灯がついているボタンは、まわりの明るさによらず光って見えるようにする。
+     * ボタンを描く。面に図柄（行先ボタンは階名）を描き、応答灯がついているボタンは、図柄を litRgb の色で、
+     * まわりの明るさによらず光って見えるようにする。
      *
      * @param quarterTurns ボタンの座標（かごのローカル座標）を回す回数
      */
-    static void renderButtons(PoseStack.Pose pose, VertexConsumer consumer, ButtonHost host, int quarterTurns, int light) {
-        TextureAtlasSprite unlit = blockSprite(BUTTON);
-        TextureAtlasSprite lit = blockSprite(BUTTON_LIT);
-        TextureAtlasSprite wheelchair = blockSprite(INDICATOR_DOT);
+    static void renderButtons(PoseStack.Pose pose, VertexConsumer consumer, ButtonHost host, int quarterTurns, int light, int litRgb) {
+        TextureAtlasSprite base = blockSprite(WHITE_BASE);
         for (int i = 0; i < host.buttons().size(); i++) {
             ButtonLayout.Button button = host.buttons().get(i);
-            Box box = button.box().rotateQuarterTurns(quarterTurns);
-            if (host.isButtonLit(i)) {
-                renderBox(pose, consumer, box, lit, LightTexture.FULL_BRIGHT);
-            } else if (button.wheelchair()) {
-                renderBox(pose, consumer, box, wheelchair, light, WHEELCHAIR_BLUE);
-            } else {
-                renderBox(pose, consumer, box, unlit, light);
+            renderBox(pose, consumer, button.box().rotateQuarterTurns(quarterTurns), base, light, BUTTON_BODY);
+            ButtonGlyphs.Glyph glyph = glyph(button, host.buttonLabel(i));
+            boolean on = host.isButtonLit(i);
+            for (Box dot : glyph.symbol()) {
+                Box rotated = dot.rotateQuarterTurns(quarterTurns);
+                if (on) {
+                    renderBox(pose, consumer, rotated, base, LightTexture.FULL_BRIGHT, litRgb);
+                } else {
+                    renderBox(pose, consumer, rotated, base, light, GLYPH_OFF);
+                }
+            }
+        }
+    }
+
+    private static ButtonGlyphs.Glyph glyph(ButtonLayout.Button button, String label) {
+        if (GLYPHS.size() > MAX_GLYPHS) {
+            GLYPHS.clear();
+        }
+        return GLYPHS.computeIfAbsent(new GlyphKey(button, label), key -> ButtonGlyphs.of(key.button(), key.label()));
+    }
+
+    /** 操作盤の板・帯・車椅子マークを描く。 */
+    static void renderParts(PoseStack.Pose pose, VertexConsumer consumer, List<PanelPart> parts, int quarterTurns, int light) {
+        TextureAtlasSprite plate = blockSprite(PLATE);
+        TextureAtlasSprite black = blockSprite(INDICATOR_FACE);
+        TextureAtlasSprite base = blockSprite(WHITE_BASE);
+        for (PanelPart part : parts) {
+            Box box = part.box().rotateQuarterTurns(quarterTurns);
+            switch (part.type()) {
+                case PLATE -> renderBox(pose, consumer, box, plate, light);
+                case BAND, WINDOW -> renderBox(pose, consumer, box, black, light);
+                case MARK -> renderBox(pose, consumer, box, base, light, WHEELCHAIR_BLUE);
+                case MARK_SYMBOL -> renderBox(pose, consumer, box, base, light, WHITE);
             }
         }
     }
 
     /**
-     * 階床表示器を描く。点灯しているドットは、まわりの明るさによらず光って見えるようにする。
+     * 階床表示器を描く。点灯しているドットは、まわりの明るさによらず rgb の色で光って見えるようにする。
      *
      * @param quarterTurns 表示器の座標（かごのローカル座標）を回す回数
      */
-    static void renderIndicator(PoseStack.Pose pose, VertexConsumer consumer, FloorIndicator.Frame frame, int quarterTurns, int light) {
+    static void renderIndicator(PoseStack.Pose pose, VertexConsumer consumer, FloorIndicator.Frame frame, int quarterTurns, int light,
+                                int rgb) {
         renderBox(pose, consumer, frame.face().rotateQuarterTurns(quarterTurns), blockSprite(INDICATOR_FACE), light);
         TextureAtlasSprite dot = blockSprite(INDICATOR_DOT);
         for (Box box : frame.dots()) {
-            renderBox(pose, consumer, box.rotateQuarterTurns(quarterTurns), dot, LightTexture.FULL_BRIGHT, AMBER);
+            renderBox(pose, consumer, box.rotateQuarterTurns(quarterTurns), dot, LightTexture.FULL_BRIGHT, rgb);
         }
     }
 
     /**
-     * ホールランタンを描く。点灯している段は、まわりの明るさによらず光って見えるようにする。
+     * ホールランタンを描く。点灯している段は、まわりの明るさによらず rgb の色で光って見えるようにする。
      *
      * @param quarterTurns ランタンの座標（かごのローカル座標）を回す回数
      */
     static void renderLantern(PoseStack.Pose pose, VertexConsumer consumer, List<HallLantern.Section> sections,
-                              Set<TravelDirection> lit, int quarterTurns, int light) {
+                              Set<TravelDirection> lit, int quarterTurns, int light, int rgb) {
         TextureAtlasSprite lens = blockSprite(INDICATOR_DOT);
         for (HallLantern.Section section : sections) {
             Box box = section.box().rotateQuarterTurns(quarterTurns);
             if (section.isLit(lit)) {
-                renderBox(pose, consumer, box, lens, LightTexture.FULL_BRIGHT, AMBER);
+                renderBox(pose, consumer, box, lens, LightTexture.FULL_BRIGHT, rgb);
             } else {
                 renderBox(pose, consumer, box, lens, light, LANTERN_OFF);
             }

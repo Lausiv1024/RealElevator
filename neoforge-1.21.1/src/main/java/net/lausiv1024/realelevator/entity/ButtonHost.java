@@ -20,4 +20,9 @@ public interface ButtonHost {
 
     /** index 番のボタンを押す。サーバーで呼ぶ。 */
     void pressButton(int index);
+
+    /** index 番のボタンの面に描く階名（行先ボタンだけ）。 */
+    default String buttonLabel(int index) {
+        return "";
+    }
 }

@@ -28,11 +28,13 @@ class ButtonLayoutTest {
         Box entrance = CarGeometry.entrance(model);
         for (Button button : ButtonLayout.carPanel(model, 10)) {
             Box b = button.box();
-            assertEquals(2 * PX, b.sizeX(), EPS);
-            assertEquals(2 * PX, b.sizeY(), EPS);
-            // 袖壁の内面から室内側へ1px
-            assertEquals(interior.maxZ(), b.maxZ(), EPS);
-            assertEquals(PX, b.sizeZ(), EPS);
+            // 袖壁が狭い機種は 2px角
+            double size = ButtonLayout.jambWidthPx(model) >= CarPanelLayout.MIN_JAMB_FOR_LARGE_PX ? 3 * PX : 2 * PX;
+            assertEquals(size, b.sizeX(), EPS);
+            assertEquals(size, b.sizeY(), EPS);
+            // 袖壁から1px浮かせた板の面から、さらに0.5px出っ張る
+            assertEquals(interior.maxZ() - PX, b.maxZ(), EPS);
+            assertEquals(PX / 2, b.sizeZ(), EPS);
             // かごの中から見て右側（−X）の袖壁の範囲
             assertTrue(b.minX() >= interior.minX() && b.maxX() <= entrance.minX(), button.toString());
             assertTrue(b.maxY() <= interior.maxY());
@@ -42,7 +44,7 @@ class ButtonLayoutTest {
     @Test
     void carPanelOrderAndColumns() {
         List<Button> buttons = ButtonLayout.carPanel(CarModel.P11, 4);
-        assertEquals(List.of(Kind.OPEN, Kind.CLOSE, Kind.CAR_CALL, Kind.CAR_CALL, Kind.CAR_CALL, Kind.CAR_CALL),
+        assertEquals(List.of(Kind.OPEN, Kind.CLOSE, Kind.CAR_CALL, Kind.CAR_CALL, Kind.CAR_CALL, Kind.CAR_CALL, Kind.EMERGENCY),
                 buttons.stream().map(Button::kind).toList());
         Button open = buttons.get(0);
         Button close = buttons.get(1);
@@ -106,7 +108,7 @@ class ButtonLayoutTest {
             assertEquals(r.box().minY(), l.box().minY(), EPS);
             assertTrue(l.box().minX() >= CarGeometry.entrance(CarModel.P11).maxX());
         }
-        assertEquals(ButtonLayout.carPanelTopPx(3) / 16.0,
+        assertEquals(right.stream().mapToDouble(b -> b.box().maxY()).max().orElseThrow(),
                 both.stream().mapToDouble(b -> b.box().maxY()).max().orElseThrow(), EPS);
     }
 }

@@ -29,6 +29,8 @@ public final class DotFont {
             Map.entry('M', new String[] {"#.#", "###", "###", "#.#", "#.#"}),
             Map.entry('P', new String[] {"##.", "#.#", "##.", "#..", "#.."}),
             Map.entry('R', new String[] {"##.", "#.#", "##.", "#.#", "#.#"}),
+            Map.entry('O', new String[] {"###", "#.#", "#.#", "#.#", "###"}),
+            Map.entry('S', new String[] {"###", "#..", "###", "..#", "###"}),
             Map.entry('-', new String[] {"...", "...", "###", "...", "..."}));
 
     private DotFont() {

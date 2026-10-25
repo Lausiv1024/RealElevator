@@ -108,6 +108,8 @@ final class SettingsForm {
         widgets.add(enumButton("hall_lantern", overDoor ? FixtureConfig.HallLanternPlacement.values()
                 : new FixtureConfig.HallLanternPlacement[] {FixtureConfig.HallLanternPlacement.NONE, FixtureConfig.HallLanternPlacement.BESIDE_DOOR},
                 fixtures.hallLantern(), v -> fixtures = fixtures.withHallLantern(v), send));
+        widgets.add(enumButton("indicator_color", FixtureConfig.IndicatorColor.values(), fixtures.indicatorColor(),
+                v -> fixtures = fixtures.withIndicatorColor(v), send));
         widgets.add(onOff("wheelchair_panel", fixtures.wheelchairPanel(), v -> fixtures = fixtures.withWheelchairPanel(v), send));
         widgets.add(onOff("arrival_announcement", announcements.arrival(), v -> announcements = announcements.withArrival(v), send));
         widgets.add(onOff("close_announcement", announcements.doorClose(), v -> announcements = announcements.withDoorClose(v), send));
