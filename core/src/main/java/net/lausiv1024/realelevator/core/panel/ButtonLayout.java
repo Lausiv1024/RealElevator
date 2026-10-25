@@ -8,7 +8,6 @@ import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.Normal;
-import net.lausiv1024.realelevator.core.door.DoorGeometry;
 
 /**
  * ボタンの配置。座標はかごのローカル座標（{@link CarGeometry} と同じ）で、乗場のボタンは
@@ -19,8 +18,7 @@ import net.lausiv1024.realelevator.core.door.DoorGeometry;
  * かごの操作盤は、かごの中から扉の方を向いて右側（−X 側）の袖壁に置く。設定によっては左側（+X 側）にも同じものを置く。
  * 片開き（2S）では、反対側の袖壁が狭いので、戸袋の側の袖壁に1つだけ置く（左右の設定は使わない）。
  *
- * <p>乗場のボタンは、三方枠の乗場側の面の、乗場から扉の方を向いて右側（+X 側）の脇の、幅の中央に置く。
- * 乗場の車椅子用ボタンは、▲▼の下に同じ並びで置く。
+ * <p>乗場のボタンは {@link net.lausiv1024.realelevator.core.design.LandingLayout} が配置を決める。
  */
 public final class ButtonLayout {
     /** ボタンの大きさ [px]。 */
@@ -31,12 +29,6 @@ public final class ButtonLayout {
     private static final int PROTRUSION_QUARTERS = 2;
     /** ボタンの出っ張り [ブロック]（0.5px）。 */
     public static final double PROTRUSION = PROTRUSION_QUARTERS / 4.0 / CarModel.PIXELS_PER_BLOCK;
-    /** 乗場の下りボタンの下端の高さ（実機 約1000 mm）。 */
-    public static final int HALL_BOTTOM_PX = 25;
-    /** 乗場の▲と▼のすき間 [px]。 */
-    public static final int HALL_GAP_PX = 2;
-    /** 乗場の車椅子用の下りボタンの下端の高さ。 */
-    public static final int WHEELCHAIR_HALL_BOTTOM_PX = 15;
 
     public enum Kind {
         CAR_CALL,
@@ -138,65 +130,6 @@ public final class ButtonLayout {
         buttons.addAll(layout.buttons(spec, floorCount, true));
         buttons.addAll(layout.buttons(spec, floorCount, false));
         return buttons;
-    }
-
-    /** 乗場のボタンの左端（−X 側）[px]。 */
-    public static int hallButtonMinXPx(CarModel model) {
-        return hallButtonMinXPx(CarSpec.of(model));
-    }
-
-    public static int hallButtonMinXPx(CarSpec spec) {
-        return (DoorGeometry.frameJambCenter2Px(spec, true) - BUTTON_PX) / 2;
-    }
-
-    /** 乗場のボタン（▲▼の両方があるとき）の上端 [px]。 */
-    public static int hallButtonsTopPx() {
-        return HALL_BOTTOM_PX + BUTTON_PX * 2 + HALL_GAP_PX;
-    }
-
-    /**
-     * 乗場のボタン。最上階には上り、最下階には下りがない。並びは上り、下りの順で、ない方は含めない。
-     */
-    public static List<Button> hallButtons(CarModel model, int floor, int floorCount) {
-        return hallButtons(CarSpec.of(model), floor, floorCount);
-    }
-
-    public static List<Button> hallButtons(CarSpec spec, int floor, int floorCount) {
-        return hallButtons(spec, floor, floorCount, 0);
-    }
-
-    /** 乗場の面を faceOffset だけずらした乗場のボタン（二方向出入口の奥の乗場）。 */
-    public static List<Button> hallButtons(CarSpec spec, int floor, int floorCount, double faceOffset) {
-        return hallButtons(spec, floor, floorCount, faceOffset, false);
-    }
-
-    /**
-     * 乗場のボタン。wheelchair なら、▲▼の下に車椅子用の▲▼も置く。並びは上り、下り、車椅子用の上り、下りの順で、ない方は含めない。
-     */
-    public static List<Button> hallButtons(CarSpec spec, int floor, int floorCount, double faceOffset, boolean wheelchair) {
-        List<Button> buttons = new ArrayList<>(4);
-        addHallButtons(buttons, spec, floor, floorCount, faceOffset, HALL_BOTTOM_PX, false);
-        if (wheelchair) {
-            addHallButtons(buttons, spec, floor, floorCount, faceOffset, WHEELCHAIR_HALL_BOTTOM_PX, true);
-        }
-        return buttons;
-    }
-
-    private static void addHallButtons(List<Button> buttons, CarSpec spec, int floor, int floorCount, double faceOffset,
-                                       int bottom, boolean wheelchair) {
-        double p = CarModel.PIXELS_PER_BLOCK;
-        double x = hallButtonMinXPx(spec) / p;
-        double face = DoorGeometry.landingFace(spec, faceOffset);
-        double size = BUTTON_PX / p;
-        if (floor < floorCount - 1) {
-            double upBottom = (bottom + BUTTON_PX + HALL_GAP_PX) / p;
-            buttons.add(new Button(Kind.HALL_UP, floor, new Box(x, upBottom, face, x + size, upBottom + size, face + PROTRUSION),
-                    Normal.POS_Z, wheelchair));
-        }
-        if (floor > 0) {
-            buttons.add(new Button(Kind.HALL_DOWN, floor, new Box(x, bottom / p, face, x + size, bottom / p + size, face + PROTRUSION),
-                    Normal.POS_Z, wheelchair));
-        }
     }
 
     private static int px(double blocks) {

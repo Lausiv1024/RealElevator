@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.design.InteriorConfig;
+import net.lausiv1024.realelevator.core.design.LandingLayout;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
 
 /** ボタンの面の図柄。 */
@@ -25,7 +27,8 @@ class ButtonGlyphsTest {
         buttons.addAll(ButtonLayout.carPanel(spec, 6, FixtureConfig.PanelSides.BOTH));
         buttons.addAll(ButtonLayout.carPanel(spec, 14, FixtureConfig.PanelSides.RIGHT));
         buttons.addAll(ButtonLayout.wheelchairPanel(spec, 8));
-        buttons.addAll(ButtonLayout.hallButtons(spec, 1, 3, 0, true));
+        buttons.addAll(LandingLayout.of(spec, FixtureConfig.DEFAULT.withWheelchairPanel(true), InteriorConfig.Landing.DEFAULT, 0)
+                .buttons(1, 3));
         for (Button button : ButtonLayout.carPanel(spec, 6, FixtureConfig.PanelSides.RIGHT)) {
             buttons.add(button.rotateQuarterTurns(2));
         }

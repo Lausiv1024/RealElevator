@@ -14,8 +14,8 @@ import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.car.Entrance;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
-import net.lausiv1024.realelevator.core.display.FloorIndicator;
-import net.lausiv1024.realelevator.core.display.HallLantern;
+import net.lausiv1024.realelevator.core.design.InteriorConfig;
+import net.lausiv1024.realelevator.core.design.LandingLayout;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
@@ -39,7 +39,8 @@ import net.minecraft.world.phys.AABB;
  * 開き具合は自分では持たず、かごがこの階に着床しているときだけ、かごの戸と同じ開き具合で動く。
  * そのため、かごとの間で追加の同期はいらない。
  *
- * <p>乗場の▲▼ボタン、階床表示器、ホールランタン、三方枠（仮）もこのエンティティが持つ。応答灯はかごに登録された乗場呼びを表示する。
+ * <p>乗場の▲▼ボタン、階床表示器、ホールランタン、三方枠と枠のまわりの壁、敷居もこのエンティティが持つ（配置は {@link LandingLayout}）。
+ * 応答灯はかごに登録された乗場呼びを表示する。
  *
  * <p>二方向出入口（前後）の奥の乗場の扉は、正面の形をかごの中心のまわりに180°回したもので、三方枠はブロックの格子にそろうよう厚くする。
  */
@@ -122,6 +123,14 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         return cachedCar;
     }
 
+    /** この乗場の配置。かごが読み込まれていなければ、初期値の設定で求める。 */
+    public LandingLayout layout() {
+        ElevatorCarEntity car = car();
+        FixtureConfig fixtures = car != null ? car.fixtures() : FixtureConfig.DEFAULT;
+        InteriorConfig.Landing landing = car != null ? car.interior().landing() : InteriorConfig.Landing.DEFAULT;
+        return LandingLayout.of(spec(), fixtures, landing, faceOffset());
+    }
+
     /** かごがこの階に着床しているかどうか（ランディングオープンでは、着床の直前に戸が開き始めたときから）。 */
     public boolean isCarHere() {
         ElevatorCarEntity car = car();
@@ -173,7 +182,7 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         ElevatorCarEntity car = car();
         int floor = floorIndex();
         return car != null && floor >= 0
-                ? ButtonLayout.hallButtons(spec(), floor, car.floorCount(), faceOffset(), car.fixtures().wheelchairPanel()) : List.of();
+                ? layout().buttons(floor, car.floorCount()) : List.of();
     }
 
     @Override
@@ -218,27 +227,10 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
 
     @Override
     protected AABB makeBoundingBox() {
-        // 描画のカリングに使うので、戸が動く範囲、三方枠、ボタン（中間階の▲▼）、階床表示器、ホールランタンを含める
+        // 描画のカリングに使うので、戸が動く範囲と、器具を含む三方枠の範囲全体を含める
         AABB bounds = CarShapes.toAabb(CarShapes.doorTravelBounds(spec(), facing(), DoorGeometry.Side.LANDING, entrance()), getX(), getY(), getZ());
-        for (Box box : CarShapes.landingFrame(spec(), facing(), entrance())) {
-            bounds = bounds.minmax(CarShapes.toAabb(box, getX(), getY(), getZ()));
-        }
-        int turns = quarterTurns();
-        double offset = faceOffset();
-        for (Button button : ButtonLayout.hallButtons(spec(), 1, 3, offset, true)) {
-            bounds = bounds.minmax(CarShapes.toAabb(button.box().rotateQuarterTurns(turns), getX(), getY(), getZ()));
-        }
-        // 階床表示器とホールランタンは、どの位置に付けても入るようにする
-        for (FixtureConfig.HallIndicator indicatorPlacement : FixtureConfig.HallIndicator.values()) {
-            for (FixtureConfig.HallLanternPlacement lanternPlacement : FixtureConfig.HallLanternPlacement.values()) {
-                FixtureConfig config = FixtureConfig.DEFAULT.withHallIndicator(indicatorPlacement).withHallLantern(lanternPlacement);
-                Box indicator = FloorIndicator.hall(spec(), config, "", TravelDirection.NONE, offset).face();
-                bounds = bounds.minmax(CarShapes.toAabb(indicator.rotateQuarterTurns(turns), getX(), getY(), getZ()));
-                for (HallLantern.Section section : HallLantern.sections(spec(), config, false, offset)) {
-                    bounds = bounds.minmax(CarShapes.toAabb(section.box().rotateQuarterTurns(turns), getX(), getY(), getZ()));
-                }
-            }
-        }
+        Box range = LandingLayout.bounds(spec(), faceOffset()).rotateQuarterTurns(quarterTurns());
+        bounds = bounds.minmax(CarShapes.toAabb(range, getX(), getY(), getZ()));
         return bounds;
     }
 

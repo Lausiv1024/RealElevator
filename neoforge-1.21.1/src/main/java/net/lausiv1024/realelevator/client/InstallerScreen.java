@@ -186,7 +186,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
                 });
         counterweightButton.active = !through;
         settings.add(counterweightButton);
-        settings.addAll(form.fixtureWidgets(this::send));
+        settings.addAll(form.fixtureWidgets(this::send, this::rebuildWidgets));
         form.setEditableEntrances(through);
         form.layout(font, width, height - 42, settings, this::addRenderableWidget, this::send, this::rebuildWidgets);
 

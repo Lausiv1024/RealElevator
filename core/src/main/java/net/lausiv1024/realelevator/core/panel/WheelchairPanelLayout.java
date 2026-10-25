@@ -144,14 +144,23 @@ public final class WheelchairPanelLayout {
         double markFront = wall.normalCoordinate(front + 2 * SURFACE_DEPTH);
         FaceGrid grid = new FaceGrid(wall.normal, markFront, wall.horizontal(markLeft() + 0.5),
                 (bandBottomPx() + 0.5 + MARK_PX - 0.5) * PX, PX / 4);
+        for (Box dot : markSymbol(grid)) {
+            parts.add(new PanelPart(PanelPart.Type.MARK_SYMBOL, dot));
+        }
+        return parts;
+    }
+
+    /** 車椅子マークの白い図柄（12×12 ドット）を grid に並べたもの。マークの中に、まわりに2ドット空けて置く格子を渡す。 */
+    public static List<Box> markSymbol(FaceGrid grid) {
+        List<Box> dots = new ArrayList<>();
         for (int row = 0; row < SYMBOL.length; row++) {
             for (int column = 0; column < SYMBOL[row].length(); column++) {
                 if (SYMBOL[row].charAt(column) == '#') {
-                    parts.add(new PanelPart(PanelPart.Type.MARK_SYMBOL, grid.dot(column, row)));
+                    dots.add(grid.dot(column, row));
                 }
             }
         }
-        return parts;
+        return dots;
     }
 
     /** 側壁 right の操作盤の表示窓。帯の中で、マークを除いた部分の中央。 */

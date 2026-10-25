@@ -40,10 +40,16 @@ public final class Materials {
         return location != null ? BuiltInRegistries.BLOCK.get(location) : Blocks.AIR;
     }
 
-    /** 部位ごとの素材のうち、その部位のタグに入っていないものを初期値に戻す（不正な設定や、データパックから外された素材）。 */
+    /**
+     * 部位ごとの素材のうち、その部位のタグに入っていないものを初期値に戻す（不正な設定や、データパックから外された素材）。
+     * 乗場の壁の「まわりに合わせる」（{@link InteriorConfig#AUTO}）はそのまま。
+     */
     public static InteriorConfig sanitize(InteriorConfig config) {
         InteriorConfig result = config;
         for (InteriorConfig.Part part : InteriorConfig.Part.values()) {
+            if (part == InteriorConfig.Part.LANDING_WALL && InteriorConfig.AUTO.equals(config.material(part))) {
+                continue;
+            }
             Block block = block(config.material(part));
             if (block == Blocks.AIR || !block.defaultBlockState().is(tag(part.tag()))) {
                 result = result.withMaterial(part, InteriorConfig.DEFAULT.material(part));

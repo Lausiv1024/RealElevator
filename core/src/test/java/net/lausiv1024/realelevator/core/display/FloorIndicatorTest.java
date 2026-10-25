@@ -16,6 +16,8 @@ import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
+import net.lausiv1024.realelevator.core.design.InteriorConfig;
+import net.lausiv1024.realelevator.core.design.LandingLayout;
 import net.lausiv1024.realelevator.core.display.FloorIndicator.Frame;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
@@ -78,7 +80,7 @@ class FloorIndicatorTest {
     @ParameterizedTest
     @EnumSource(CarModel.class)
     void hallIndicatorIsCenteredAboveTheEntrance(CarModel model) {
-        Frame frame = FloorIndicator.hall(model, OVER_DOOR, "B1", TravelDirection.DOWN);
+        Frame frame = hall(model, OVER_DOOR, "B1", TravelDirection.DOWN);
         Box face = frame.face();
         assertEquals(-face.maxX(), face.minX(), EPS);
         assertTrue(face.minY() > CarGeometry.entrance(model).maxY());
@@ -101,8 +103,8 @@ class FloorIndicatorTest {
     @Test
     void hallIndicatorReadsLeftToRightFromTheLanding() {
         // 乗場から見ると左が −X なので、矢印が −X 側、階名が +X 側にある
-        Frame withArrow = FloorIndicator.hall(CarModel.P11, OVER_DOOR, "", TravelDirection.UP);
-        Frame withLabel = FloorIndicator.hall(CarModel.P11, OVER_DOOR, "8", TravelDirection.NONE);
+        Frame withArrow = hall(CarModel.P11, OVER_DOOR, "", TravelDirection.UP);
+        Frame withLabel = hall(CarModel.P11, OVER_DOOR, "8", TravelDirection.NONE);
         double arrowMax = withArrow.dots().stream().mapToDouble(Box::maxX).max().orElseThrow();
         double labelMin = withLabel.dots().stream().mapToDouble(Box::minX).min().orElseThrow();
         assertTrue(arrowMax < labelMin);
@@ -110,21 +112,21 @@ class FloorIndicatorTest {
 
     @Test
     void arrowAppearsOnlyWithADirection() {
-        int none = FloorIndicator.hall(CarModel.P11, OVER_DOOR, "1", TravelDirection.NONE).dots().size();
-        int up = FloorIndicator.hall(CarModel.P11, OVER_DOOR, "1", TravelDirection.UP).dots().size();
-        int down = FloorIndicator.hall(CarModel.P11, OVER_DOOR, "1", TravelDirection.DOWN).dots().size();
+        int none = hall(CarModel.P11, OVER_DOOR, "1", TravelDirection.NONE).dots().size();
+        int up = hall(CarModel.P11, OVER_DOOR, "1", TravelDirection.UP).dots().size();
+        int down = hall(CarModel.P11, OVER_DOOR, "1", TravelDirection.DOWN).dots().size();
         assertTrue(up > none);
         assertEquals(up, down);
         // 上向きの矢印は先端が上
-        List<Box> arrow = FloorIndicator.hall(CarModel.P11, OVER_DOOR, "", TravelDirection.UP).dots();
+        List<Box> arrow = hall(CarModel.P11, OVER_DOOR, "", TravelDirection.UP).dots();
         double top = arrow.stream().mapToDouble(Box::maxY).max().orElseThrow();
         assertEquals(1, arrow.stream().filter(b -> Math.abs(b.maxY() - top) < EPS).count());
     }
 
     @Test
     void longLabelsAreCutToTwoCharacters() {
-        assertEquals(FloorIndicator.hall(CarModel.P11, OVER_DOOR, "12", TravelDirection.NONE).dots(),
-                FloorIndicator.hall(CarModel.P11, OVER_DOOR, "123", TravelDirection.NONE).dots());
+        assertEquals(hall(CarModel.P11, OVER_DOOR, "12", TravelDirection.NONE).dots(),
+                hall(CarModel.P11, OVER_DOOR, "123", TravelDirection.NONE).dots());
     }
 
     @ParameterizedTest
@@ -165,14 +167,19 @@ class FloorIndicatorTest {
     @EnumSource(CarModel.class)
     void hallIndicatorOverTheButtonsSitsAboveThem(CarModel model) {
         FixtureConfig config = FixtureConfig.DEFAULT.withHallIndicator(FixtureConfig.HallIndicator.OVER_BUTTONS);
-        Frame frame = FloorIndicator.hall(model, config, "2", TravelDirection.DOWN);
+        Frame frame = hall(model, config, "2", TravelDirection.DOWN);
         Box face = frame.face();
-        List<ButtonLayout.Button> buttons = ButtonLayout.hallButtons(model, 1, 3);
+        List<ButtonLayout.Button> buttons = LandingLayout.of(CarSpec.of(model), config, InteriorConfig.Landing.DEFAULT, 0).buttons(1, 3);
         double buttonsTop = buttons.stream().mapToDouble(b -> b.box().maxY()).max().orElseThrow();
         double buttonCenter = (buttons.get(0).box().minX() + buttons.get(0).box().maxX()) / 2;
         assertTrue(face.minY() > buttonsTop);
-        assertEquals(buttonCenter, (face.minX() + face.maxX()) / 2, PX / 2 + EPS);
-        assertDotsInside(frame);
+        assertEquals(buttonCenter, (face.minX() + face.maxX()) / 2, EPS);
+        // 0.5px のドット
+        assertDotsInside(frame, PX / 2);
+    }
+
+    private static Frame hall(CarModel model, FixtureConfig config, String label, TravelDirection direction) {
+        return LandingLayout.of(CarSpec.of(model), config, InteriorConfig.Landing.DEFAULT, 0).indicator(label, direction);
     }
 
     private static void assertDotsInside(Frame frame) {

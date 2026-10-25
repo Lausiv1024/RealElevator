@@ -79,7 +79,7 @@
   "gui.realelevator.car_indicator.over_door": "扉の上",
   "gui.realelevator.car_indicator.over_panel": "操作盤の上",
   "gui.realelevator.hall_indicator.over_door": "扉の上",
-  "gui.realelevator.hall_indicator.over_buttons": "ボタンの上",
+  "gui.realelevator.hall_indicator.over_buttons": "操作盤の上部",
   "gui.realelevator.hall_lantern.over_door": "扉の上",
   "gui.realelevator.hall_lantern.beside_door": "扉の横",
   "gui.realelevator.panel.chime": "到着チャイム",
@@ -123,5 +123,17 @@
   "gui.realelevator.panel.entrances": "出入口",
   "gui.realelevator.entrance.front": "前",
   "gui.realelevator.entrance.rear": "後",
-  "gui.realelevator.entrance.both": "両"
+  "gui.realelevator.entrance.both": "両",
+  "gui.realelevator.panel.group_control": "群管理向け（乗場の表示器なし）",
+  "gui.realelevator.panel.lantern_plate": "ランタンの背面プレート",
+  "gui.realelevator.panel.landing_frame": "乗場の枠",
+  "gui.realelevator.landing_frame.thin": "細枠",
+  "gui.realelevator.landing_frame.fascia": "幕板付き",
+  "gui.realelevator.panel.landing_panel": "乗場の操作盤",
+  "gui.realelevator.landing_panel.wall_mounted": "壁付け",
+  "gui.realelevator.landing_panel.embedded": "埋め込み",
+  "gui.realelevator.panel.material_landing_frame": "乗場の枠の素材",
+  "gui.realelevator.panel.material_landing_wall": "乗場の壁",
+  "gui.realelevator.material.auto": "まわりに合わせる",
+  "gui.realelevator.hall_lantern.right_of_door": "扉の右"
 }

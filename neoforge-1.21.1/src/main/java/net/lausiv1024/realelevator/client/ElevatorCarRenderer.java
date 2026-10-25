@@ -10,6 +10,7 @@ import net.lausiv1024.realelevator.core.car.Entrance;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.design.InteriorGeometry;
+import net.lausiv1024.realelevator.core.design.LandingLayout;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.CarPanelLayout;
@@ -71,6 +72,9 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
             for (Box panel : CarShapes.doorPanels(car.spec(), car.facing(), DoorGeometry.Side.CAR, fraction, entrance)) {
                 BoxRenderer.renderBox(pose, consumer, panel, door, light);
             }
+            // 敷居（かごの床と同じ高さ）
+            BoxRenderer.renderLanding(pose, consumer, LandingLayout.sill(car.spec(), DoorGeometry.Side.CAR, 0),
+                    car.facing().get2DDataValue() + entrance.quarterTurns(), light, door, door);
         }
         FixtureConfig fixtures = car.fixtures();
         CarSpec spec = car.spec();

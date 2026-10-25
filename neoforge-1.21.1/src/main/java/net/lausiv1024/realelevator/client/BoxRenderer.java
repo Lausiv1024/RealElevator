@@ -11,6 +11,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.design.InteriorGeometry;
+import net.lausiv1024.realelevator.core.design.LandingLayout;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.display.HallLantern;
 import net.lausiv1024.realelevator.core.panel.ButtonGlyphs;
@@ -121,6 +122,79 @@ final class BoxRenderer {
         }
     }
 
+    /** 敷居の色（アルミ）。 */
+    private static final int SILL_COLOR = 0xB4B8BC;
+    /** 敷居の溝の色。 */
+    private static final int GROOVE_COLOR = 0x3A3C40;
+    /** 鍵スイッチの色と鍵穴の色。 */
+    private static final int KEY_COLOR = 0x9DA2A8;
+    private static final int KEY_SLOT_COLOR = 0x1E2023;
+
+    /**
+     * 乗場の枠・敷居・操作盤の部品・ランタンの背面プレートを描く（{@link LandingLayout#parts}、{@link LandingLayout#sill}）。
+     *
+     * @param frame     枠の素材のテクスチャ
+     * @param stainless 操作盤の板とランタンの背面プレートのテクスチャ
+     */
+    static void renderLanding(PoseStack.Pose pose, VertexConsumer consumer, List<LandingLayout.Part> parts, int quarterTurns, int light,
+                              TextureAtlasSprite frame, TextureAtlasSprite stainless) {
+        TextureAtlasSprite base = blockSprite(WHITE_BASE);
+        TextureAtlasSprite black = blockSprite(INDICATOR_FACE);
+        for (LandingLayout.Part part : parts) {
+            Box box = part.box().rotateQuarterTurns(quarterTurns);
+            switch (part.type()) {
+                case FRAME -> renderBox(pose, consumer, box, frame, light);
+                case SILL -> renderBox(pose, consumer, box, base, light, SILL_COLOR);
+                case SILL_GROOVE -> renderBox(pose, consumer, box, base, light, GROOVE_COLOR);
+                case PLATE, LANTERN_PLATE -> renderBox(pose, consumer, box, stainless, light);
+                case WINDOW -> renderBox(pose, consumer, box, black, light);
+                case MARK -> renderBox(pose, consumer, box, base, light, WHEELCHAIR_BLUE);
+                case MARK_SYMBOL -> renderBox(pose, consumer, box, base, light, WHITE);
+                case KEY -> renderBox(pose, consumer, box, base, light, KEY_COLOR);
+                case KEY_SLOT -> renderBox(pose, consumer, box, base, light, KEY_SLOT_COLOR);
+            }
+        }
+    }
+
+    /**
+     * 乗場の枠のまわりの壁を描く。乗場の側の面だけを、まわりのブロックとテクスチャの継ぎ目がそろうように貼る。
+     *
+     * @param rgb テクスチャに掛ける色（草などの色付きのブロック用。ふつうは白）
+     */
+    static void renderWall(PoseStack.Pose pose, VertexConsumer consumer, List<LandingLayout.WallCell> cells, int quarterTurns, int light,
+                           TextureAtlasSprite sprite, int rgb) {
+        for (LandingLayout.WallCell cell : cells) {
+            Box b = cell.box();
+            float u0 = (float) cell.u();
+            float v0 = (float) cell.v();
+            float u1 = u0 + (float) b.sizeX();
+            float v1 = v0 + (float) b.sizeY();
+            float[] normal = rotate(0, 1, quarterTurns);
+            Face face = new Face(pose, consumer, sprite, light, rgb);
+            // 乗場の側（+Z）から見て反時計回り。テクスチャは下から上へ v が減る向き
+            face.vertex(point(b.minX(), b.minY(), b.maxZ(), quarterTurns), sprite.getU(u0), sprite.getV(1 - v0), normal[0], 0, normal[1]);
+            face.vertex(point(b.maxX(), b.minY(), b.maxZ(), quarterTurns), sprite.getU(u1), sprite.getV(1 - v0), normal[0], 0, normal[1]);
+            face.vertex(point(b.maxX(), b.maxY(), b.maxZ(), quarterTurns), sprite.getU(u1), sprite.getV(1 - v1), normal[0], 0, normal[1]);
+            face.vertex(point(b.minX(), b.maxY(), b.maxZ(), quarterTurns), sprite.getU(u0), sprite.getV(1 - v1), normal[0], 0, normal[1]);
+        }
+    }
+
+    /** ローカル座標の点を、{@link Box#rotateQuarterTurns} と同じ向きに回したもの。 */
+    private static float[] point(double x, double y, double z, int quarterTurns) {
+        float[] xz = rotate((float) x, (float) z, quarterTurns);
+        return new float[] {xz[0], (float) y, xz[1]};
+    }
+
+    /** (x, z) を Y軸まわりに90°ずつ回す（(x, z) → (−z, x)）。 */
+    private static float[] rotate(float x, float z, int quarterTurns) {
+        for (int i = 0; i < Math.floorMod(quarterTurns, 4); i++) {
+            float nx = -z;
+            z = x;
+            x = nx;
+        }
+        return new float[] {x, z};
+    }
+
     /** 操作盤の板・帯・車椅子マークを描く。 */
     static void renderParts(PoseStack.Pose pose, VertexConsumer consumer, List<PanelPart> parts, int quarterTurns, int light) {
         TextureAtlasSprite plate = blockSprite(PLATE);
@@ -224,7 +298,7 @@ final class BoxRenderer {
             }
         }
 
-        private void vertex(float[] p, float u, float v, float nx, float ny, float nz) {
+        void vertex(float[] p, float u, float v, float nx, float ny, float nz) {
             consumer.addVertex(pose, p[0], p[1], p[2])
                     .setColor((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF, 255)
                     .setUv(u, v)

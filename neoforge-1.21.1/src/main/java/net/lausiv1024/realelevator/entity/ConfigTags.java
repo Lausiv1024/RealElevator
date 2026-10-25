@@ -21,6 +21,7 @@ public final class ConfigTags {
         tag.putString("HallLantern", fixtures.hallLantern().name());
         tag.putBoolean("WheelchairPanel", fixtures.wheelchairPanel());
         tag.putString("IndicatorColor", fixtures.indicatorColor().name());
+        tag.putBoolean("GroupControl", fixtures.groupControl());
         return tag;
     }
 
@@ -33,7 +34,8 @@ public final class ConfigTags {
                 parseEnum(FixtureConfig.HallIndicator.class, tag.getString("HallIndicator"), defaults.hallIndicator()),
                 parseEnum(FixtureConfig.HallLanternPlacement.class, tag.getString("HallLantern"), defaults.hallLantern()),
                 tag.getBoolean("WheelchairPanel"),
-                parseEnum(FixtureConfig.IndicatorColor.class, tag.getString("IndicatorColor"), defaults.indicatorColor()));
+                parseEnum(FixtureConfig.IndicatorColor.class, tag.getString("IndicatorColor"), defaults.indicatorColor()),
+                tag.getBoolean("GroupControl"));
     }
 
     public static CompoundTag writeInterior(InteriorConfig interior) {
@@ -43,6 +45,10 @@ public final class ConfigTags {
         }
         tag.putString("Ceiling", interior.ceiling().name());
         tag.putString("Handrail", interior.handrail().name());
+        InteriorConfig.Landing landing = interior.landing();
+        tag.putString("LandingFrame", landing.frame().name());
+        tag.putString("LandingPanel", landing.panel().name());
+        tag.putBoolean("LanternPlate", landing.lanternPlate());
         return tag;
     }
 
@@ -51,7 +57,12 @@ public final class ConfigTags {
         InteriorConfig defaults = InteriorConfig.DEFAULT;
         InteriorConfig interior = new InteriorConfig(defaults.wall(), defaults.front(), defaults.door(), defaults.floor(), defaults.baseboard(),
                 parseEnum(InteriorConfig.CeilingType.class, tag.getString("Ceiling"), defaults.ceiling()),
-                parseEnum(InteriorConfig.HandrailPlacement.class, tag.getString("Handrail"), defaults.handrail()));
+                parseEnum(InteriorConfig.HandrailPlacement.class, tag.getString("Handrail"), defaults.handrail()),
+                new InteriorConfig.Landing(
+                        parseEnum(InteriorConfig.FrameStyle.class, tag.getString("LandingFrame"), defaults.landing().frame()),
+                        parseEnum(InteriorConfig.PanelStyle.class, tag.getString("LandingPanel"), defaults.landing().panel()),
+                        defaults.landing().frameMaterial(), defaults.landing().wallMaterial(),
+                        tag.contains("LanternPlate") ? tag.getBoolean("LanternPlate") : defaults.landing().lanternPlate()));
         for (InteriorConfig.Part part : InteriorConfig.Part.values()) {
             if (tag.contains(part.name())) {
                 interior = interior.withMaterial(part, tag.getString(part.name()));

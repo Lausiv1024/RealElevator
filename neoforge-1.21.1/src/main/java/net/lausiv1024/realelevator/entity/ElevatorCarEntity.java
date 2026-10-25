@@ -32,6 +32,7 @@ import net.lausiv1024.realelevator.core.control.OperationTiming;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.control.WheelchairCalls;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
+import net.lausiv1024.realelevator.core.design.LandingLayout;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.display.HallLantern;
 import net.lausiv1024.realelevator.core.door.DoorController;
@@ -1198,7 +1199,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     /** 停止階 floor のホールランタンの中心（ワールド座標）。 */
     private Vec3 lanternCenter(int floor) {
         AABB bounds = null;
-        for (HallLantern.Section section : HallLantern.sections(spec(), fixtures, isTerminalFloor(floor))) {
+        for (HallLantern.Section section : LandingLayout.of(spec(), fixtures, interior.landing(), 0).lantern(isTerminalFloor(floor))) {
             AABB box = CarShapes.toAabb(section.box().rotateQuarterTurns(facing().get2DDataValue()), getX(), floors[floor], getZ());
             bounds = bounds == null ? box : bounds.minmax(box);
         }

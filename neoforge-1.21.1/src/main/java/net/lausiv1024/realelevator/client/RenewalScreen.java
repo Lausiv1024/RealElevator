@@ -34,7 +34,7 @@ public class RenewalScreen extends Screen {
 
     @Override
     protected void init() {
-        List<AbstractWidget> settings = form.fixtureWidgets(this::send);
+        List<AbstractWidget> settings = form.fixtureWidgets(this::send, this::rebuildWidgets);
         form.layout(font, width, height - 42, settings, this::addRenderableWidget, this::send, this::rebuildWidgets);
 
         int bottom = height - 26;

@@ -79,7 +79,7 @@
   "gui.realelevator.car_indicator.over_door": "Above the door",
   "gui.realelevator.car_indicator.over_panel": "Above the panel",
   "gui.realelevator.hall_indicator.over_door": "Above the door",
-  "gui.realelevator.hall_indicator.over_buttons": "Above the buttons",
+  "gui.realelevator.hall_indicator.over_buttons": "Top of the panel",
   "gui.realelevator.hall_lantern.over_door": "Above the door",
   "gui.realelevator.hall_lantern.beside_door": "Beside the door",
   "gui.realelevator.panel.chime": "Arrival chime",
@@ -123,5 +123,17 @@
   "gui.realelevator.panel.entrances": "Entrances",
   "gui.realelevator.entrance.front": "F",
   "gui.realelevator.entrance.rear": "R",
-  "gui.realelevator.entrance.both": "F+R"
+  "gui.realelevator.entrance.both": "F+R",
+  "gui.realelevator.panel.group_control": "Group control (no hall indicator)",
+  "gui.realelevator.panel.lantern_plate": "Lantern back plate",
+  "gui.realelevator.panel.landing_frame": "Landing frame",
+  "gui.realelevator.landing_frame.thin": "Thin",
+  "gui.realelevator.landing_frame.fascia": "With fascia",
+  "gui.realelevator.panel.landing_panel": "Landing panel",
+  "gui.realelevator.landing_panel.wall_mounted": "Wall-mounted",
+  "gui.realelevator.landing_panel.embedded": "Embedded",
+  "gui.realelevator.panel.material_landing_frame": "Landing frame material",
+  "gui.realelevator.panel.material_landing_wall": "Landing wall",
+  "gui.realelevator.material.auto": "Match surroundings",
+  "gui.realelevator.hall_lantern.right_of_door": "Right of the door"
 }

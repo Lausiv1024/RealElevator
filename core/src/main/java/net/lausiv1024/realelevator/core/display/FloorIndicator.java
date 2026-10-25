@@ -10,7 +10,6 @@ import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.Normal;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
-import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.CarPanelLayout;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
@@ -22,16 +21,12 @@ import net.lausiv1024.realelevator.core.panel.WheelchairPanelLayout;
  * <p>表示は階名（2文字まで）と進行方向の矢印で、どちらも {@link DotFont} と同じ 1ドット＝1px のドットで描く。
  * 座標はかごのローカル座標（{@link CarGeometry} と同じ）で、乗場の表示器はかごがその階に着床したときの位置で表す。
  *
- * <p>並べ方は2通り。
- * <ul>
- * <li>横長：矢印、階名の順に横に並べる。14×5px にふちを付ける。</li>
- * <li>縦長：上に矢印、下に階名。7×11px。袖壁やボタンの上など、幅の狭いところに使う。</li>
- * </ul>
+ * <p>1px のドットの表示器は、矢印、階名の順に横に並べる（14×5px）。
  *
- * <p>位置は {@link FixtureConfig} で選ぶ。
+ * <p>位置は {@link FixtureConfig} で選ぶ。乗場の位置は {@link net.lausiv1024.realelevator.core.design.LandingLayout} が決める。
  * <ul>
  * <li>乗場・扉の上：出入口の上の中央に、横長（ふち1px、16×7px）。</li>
- * <li>乗場・ボタンの上：乗場のボタンの上に、縦長。</li>
+ * <li>乗場・操作盤の上部：操作盤の表示窓に、0.5px のドットで縦長（上に矢印、下に 3×5 ドットの階名）。</li>
  * <li>かご・扉の上：出入口の上のトランサム（高さ5px）に、横長（ふちなし）で埋め込む。</li>
  * <li>かご・操作盤の上：主操作盤の板の上部の表示窓（{@link CarPanelLayout#window}）に、0.5px のドットで縦長
  * （上に矢印、下に 5×7 ドットの階名）。両側の操作盤の場合は、設定により左側にも付ける。</li>
@@ -54,8 +49,9 @@ public final class FloorIndicator {
     private static final double LARGE_DOT = 0.5 / PX;
     /** 0.5px のドットの表示での、階名の欄の幅（2文字と、その間の1ドット）。 */
     private static final int LARGE_LABEL_WIDTH = LargeDotFont.WIDTH * 2 + 1;
-    /** 乗場の扉の上の表示器の下端の、出入口の上端からの高さ。上にホールランタンを重ねても三方枠に収まるよう、1px。 */
-    private static final int HALL_GAP_PX = 1;
+    /** 乗場の扉の上の表示器の幅と高さ（ふちを含む）[px]。 */
+    public static final int OVER_DOOR_WIDTH_PX = 16;
+    public static final int OVER_DOOR_HEIGHT_PX = 7;
 
     private static final String[] UP_ARROW = {"..#..", ".###.", "#####", "..#..", "..#.."};
 
@@ -63,20 +59,9 @@ public final class FloorIndicator {
     public record Frame(Box face, List<Box> dots) {
     }
 
-    private enum Arrangement {
-        /** 矢印、階名の順に横に並べる。 */
-        HORIZONTAL(ARROW_SIZE + 2 + LABEL_WIDTH, DotFont.HEIGHT),
-        /** 上に矢印、下に階名。 */
-        VERTICAL(LABEL_WIDTH, ARROW_SIZE + 1 + DotFont.HEIGHT);
-
-        final int width;
-        final int height;
-
-        Arrangement(int width, int height) {
-            this.width = width;
-            this.height = height;
-        }
-    }
+    /** 1px のドットの表示器の、ふちを除いた幅と高さ（矢印、階名の順に横に並べる）。 */
+    private static final int WIDTH = ARROW_SIZE + 2 + LABEL_WIDTH;
+    private static final int HEIGHT = DotFont.HEIGHT;
 
     /** 表示器を見る側。かごの中からは +Z 向きに見るので左が +X、乗場からは −Z 向きに見るので左が −X。 */
     private enum Viewer {
@@ -137,11 +122,9 @@ public final class FloorIndicator {
         int face = px(CarGeometry.interior(model).maxZ());
         if (config.carIndicator() == FixtureConfig.CarIndicator.OVER_DOOR) {
             Box entrance = CarGeometry.entrance(model);
-            int width = Arrangement.HORIZONTAL.width;
             // かごの中から見て左（+X）の端
-            int left = (px(entrance.minX()) + px(entrance.maxX()) + width) / 2;
-            return List.of(build(Arrangement.HORIZONTAL, Viewer.INSIDE_CAR, left, px(entrance.maxY()), 0, face, EMBEDDED_DEPTH,
-                    label, direction));
+            int left = (px(entrance.minX()) + px(entrance.maxX()) + WIDTH) / 2;
+            return List.of(build(Viewer.INSIDE_CAR, left, px(entrance.maxY()), 0, face, EMBEDDED_DEPTH, label, direction));
         }
         List<Boolean> jambs = ButtonLayout.panelJambs(model, config.panelSides());
         List<Frame> frames = new ArrayList<>(2);
@@ -218,31 +201,27 @@ public final class FloorIndicator {
         }
     }
 
-    /** 乗場の表示器。 */
-    public static Frame hall(CarModel model, FixtureConfig config, String label, TravelDirection direction) {
-        return hall(CarSpec.of(model), config, label, direction);
-    }
-
-    /** 乗場の表示器。扉の上なら出入口の中央に合わせる。 */
-    public static Frame hall(CarSpec model, FixtureConfig config, String label, TravelDirection direction) {
-        return hall(model, config, label, direction, 0);
-    }
-
-    /** 乗場の面を faceOffset だけずらした乗場の表示器（二方向出入口の奥の乗場）。 */
-    public static Frame hall(CarSpec model, FixtureConfig config, String label, TravelDirection direction, double faceOffset) {
-        int face = px(DoorGeometry.landingFace(model, faceOffset));
-        if (config.hallIndicator() == FixtureConfig.HallIndicator.OVER_BUTTONS) {
-            // ボタンの列の中央に合わせる
-            int buttonCenter2 = ButtonLayout.hallButtonMinXPx(model) * 2 + ButtonLayout.BUTTON_PX;
-            int left = (buttonCenter2 - Arrangement.VERTICAL.width) / 2;
-            return build(Arrangement.VERTICAL, Viewer.LANDING, left, ButtonLayout.hallButtonsTopPx() + 2, 0, face, 1.0 / PX,
-                    label, direction);
-        }
-        int width = Arrangement.HORIZONTAL.width + 2;
+    /**
+     * 乗場の扉の上の表示器。出入口の中央に、横長（ふち1px）で付ける。
+     *
+     * @param bottom 下端の Y [px]
+     * @param face   取り付け面の Z [px]。表示面はそこから乗場の側へ1px出る
+     */
+    public static Frame hallOverDoor(CarSpec model, int bottom, int face, String label, TravelDirection direction) {
         Box entrance = CarGeometry.entrance(model);
-        int left = (px(entrance.minX()) + px(entrance.maxX()) - width) / 2;
-        return build(Arrangement.HORIZONTAL, Viewer.LANDING, left, px(entrance.maxY()) + HALL_GAP_PX, 1,
-                face, 1.0 / PX, label, direction);
+        int left = (px(entrance.minX()) + px(entrance.maxX()) - OVER_DOOR_WIDTH_PX) / 2;
+        return build(Viewer.LANDING, left, bottom, 1, face, 1.0 / PX, label, direction);
+    }
+
+    /** 乗場の操作盤の表示窓 window（乗場の側の面）に、0.5px のドットで、上に矢印、下に 3×5 ドットの階名を描く。 */
+    public static Frame hallWindow(Box window, String label, TravelDirection direction) {
+        int columns = (int) Math.round(window.sizeX() / LARGE_DOT);
+        int rows = (int) Math.round(window.sizeY() / LARGE_DOT);
+        FaceGrid face = new FaceGrid(Normal.POS_Z, window.maxZ(), window.minX(), window.maxY(), LARGE_DOT);
+        List<Box> dots = new ArrayList<>();
+        addArrow(dots, face::dot, direction, (columns - ARROW_SIZE) / 2, 1);
+        addLabel(dots, face::dot, label, (columns - LABEL_WIDTH) / 2, rows - 1 - DotFont.HEIGHT);
+        return new Frame(window, dots);
     }
 
     /**
@@ -253,10 +232,10 @@ public final class FloorIndicator {
      * @param border ふちの幅 [px]
      * @param face   取り付け面の Z [px]。表示面はそこから見る人の側へ depth だけ出る
      */
-    private static Frame build(Arrangement arrangement, Viewer viewer, int left, int bottom, int border, int face, double depth,
+    private static Frame build(Viewer viewer, int left, int bottom, int border, int face, double depth,
                                String label, TravelDirection direction) {
-        int width = arrangement.width + border * 2;
-        int height = arrangement.height + border * 2;
+        int width = WIDTH + border * 2;
+        int height = HEIGHT + border * 2;
         boolean fromInside = viewer == Viewer.INSIDE_CAR;
         double faceZ = face / (double) PX;
         double minX = (fromInside ? left - width : left) / (double) PX;
@@ -277,13 +256,8 @@ public final class FloorIndicator {
         };
 
         List<Box> dots = new ArrayList<>();
-        if (arrangement == Arrangement.HORIZONTAL) {
-            addArrow(dots, grid, direction, 0, 0);
-            addLabel(dots, grid, label, ARROW_SIZE + 2, 0);
-        } else {
-            addArrow(dots, grid, direction, (LABEL_WIDTH - ARROW_SIZE) / 2, 0);
-            addLabel(dots, grid, label, 0, ARROW_SIZE + 1);
-        }
+        addArrow(dots, grid, direction, 0, 0);
+        addLabel(dots, grid, label, ARROW_SIZE + 2, 0);
         return new Frame(background, dots);
     }
 

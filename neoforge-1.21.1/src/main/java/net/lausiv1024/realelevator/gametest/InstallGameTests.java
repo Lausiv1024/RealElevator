@@ -188,7 +188,8 @@ public class InstallGameTests {
         ElevatorCarEntity car = carAt(helper, plan.carOrigin());
         ControllerBlockEntity controller = controllerOf(helper, car);
         CompoundTag renewal = controller.renewalTag();
-        renewal.put("Fixtures", ConfigTags.writeFixtures(FixtureConfig.DEFAULT.withPanelSides(FixtureConfig.PanelSides.BOTH)));
+        renewal.put("Fixtures", ConfigTags.writeFixtures(FixtureConfig.DEFAULT.withPanelSides(FixtureConfig.PanelSides.BOTH)
+                .withGroupControl(true).withHallLantern(FixtureConfig.HallLanternPlacement.RIGHT_OF_DOOR)));
         CompoundTag labels = new CompoundTag();
         labels.putString(Integer.toString(car.floors()[1]), "R");
         renewal.put("Labels", labels);
@@ -197,7 +198,10 @@ public class InstallGameTests {
         renewal.putBoolean("LandingOpen", true);
         // 内装：タグにある素材は使い、タグにないもの（床に鉄ブロック）は初期値に戻す
         InteriorConfig wanted = InteriorConfig.DEFAULT.withMaterial(InteriorConfig.Part.WALL, "realelevator:woodgrain_dark")
-                .withMaterial(InteriorConfig.Part.FLOOR, "minecraft:iron_block").withCeiling(InteriorConfig.CeilingType.INDIRECT);
+                .withMaterial(InteriorConfig.Part.FLOOR, "minecraft:iron_block").withCeiling(InteriorConfig.CeilingType.INDIRECT)
+                .withLanding(InteriorConfig.Landing.DEFAULT.withFrame(InteriorConfig.FrameStyle.FASCIA).withPanel(InteriorConfig.PanelStyle.EMBEDDED)
+                        .withLanternPlate(false))
+                .withMaterial(InteriorConfig.Part.LANDING_FRAME, "minecraft:smooth_quartz");
         renewal.put("Interior", ConfigTags.writeInterior(wanted));
         controller.applyRenewal(renewal);
         helper.assertTrue(car.fixtures().panelSides() == FixtureConfig.PanelSides.BOTH, "the fixtures should change");
@@ -207,6 +211,13 @@ public class InstallGameTests {
         helper.assertTrue(car.interior().wall().equals("realelevator:woodgrain_dark") && car.interior().ceiling() == InteriorConfig.CeilingType.INDIRECT,
                 "the interior should change: " + car.interior());
         helper.assertTrue(car.interior().floor().equals(InteriorConfig.DEFAULT.floor()), "a material outside the tag should be rejected");
+        // 乗場の意匠と群管理向け。乗場の壁は「まわりに合わせる」のまま
+        InteriorConfig.Landing landing = car.interior().landing();
+        helper.assertTrue(landing.frame() == InteriorConfig.FrameStyle.FASCIA && landing.panel() == InteriorConfig.PanelStyle.EMBEDDED
+                && !landing.lanternPlate() && landing.wallMaterial().equals(InteriorConfig.AUTO)
+                && landing.frameMaterial().equals("minecraft:smooth_quartz"), "the landing should change: " + landing);
+        helper.assertTrue(car.fixtures().groupControl() && car.fixtures().hallLantern() == FixtureConfig.HallLanternPlacement.RIGHT_OF_DOOR,
+                "group control should be on: " + car.fixtures());
         helper.succeed();
     }
 

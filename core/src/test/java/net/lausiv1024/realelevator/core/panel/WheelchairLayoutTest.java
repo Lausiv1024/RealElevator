@@ -137,24 +137,4 @@ class WheelchairLayoutTest {
         assertTrue(WheelchairPanelLayout.of(small, 12).floorRows() > 2);
         assertEquals(2, WheelchairPanelLayout.of(small, 40).buttonPx());
     }
-
-    @ParameterizedTest
-    @MethodSource("specs")
-    void wheelchairHallButtonsSitBelowTheUsualOnes(CarSpec spec) {
-        List<Button> buttons = ButtonLayout.hallButtons(spec, 1, 3, 0, true);
-        assertEquals(List.of(Kind.HALL_UP, Kind.HALL_DOWN, Kind.HALL_UP, Kind.HALL_DOWN), buttons.stream().map(Button::kind).toList());
-        List<Button> usual = buttons.subList(0, 2);
-        List<Button> wheelchair = buttons.subList(2, 4);
-        assertEquals(ButtonLayout.hallButtons(spec, 1, 3, 0), usual);
-        double usualBottom = usual.stream().mapToDouble(b -> b.box().minY()).min().orElseThrow();
-        for (Button button : wheelchair) {
-            assertTrue(button.wheelchair());
-            assertTrue(button.box().maxY() < usualBottom, button.toString());
-            assertEquals(usual.get(0).box().minX(), button.box().minX(), EPS);
-            assertEquals(usual.get(0).box().minZ(), button.box().minZ(), EPS);
-        }
-        // 最上階・最下階は片方だけ
-        assertEquals(List.of(Kind.HALL_UP, Kind.HALL_UP),
-                ButtonLayout.hallButtons(spec, 0, 3, 0, true).stream().map(Button::kind).toList());
-    }
 }

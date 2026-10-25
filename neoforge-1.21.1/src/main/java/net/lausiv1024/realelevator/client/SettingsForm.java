@@ -12,6 +12,7 @@ import net.lausiv1024.realelevator.core.car.FloorEntrances;
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
+import net.lausiv1024.realelevator.core.design.LandingLayout;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.design.Materials;
 import net.lausiv1024.realelevator.entity.ConfigTags;
@@ -95,9 +96,15 @@ final class SettingsForm {
         return ShaftLayout.allowsOverDoorHallFixtures(floors);
     }
 
-    /** 配置とアナウンスの設定のボタン。値を変えると send を呼ぶ。 */
-    List<AbstractWidget> fixtureWidgets(Runnable send) {
+    /**
+     * 配置とアナウンスの設定のボタン。値を変えると send を呼ぶ。ほかの設定の選べる値が変わる設定では、続けて rebuild で画面を作り直す。
+     */
+    List<AbstractWidget> fixtureWidgets(Runnable send, Runnable rebuild) {
         List<AbstractWidget> widgets = new ArrayList<>();
+        Runnable sendAndRebuild = () -> {
+            send.run();
+            rebuild.run();
+        };
         widgets.add(enumButton("panel_sides", FixtureConfig.PanelSides.values(), fixtures.panelSides(), v -> fixtures = fixtures.withPanelSides(v), send));
         widgets.add(enumButton("car_indicator", FixtureConfig.CarIndicator.values(), fixtures.carIndicator(), v -> fixtures = fixtures.withCarIndicator(v), send));
         widgets.add(onOff("left_indicator", fixtures.leftPanelIndicator(), v -> fixtures = fixtures.withLeftPanelIndicator(v), send));
@@ -106,12 +113,20 @@ final class SettingsForm {
         if (!overDoor) {
             fixtures = fixtures.withoutOverDoorHallFixtures();
         }
-        widgets.add(enumButton("hall_indicator", overDoor ? FixtureConfig.HallIndicator.values()
+        // 乗場の意匠で選べないランタンの位置（細枠で表示器と重なる扉の上、群管理向けでない扉の右）は選べない
+        fixtures = LandingLayout.fit(fixtures, interior.landing());
+        widgets.add(onOff("group_control", fixtures.groupControl(), v -> fixtures = fixtures.withGroupControl(v), sendAndRebuild));
+        CycleButton<FixtureConfig.HallIndicator> hallIndicator = enumButton("hall_indicator", overDoor ? FixtureConfig.HallIndicator.values()
                 : new FixtureConfig.HallIndicator[] {FixtureConfig.HallIndicator.OVER_BUTTONS},
-                fixtures.hallIndicator(), v -> fixtures = fixtures.withHallIndicator(v), send));
-        widgets.add(enumButton("hall_lantern", overDoor ? FixtureConfig.HallLanternPlacement.values()
-                : new FixtureConfig.HallLanternPlacement[] {FixtureConfig.HallLanternPlacement.NONE, FixtureConfig.HallLanternPlacement.BESIDE_DOOR},
+                fixtures.hallIndicator(), v -> fixtures = fixtures.withHallIndicator(v), sendAndRebuild);
+        // 群管理向けでは乗場の表示器を付けない
+        hallIndicator.active = fixtures.hasHallIndicator();
+        widgets.add(hallIndicator);
+        widgets.add(enumButton("hall_lantern", LandingLayout.lanternChoices(fixtures, interior.landing(), overDoor)
+                        .toArray(FixtureConfig.HallLanternPlacement[]::new),
                 fixtures.hallLantern(), v -> fixtures = fixtures.withHallLantern(v), send));
+        widgets.add(onOff("lantern_plate", interior.landing().lanternPlate(),
+                v -> interior = interior.withLanding(interior.landing().withLanternPlate(v)), send));
         widgets.add(enumButton("indicator_color", FixtureConfig.IndicatorColor.values(), fixtures.indicatorColor(),
                 v -> fixtures = fixtures.withIndicatorColor(v), send));
         widgets.add(onOff("wheelchair_panel", fixtures.wheelchairPanel(), v -> fixtures = fixtures.withWheelchairPanel(v), send));
@@ -125,6 +140,10 @@ final class SettingsForm {
         widgets.add(enumButton("ceiling", InteriorConfig.CeilingType.values(), interior.ceiling(), v -> interior = interior.withCeiling(v), send));
         widgets.add(enumButton("handrail", InteriorConfig.HandrailPlacement.values(), interior.handrail(),
                 v -> interior = interior.withHandrail(v), send));
+        widgets.add(enumButton("landing_frame", InteriorConfig.FrameStyle.values(), interior.landing().frame(),
+                v -> interior = interior.withLanding(interior.landing().withFrame(v)), sendAndRebuild));
+        widgets.add(enumButton("landing_panel", InteriorConfig.PanelStyle.values(), interior.landing().panel(),
+                v -> interior = interior.withLanding(interior.landing().withPanel(v)), send));
         return widgets;
     }
 
@@ -252,14 +271,18 @@ final class SettingsForm {
                 });
     }
 
-    /** 部位 part の素材を、タグの候補の順に切り替えるボタン。表示はブロックの名前。 */
+    /** 部位 part の素材を、タグの候補の順に切り替えるボタン。表示はブロックの名前。乗場の壁は「まわりに合わせる」から始まる。 */
     private CycleButton<String> materialButton(InteriorConfig.Part part, Runnable send) {
         List<String> values = new ArrayList<>(Materials.candidates(part));
+        if (part == InteriorConfig.Part.LANDING_WALL) {
+            values.add(0, InteriorConfig.AUTO);
+        }
         String current = interior.material(part);
         if (!values.contains(current)) {
             values.add(0, current);
         }
-        return CycleButton.<String>builder(id -> Materials.block(id).getName())
+        return CycleButton.<String>builder(id -> InteriorConfig.AUTO.equals(id)
+                        ? Component.translatable("gui.realelevator.material.auto") : Materials.block(id).getName())
                 .withValues(values).withInitialValue(current)
                 .create(0, 0, MAX_SETTING_WIDTH, 20,
                         Component.translatable("gui.realelevator.panel.material_" + part.name().toLowerCase(Locale.ROOT)), (b, v) -> {

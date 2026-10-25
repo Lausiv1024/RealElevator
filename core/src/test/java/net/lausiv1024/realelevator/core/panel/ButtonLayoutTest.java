@@ -73,27 +73,6 @@ class ButtonLayoutTest {
         }
     }
 
-    @ParameterizedTest
-    @EnumSource(CarModel.class)
-    void hallButtonsSitBesideTheLandingDoorOnTheLandingSide(CarModel model) {
-        Box travel = DoorGeometry.travelBounds(model, DoorGeometry.Side.LANDING);
-        List<Button> middle = ButtonLayout.hallButtons(model, 1, 3);
-        assertEquals(List.of(Kind.HALL_UP, Kind.HALL_DOWN), middle.stream().map(Button::kind).toList());
-        assertTrue(middle.get(0).box().minY() > middle.get(1).box().maxY());
-        for (Button button : middle) {
-            assertTrue(button.box().minX() >= CarGeometry.entrance(model).maxX() && button.box().maxX() <= DoorGeometry.landingFrameHalfWidth(model),
-                    "should be on the right jamb of the frame");
-            assertEquals(DoorGeometry.landingFace(model), button.box().minZ(), EPS);
-            assertEquals(1, button.floor());
-        }
-    }
-
-    @Test
-    void terminalFloorsHaveOnlyOneHallButton() {
-        assertEquals(List.of(Kind.HALL_UP), ButtonLayout.hallButtons(CarModel.P11, 0, 2).stream().map(Button::kind).toList());
-        assertEquals(List.of(Kind.HALL_DOWN), ButtonLayout.hallButtons(CarModel.P11, 1, 2).stream().map(Button::kind).toList());
-    }
-
     @Test
     void bothPanelsMirrorOntoTheLeftJamb() {
         List<Button> right = ButtonLayout.carPanel(CarModel.P11, 3);

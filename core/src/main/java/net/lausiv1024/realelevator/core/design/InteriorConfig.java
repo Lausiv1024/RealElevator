@@ -1,8 +1,8 @@
 package net.lausiv1024.realelevator.core.design;
 
 /**
- * かご内装の設定。素材はブロックのID（"minecraft:dark_oak_planks" など）で持ち、そのブロックの側面の見た目を使う。
- * 選べる素材はブロックタグ（壁・前壁・ドア・幅木は {@code realelevator:materials/wall}、床は {@code realelevator:materials/floor}）で決まる。
+ * かご内装と乗場の意匠の設定。素材はブロックのID（"minecraft:dark_oak_planks" など）で持ち、そのブロックの側面の見た目を使う。
+ * 選べる素材はブロックタグ（床のほかは {@code realelevator:materials/wall}、床は {@code realelevator:materials/floor}）で決まる。
  *
  * @param wall      側壁と奥壁
  * @param front     前壁（正面の袖壁とトランサム）
@@ -11,13 +11,56 @@ package net.lausiv1024.realelevator.core.design;
  * @param baseboard 幅木（側壁と奥壁の下端の帯）
  * @param ceiling   天井の種類
  * @param handrail  手すりの位置
+ * @param landing   乗場の意匠
  */
 public record InteriorConfig(String wall, String front, String door, String floor, String baseboard, CeilingType ceiling,
-                             HandrailPlacement handrail) {
+                             HandrailPlacement handrail, Landing landing) {
+    /** 乗場の壁の素材を、まわりの壁に合わせる（カメレオン）ときの値。 */
+    public static final String AUTO = "";
+
     /** 標準のプリセットと同じ内装。 */
     public static final InteriorConfig DEFAULT = new InteriorConfig("realelevator:woodgrain_medium", "realelevator:stainless_hairline",
             "realelevator:bronze_hairline", "realelevator:vinyl_gray", "realelevator:stainless_hairline", CeilingType.DOWNLIGHT,
-            HandrailPlacement.SIDES);
+            HandrailPlacement.SIDES, Landing.DEFAULT);
+
+    /**
+     * 乗場の意匠。
+     *
+     * @param frame         枠の形
+     * @param panel         操作盤の付け方
+     * @param frameMaterial 枠（三方枠）の素材
+     * @param wallMaterial  枠のまわりの壁の素材。{@link #AUTO} なら、まわりの壁のブロックに合わせる
+     * @param lanternPlate  ホールランタンにステンレスの背面プレートを付けるか
+     */
+    public record Landing(FrameStyle frame, PanelStyle panel, String frameMaterial, String wallMaterial, boolean lanternPlate) {
+        public static final Landing DEFAULT = new Landing(FrameStyle.THIN, PanelStyle.WALL_MOUNTED, "realelevator:bronze_hairline", AUTO, true);
+
+        public Landing withFrame(FrameStyle value) {
+            return new Landing(value, panel, frameMaterial, wallMaterial, lanternPlate);
+        }
+
+        public Landing withPanel(PanelStyle value) {
+            return new Landing(frame, value, frameMaterial, wallMaterial, lanternPlate);
+        }
+
+        public Landing withLanternPlate(boolean value) {
+            return new Landing(frame, panel, frameMaterial, wallMaterial, value);
+        }
+    }
+
+    public enum FrameStyle {
+        /** 出入口のまわりの細い枠。 */
+        THIN,
+        /** 細枠の上の部分を、三方枠の範囲の上端まで伸ばした幕板。 */
+        FASCIA
+    }
+
+    public enum PanelStyle {
+        /** 枠のすぐ右の壁に、縦長のステンレス板を貼る。 */
+        WALL_MOUNTED,
+        /** 右の枠を幅広にして埋め込む。 */
+        EMBEDDED
+    }
 
     /** 素材を選ぶ部位。 */
     public enum Part {
@@ -25,7 +68,11 @@ public record InteriorConfig(String wall, String front, String door, String floo
         FRONT(MaterialTag.WALL),
         DOOR(MaterialTag.WALL),
         FLOOR(MaterialTag.FLOOR),
-        BASEBOARD(MaterialTag.WALL);
+        BASEBOARD(MaterialTag.WALL),
+        /** 乗場の枠（三方枠）。 */
+        LANDING_FRAME(MaterialTag.WALL),
+        /** 乗場の枠のまわりの壁。{@link #AUTO} も選べる。 */
+        LANDING_WALL(MaterialTag.WALL);
 
         private final MaterialTag tag;
 
@@ -79,19 +126,27 @@ public record InteriorConfig(String wall, String front, String door, String floo
             case DOOR -> door;
             case FLOOR -> floor;
             case BASEBOARD -> baseboard;
+            case LANDING_FRAME -> landing.frameMaterial();
+            case LANDING_WALL -> landing.wallMaterial();
         };
     }
 
     public InteriorConfig withMaterial(Part part, String value) {
+        Landing newLanding = new Landing(landing.frame(), landing.panel(), part == Part.LANDING_FRAME ? value : landing.frameMaterial(),
+                part == Part.LANDING_WALL ? value : landing.wallMaterial(), landing.lanternPlate());
         return new InteriorConfig(part == Part.WALL ? value : wall, part == Part.FRONT ? value : front, part == Part.DOOR ? value : door,
-                part == Part.FLOOR ? value : floor, part == Part.BASEBOARD ? value : baseboard, ceiling, handrail);
+                part == Part.FLOOR ? value : floor, part == Part.BASEBOARD ? value : baseboard, ceiling, handrail, newLanding);
     }
 
     public InteriorConfig withCeiling(CeilingType value) {
-        return new InteriorConfig(wall, front, door, floor, baseboard, value, handrail);
+        return new InteriorConfig(wall, front, door, floor, baseboard, value, handrail, landing);
     }
 
     public InteriorConfig withHandrail(HandrailPlacement value) {
-        return new InteriorConfig(wall, front, door, floor, baseboard, ceiling, value);
+        return new InteriorConfig(wall, front, door, floor, baseboard, ceiling, value, landing);
+    }
+
+    public InteriorConfig withLanding(Landing value) {
+        return new InteriorConfig(wall, front, door, floor, baseboard, ceiling, handrail, value);
     }
 }

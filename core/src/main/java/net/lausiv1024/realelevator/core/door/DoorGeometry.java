@@ -112,19 +112,6 @@ public final class DoorGeometry {
         return boxes;
     }
 
-    /**
-     * 三方枠の脇（出入口の横の部分）の、幅の中央の X を2倍した値 [px]。right は乗場から見て右（+X）側の脇か。
-     * 戸袋は三方枠の裏にあるので、乗場の器具は脇の面のどこにでも付けられる。2倍しているのは、幅が奇数でも整数で表すため。
-     */
-    public static int frameJambCenter2Px(CarModel model, boolean right) {
-        return frameJambCenter2Px(CarSpec.of(model), right);
-    }
-
-    public static int frameJambCenter2Px(CarSpec spec, boolean right) {
-        int frameEdge = (int) Math.round(landingFrameHalfWidth(spec) * CarModel.PIXELS_PER_BLOCK);
-        return right ? spec.entranceMaxXPx() + frameEdge : spec.entranceMinXPx() - frameEdge;
-    }
-
     /** 乗場の壁の列の、乗場側の面。乗場のボタン・表示器・ランタンを付ける面。 */
     public static double landingFace(CarModel model) {
         return landingFace(CarSpec.of(model));

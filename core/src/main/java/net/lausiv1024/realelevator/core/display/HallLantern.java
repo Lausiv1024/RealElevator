@@ -1,15 +1,10 @@
 package net.lausiv1024.realelevator.core.display;
 
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Set;
 
 import net.lausiv1024.realelevator.core.car.Box;
-import net.lausiv1024.realelevator.core.car.CarGeometry;
-import net.lausiv1024.realelevator.core.car.CarModel;
-import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
-import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 
 /**
@@ -21,12 +16,8 @@ import net.lausiv1024.realelevator.core.panel.FixtureConfig;
  *
  * <p>到着チャイムは、到着が確定していて、なおかつ到着の {@link #CHIME_LEAD_TICKS} 前を過ぎたときに鳴らす。
  *
- * <p>位置は {@link FixtureConfig.HallLanternPlacement} で選ぶ。
- * <ul>
- * <li>扉の上：出入口と同じ幅の横長の棒。各段の高さ2px。乗場の階床表示器が扉の上にあるときは、その上に置く。</li>
- * <li>扉の横：乗場から見て出入口の左（ボタンと反対側）の三方枠の脇の、幅の中央に縦長の棒。幅2px、各段7px、段の間1px。
- * 最上階と最下階では上下の段をつなげて1本にする。</li>
- * </ul>
+ * <p>位置は {@link FixtureConfig.HallLanternPlacement} で選び、形と位置は
+ * {@link net.lausiv1024.realelevator.core.design.LandingLayout#lantern} が決める。
  */
 public final class HallLantern {
     /** 点滅の点灯時間 [tick]（0.75秒）。 */
@@ -36,20 +27,9 @@ public final class HallLantern {
     /** 到着チャイムを鳴らすのは、到着のこの時間前から [tick]（6秒）。 */
     public static final int CHIME_LEAD_TICKS = 120;
 
-    /** 扉の上：1段の高さ [px]。 */
-    private static final int OVER_SECTION_HEIGHT_PX = 2;
-    /** 扉の上：出入口（または階床表示器）の上端からのすき間 [px]。三方枠の高さに収まるよう、1px。 */
-    private static final int OVER_GAP_PX = 1;
-    /** 扉の横：棒の幅 [px]。 */
-    private static final int BESIDE_WIDTH_PX = 2;
-    /** 扉の横：1段の高さ [px]。 */
-    private static final int BESIDE_SECTION_HEIGHT_PX = 7;
-    /** 扉の横：下の段の下端の高さ [px]（中心が実機の約1800 mm）。 */
-    private static final int BESIDE_BOTTOM_PX = 36;
-
-    private static final Set<TravelDirection> UP_ONLY = Set.of(TravelDirection.UP);
-    private static final Set<TravelDirection> DOWN_ONLY = Set.of(TravelDirection.DOWN);
-    private static final Set<TravelDirection> BOTH = Set.of(TravelDirection.UP, TravelDirection.DOWN);
+    public static final Set<TravelDirection> UP_ONLY = Set.of(TravelDirection.UP);
+    public static final Set<TravelDirection> DOWN_ONLY = Set.of(TravelDirection.DOWN);
+    public static final Set<TravelDirection> BOTH = Set.of(TravelDirection.UP, TravelDirection.DOWN);
 
     /** ランプの1段。directions はその段が表す進行方向（上下をつなげた段は両方）。 */
     public record Section(Set<TravelDirection> directions, Box box) {
@@ -92,51 +72,5 @@ public final class HallLantern {
      */
     public static boolean shouldChime(boolean arrivalCertain, double ticksToArrival) {
         return arrivalCertain && ticksToArrival <= CHIME_LEAD_TICKS;
-    }
-
-    /**
-     * ランプの段。上の段（上り）、下の段（下り）の順。扉の横で最上階・最下階のときは、上下をつなげた1段だけ。付けないときは空。
-     *
-     * @param terminal 最上階または最下階か
-     */
-    public static List<Section> sections(CarModel model, FixtureConfig config, boolean terminal) {
-        return sections(CarSpec.of(model), config, terminal);
-    }
-
-    public static List<Section> sections(CarSpec model, FixtureConfig config, boolean terminal) {
-        return sections(model, config, terminal, 0);
-    }
-
-    /** 乗場の面を faceOffset だけずらしたランタン（二方向出入口の奥の乗場）。 */
-    public static List<Section> sections(CarSpec model, FixtureConfig config, boolean terminal, double faceOffset) {
-        if (config.hallLantern() == FixtureConfig.HallLanternPlacement.NONE) {
-            return List.of();
-        }
-        double px = 1.0 / CarModel.PIXELS_PER_BLOCK;
-        double face = DoorGeometry.landingFace(model, faceOffset);
-        if (config.hallLantern() == FixtureConfig.HallLanternPlacement.BESIDE_DOOR) {
-            // 左側の脇の、幅の中央
-            double minX = (DoorGeometry.frameJambCenter2Px(model, false) - BESIDE_WIDTH_PX) / 2 * px;
-            double maxX = minX + BESIDE_WIDTH_PX * px;
-            double bottom = BESIDE_BOTTOM_PX * px;
-            double downTop = bottom + BESIDE_SECTION_HEIGHT_PX * px;
-            double upBottom = downTop + px;
-            double top = upBottom + BESIDE_SECTION_HEIGHT_PX * px;
-            if (terminal) {
-                return List.of(new Section(BOTH, new Box(minX, bottom, face, maxX, top, face + px)));
-            }
-            return List.of(
-                    new Section(UP_ONLY, new Box(minX, upBottom, face, maxX, top, face + px)),
-                    new Section(DOWN_ONLY, new Box(minX, bottom, face, maxX, downTop, face + px)));
-        }
-        Box entrance = CarGeometry.entrance(model);
-        double base = config.hallIndicator() == FixtureConfig.HallIndicator.OVER_DOOR
-                ? FloorIndicator.hall(model, config, "", TravelDirection.NONE, faceOffset).face().maxY()
-                : entrance.maxY();
-        double bottom = base + OVER_GAP_PX * px;
-        double middle = bottom + OVER_SECTION_HEIGHT_PX * px;
-        return List.of(
-                new Section(UP_ONLY, new Box(entrance.minX(), middle, face, entrance.maxX(), middle + OVER_SECTION_HEIGHT_PX * px, face + px)),
-                new Section(DOWN_ONLY, new Box(entrance.minX(), bottom, face, entrance.maxX(), middle, face + px)));
     }
 }
