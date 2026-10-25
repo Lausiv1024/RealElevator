@@ -18,6 +18,7 @@ import net.lausiv1024.realelevator.core.car.Entrance;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
+import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.motion.SpeedSetting;
@@ -194,11 +195,18 @@ public class InstallGameTests {
         renewal.putString("Speed", SpeedSpec.NORMAL_HIGH.name());
         helper.assertTrue(!car.landingOpen(), "landing open is off by default");
         renewal.putBoolean("LandingOpen", true);
+        // 内装：タグにある素材は使い、タグにないもの（床に鉄ブロック）は初期値に戻す
+        InteriorConfig wanted = InteriorConfig.DEFAULT.withMaterial(InteriorConfig.Part.WALL, "realelevator:woodgrain_dark")
+                .withMaterial(InteriorConfig.Part.FLOOR, "minecraft:iron_block").withCeiling(InteriorConfig.CeilingType.INDIRECT);
+        renewal.put("Interior", ConfigTags.writeInterior(wanted));
         controller.applyRenewal(renewal);
         helper.assertTrue(car.fixtures().panelSides() == FixtureConfig.PanelSides.BOTH, "the fixtures should change");
         helper.assertTrue(car.floorLabel(1).equals("R"), "the label should change: " + car.floorLabel(1));
         helper.assertTrue(car.speed().spec() == SpeedSpec.NORMAL_LOW, "the speed should not change");
         helper.assertTrue(car.landingOpen() && controller.renewalTag().getBoolean("LandingOpen"), "landing open should be turned on");
+        helper.assertTrue(car.interior().wall().equals("realelevator:woodgrain_dark") && car.interior().ceiling() == InteriorConfig.CeilingType.INDIRECT,
+                "the interior should change: " + car.interior());
+        helper.assertTrue(car.interior().floor().equals(InteriorConfig.DEFAULT.floor()), "a material outside the tag should be rejected");
         helper.succeed();
     }
 

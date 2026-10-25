@@ -5,6 +5,7 @@ import net.lausiv1024.realelevator.block.InstallerBlock;
 import net.lausiv1024.realelevator.block.ControllerBlock;
 import net.lausiv1024.realelevator.block.GuideRailBlock;
 import net.lausiv1024.realelevator.block.PowerReceiverBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
@@ -36,6 +37,21 @@ public final class ModBlocks {
             () -> new PowerReceiverBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL).strength(3.0F, 6.0F).sound(SoundType.METAL).requiresCorrectToolForDrops()));
 
+    // 内装の素材（オリジナル）。かごの壁・床などの素材として選べ、建築にも使える
+    public static final DeferredBlock<Block> WOODGRAIN_LIGHT = material("woodgrain_light", MapColor.WOOD, SoundType.WOOD);
+    public static final DeferredBlock<Block> WOODGRAIN_MEDIUM = material("woodgrain_medium", MapColor.WOOD, SoundType.WOOD);
+    public static final DeferredBlock<Block> WOODGRAIN_DARK = material("woodgrain_dark", MapColor.WOOD, SoundType.WOOD);
+    public static final DeferredBlock<Block> STAINLESS_HAIRLINE = material("stainless_hairline", MapColor.METAL, SoundType.METAL);
+    public static final DeferredBlock<Block> STAINLESS_MIRROR = material("stainless_mirror", MapColor.METAL, SoundType.METAL);
+    public static final DeferredBlock<Block> STAINLESS_ETCHED = material("stainless_etched", MapColor.METAL, SoundType.METAL);
+    public static final DeferredBlock<Block> BRONZE_HAIRLINE = material("bronze_hairline", MapColor.METAL, SoundType.METAL);
+    public static final DeferredBlock<Block> VINYL_GRAY = material("vinyl_gray", MapColor.STONE, SoundType.STONE);
+    public static final DeferredBlock<Block> VINYL_BEIGE = material("vinyl_beige", MapColor.STONE, SoundType.STONE);
+
     private ModBlocks() {
+    }
+
+    private static DeferredBlock<Block> material(String name, MapColor color, SoundType sound) {
+        return BLOCKS.registerSimpleBlock(name, BlockBehaviour.Properties.of().mapColor(color).strength(1.5F, 6.0F).sound(sound));
     }
 }

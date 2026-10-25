@@ -70,7 +70,7 @@ class CarGeometryTest {
     @EnumSource(CarModel.class)
     void frontWallLeavesEntranceOpen(CarModel model) {
         List<Part> front = CarGeometry.parts(model).stream()
-                .filter(p -> p.type() == PartType.WALL && p.box().minZ() >= CarGeometry.interior(model).maxZ())
+                .filter(p -> p.type() == PartType.FRONT_WALL && p.box().minZ() >= CarGeometry.interior(model).maxZ())
                 .toList();
         assertEquals(3, front.size());
 

@@ -5,10 +5,11 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
-import net.lausiv1024.realelevator.core.car.CarGeometry.PartType;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.Entrance;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
+import net.lausiv1024.realelevator.core.design.InteriorConfig;
+import net.lausiv1024.realelevator.core.design.InteriorGeometry;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.CarPanelLayout;
@@ -16,6 +17,7 @@ import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.core.panel.WheelchairPanelLayout;
 import net.lausiv1024.realelevator.entity.CarShapes;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -26,14 +28,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 
 /**
- * かごの仮の描画。coreの形状の各部位を箱として描き、バニラのブロックのテクスチャを1ブロック単位で敷き詰める。
- * デザインシステム（フェーズ4）で、部位ごとの素材に差し替える。
+ * かごの描画。coreの形状の各部位を箱として描き、部位ごとの素材（ブロック）のテクスチャを1ブロック単位で敷き詰める。
+ *
+ * <p>かごはエンティティなので照明で周りを照らせない。代わりに、かごの中は周りの明るさにかかわらず照明がついている明るさ
+ * （ブロックの明るさ15）で描き、天井の光る部分はさらに白く光らせる。
  */
 public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
-    private static final ResourceLocation WALL = ResourceLocation.withDefaultNamespace("block/iron_block");
-    private static final ResourceLocation FLOOR = ResourceLocation.withDefaultNamespace("block/polished_andesite");
-    private static final ResourceLocation CEILING = ResourceLocation.withDefaultNamespace("block/smooth_stone");
-    static final ResourceLocation DOOR = ResourceLocation.withDefaultNamespace("block/light_gray_concrete");
 
     public ElevatorCarRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -48,41 +48,54 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
         poseStack.translate(0, car.renderY(partialTick) - Mth.lerp(partialTick, car.yo, car.getY()), 0);
         PoseStack.Pose pose = poseStack.last();
         VertexConsumer consumer = bufferSource.getBuffer(RenderType.entityCutout(TextureAtlas.LOCATION_BLOCKS));
+        // かごの中は照明がついている明るさで描く
+        int light = LightTexture.pack(15, LightTexture.sky(packedLight));
+        InteriorConfig interior = car.interior();
+        TextureAtlasSprite wall = MaterialSprites.side(interior.wall());
+        TextureAtlasSprite front = MaterialSprites.side(interior.front());
+        TextureAtlasSprite floor = MaterialSprites.side(interior.floor());
         for (Part part : car.parts()) {
-            BoxRenderer.renderBox(pose, consumer, part.box(), sprite(part.type()), packedLight);
+            switch (part.type()) {
+                case FLOOR -> BoxRenderer.renderBox(pose, consumer, part.box(), floor, light);
+                case WALL -> BoxRenderer.renderBox(pose, consumer, part.box(), wall, light);
+                case FRONT_WALL -> BoxRenderer.renderBox(pose, consumer, part.box(), front, light);
+                case CEILING -> BoxRenderer.renderCeiling(pose, consumer, part.box(), light);
+            }
         }
+        BoxRenderer.renderInterior(pose, consumer, InteriorGeometry.parts(car.spec(), car.isThrough(), interior),
+                car.facing().get2DDataValue(), light, MaterialSprites.side(interior.baseboard()));
         double tick = car.renderTick(partialTick);
-        TextureAtlasSprite door = BoxRenderer.blockSprite(DOOR);
+        TextureAtlasSprite door = MaterialSprites.side(interior.door());
         for (Entrance entrance : car.entrances()) {
             double fraction = car.doorFractionAt(tick, entrance);
             for (Box panel : CarShapes.doorPanels(car.spec(), car.facing(), DoorGeometry.Side.CAR, fraction, entrance)) {
-                BoxRenderer.renderBox(pose, consumer, panel, door, packedLight);
+                BoxRenderer.renderBox(pose, consumer, panel, door, light);
             }
         }
         FixtureConfig fixtures = car.fixtures();
         CarSpec spec = car.spec();
         int turns = car.facing().get2DDataValue();
         int rgb = fixtures.indicatorColor().rgb();
-        BoxRenderer.renderButtons(pose, consumer, car, turns, packedLight, rgb);
+        BoxRenderer.renderButtons(pose, consumer, car, turns, light, rgb);
         String label = car.indicatorLabel(tick);
         // 二方向出入口では、奥の出入口にも同じ操作盤と表示器を180°回して付ける
         CarPanelLayout panel = CarPanelLayout.of(spec, car.floorCount());
         for (Entrance entrance : car.entrances()) {
             int entranceTurns = turns + entrance.quarterTurns();
             for (boolean right : ButtonLayout.panelJambs(spec, fixtures.panelSides())) {
-                BoxRenderer.renderParts(pose, consumer, panel.parts(spec, right, false), entranceTurns, packedLight);
+                BoxRenderer.renderParts(pose, consumer, panel.parts(spec, right, false), entranceTurns, light);
             }
             for (FloorIndicator.Frame indicator : FloorIndicator.car(spec, car.floorCount(), fixtures, label, car.indicatorDirection())) {
-                BoxRenderer.renderIndicator(pose, consumer, indicator, entranceTurns, packedLight, rgb);
+                BoxRenderer.renderIndicator(pose, consumer, indicator, entranceTurns, light, rgb);
             }
         }
         if (fixtures.wheelchairPanel()) {
             WheelchairPanelLayout wheelchair = WheelchairPanelLayout.of(spec, car.floorCount());
             for (boolean right : new boolean[] {true, false}) {
-                BoxRenderer.renderParts(pose, consumer, wheelchair.parts(spec, right), turns, packedLight);
+                BoxRenderer.renderParts(pose, consumer, wheelchair.parts(spec, right), turns, light);
             }
             for (FloorIndicator.Frame indicator : FloorIndicator.wheelchair(spec, car.floorCount(), label, car.indicatorDirection())) {
-                BoxRenderer.renderIndicator(pose, consumer, indicator, turns, packedLight, rgb);
+                BoxRenderer.renderIndicator(pose, consumer, indicator, turns, light, rgb);
             }
         }
         poseStack.popPose();
@@ -94,13 +107,5 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
     @Override
     public ResourceLocation getTextureLocation(ElevatorCarEntity car) {
         return TextureAtlas.LOCATION_BLOCKS;
-    }
-
-    private static TextureAtlasSprite sprite(PartType type) {
-        return BoxRenderer.blockSprite(switch (type) {
-            case FLOOR -> FLOOR;
-            case WALL -> WALL;
-            case CEILING -> CEILING;
-        });
     }
 }

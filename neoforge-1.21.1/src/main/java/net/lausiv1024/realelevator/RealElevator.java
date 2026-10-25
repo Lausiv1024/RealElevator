@@ -65,6 +65,8 @@ public class RealElevator {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(ModItems.INSTALLER);
             event.accept(ModItems.POWER_RECEIVER);
+        } else if (event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS) {
+            ModItems.MATERIALS.forEach(event::accept);
         } else if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(ModItems.FLOOR_MARKER);
             event.accept(ModItems.MAINTENANCE_WRENCH);

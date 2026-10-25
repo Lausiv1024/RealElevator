@@ -9,6 +9,7 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.display.HallLantern;
+import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.CarShapes;
@@ -39,7 +40,8 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
                        MultiBufferSource bufferSource, int packedLight) {
         PoseStack.Pose pose = poseStack.last();
         VertexConsumer consumer = bufferSource.getBuffer(RenderType.entityCutout(TextureAtlas.LOCATION_BLOCKS));
-        TextureAtlasSprite sprite = BoxRenderer.blockSprite(ElevatorCarRenderer.DOOR);
+        ElevatorCarEntity doorCar = door.car();
+        TextureAtlasSprite sprite = MaterialSprites.side((doorCar != null ? doorCar.interior() : InteriorConfig.DEFAULT).door());
         double fraction = door.renderFraction(partialTick);
         for (Box panel : CarShapes.doorPanels(door.spec(), door.facing(), DoorGeometry.Side.LANDING, fraction, door.entrance())) {
             BoxRenderer.renderBox(pose, consumer, panel, sprite, packedLight);

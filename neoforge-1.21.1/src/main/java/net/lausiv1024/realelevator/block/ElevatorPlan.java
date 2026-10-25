@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.TreeSet;
 
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
+import net.lausiv1024.realelevator.core.design.InteriorConfig;
+import net.lausiv1024.realelevator.design.Materials;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.DoorType;
@@ -51,6 +53,7 @@ public final class ElevatorPlan {
     private final Map<Integer, FloorEntrances> entrances = new HashMap<>();
     private FixtureConfig fixtures = FixtureConfig.DEFAULT;
     private AnnouncementConfig announcements = AnnouncementConfig.DEFAULT;
+    private InteriorConfig interior = InteriorConfig.DEFAULT;
     /** ランディングオープン（着床の直前に戸を開き始める）か。 */
     private boolean landingOpen;
 
@@ -145,6 +148,10 @@ public final class ElevatorPlan {
         return landingOpen;
     }
 
+    public InteriorConfig interior() {
+        return interior;
+    }
+
     /** 乗場の器具を出入口の上に付けられるか（停止階の間隔が5ブロック以上か）。 */
     public boolean allowsOverDoorHallFixtures() {
         return ShaftLayout.allowsOverDoorHallFixtures(floorYs());
@@ -202,6 +209,7 @@ public final class ElevatorPlan {
         fixtures = ShaftLayout.fitFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")), floorYs());
         announcements = ConfigTags.readAnnouncements(tag.getCompound("Announcements"));
         landingOpen = tag.getBoolean("LandingOpen");
+        interior = Materials.sanitize(ConfigTags.readInterior(tag.getCompound("Interior")));
         CompoundTag labelTag = tag.getCompound("Labels");
         labels.clear();
         for (int floorY : floors) {
@@ -229,6 +237,7 @@ public final class ElevatorPlan {
         tag.put("Fixtures", ConfigTags.writeFixtures(fixtures));
         tag.put("Announcements", ConfigTags.writeAnnouncements(announcements));
         tag.putBoolean("LandingOpen", landingOpen);
+        tag.put("Interior", ConfigTags.writeInterior(interior));
         CompoundTag labelTag = new CompoundTag();
         labels.forEach((y, label) -> labelTag.putString(Integer.toString(y), label));
         tag.put("Labels", labelTag);
@@ -323,6 +332,7 @@ public final class ElevatorPlan {
         plan.fixtures = ConfigTags.readFixtures(tag.getCompound("Fixtures"));
         plan.announcements = ConfigTags.readAnnouncements(tag.getCompound("Announcements"));
         plan.landingOpen = tag.getBoolean("LandingOpen");
+        plan.interior = ConfigTags.readInterior(tag.getCompound("Interior"));
         plan.readEntrances(tag.getCompound("Entrances"));
         CompoundTag labelTag = tag.getCompound("Labels");
         for (String key : labelTag.getAllKeys()) {

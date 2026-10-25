@@ -1,0 +1,24 @@
+{
+  "replace": false,
+  "values": [
+    "realelevator:woodgrain_medium",
+    "realelevator:woodgrain_light",
+    "realelevator:woodgrain_dark",
+    "realelevator:stainless_hairline",
+    "realelevator:stainless_mirror",
+    "realelevator:stainless_etched",
+    "realelevator:bronze_hairline",
+    "minecraft:oak_planks",
+    "minecraft:spruce_planks",
+    "minecraft:birch_planks",
+    "minecraft:dark_oak_planks",
+    "minecraft:cherry_planks",
+    "minecraft:bamboo_planks",
+    "minecraft:white_concrete",
+    "minecraft:light_gray_concrete",
+    "minecraft:gray_concrete",
+    "minecraft:black_concrete",
+    "minecraft:white_terracotta",
+    "minecraft:smooth_quartz"
+  ]
+}

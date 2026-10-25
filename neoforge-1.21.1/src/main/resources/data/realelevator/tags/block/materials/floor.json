@@ -1,0 +1,14 @@
+{
+  "replace": false,
+  "values": [
+    "realelevator:vinyl_gray",
+    "realelevator:vinyl_beige",
+    "minecraft:polished_andesite",
+    "minecraft:polished_diorite",
+    "minecraft:polished_granite",
+    "minecraft:smooth_stone",
+    "minecraft:deepslate_tiles",
+    "minecraft:polished_blackstone",
+    "minecraft:tuff_bricks"
+  ]
+}

@@ -31,6 +31,7 @@ import net.lausiv1024.realelevator.core.control.EntranceCalls;
 import net.lausiv1024.realelevator.core.control.OperationTiming;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.control.WheelchairCalls;
+import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.display.HallLantern;
 import net.lausiv1024.realelevator.core.door.DoorController;
@@ -93,6 +94,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private static final EntityDataAccessor<CompoundTag> DATA_DOOR = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
     private static final EntityDataAccessor<CompoundTag> DATA_CALLS = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
     private static final EntityDataAccessor<CompoundTag> DATA_FIXTURES = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
+    private static final EntityDataAccessor<CompoundTag> DATA_INTERIOR = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
 
     /** セーフティシューの検知に使う、戸板のまわりのわずかな余裕。 */
     private static final double SAFETY_SHOE_MARGIN = 0.01;
@@ -156,6 +158,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private String[] labels = new String[0];
     private List<Button> buttons = List.of();
     private FixtureConfig fixtures = FixtureConfig.DEFAULT;
+    /** かご内装。描画にだけ使う。 */
+    private InteriorConfig interior = InteriorConfig.DEFAULT;
     /** アナウンスの設定。サーバーだけが使う。 */
     private AnnouncementConfig announcements = AnnouncementConfig.DEFAULT;
     /** 戸が開ききったら行先方向のアナウンスを流すか。サーバーだけが使う。 */
@@ -385,6 +389,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         builder.define(DATA_DOOR, new CompoundTag());
         builder.define(DATA_CALLS, new CompoundTag());
         builder.define(DATA_FIXTURES, new CompoundTag());
+        builder.define(DATA_INTERIOR, new CompoundTag());
     }
 
     public CarModel model() {
@@ -434,6 +439,17 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     public void setAnnouncements(AnnouncementConfig announcements) {
         this.announcements = announcements;
         door.setCloseAnnouncementTicks(announcements.doorClose() ? AnnouncementScript.DOOR_CLOSE_WAIT_TICKS : 0);
+    }
+
+    /** かご内装。 */
+    public InteriorConfig interior() {
+        return interior;
+    }
+
+    /** かご内装を変える。サーバーで呼ぶ。 */
+    public void setInterior(InteriorConfig interior) {
+        this.interior = interior;
+        this.entityData.set(DATA_INTERIOR, ConfigTags.writeInterior(interior));
     }
 
     /** 操作盤と階床表示器の配置を変える。停止階の間隔で付けられない配置は直す。サーバーで呼ぶ。 */
@@ -1654,6 +1670,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         } else if (DATA_FIXTURES.equals(key)) {
             fixtures = ConfigTags.readFixtures(this.entityData.get(DATA_FIXTURES));
             rebuildButtons();
+        } else if (DATA_INTERIOR.equals(key)) {
+            interior = ConfigTags.readInterior(this.entityData.get(DATA_INTERIOR));
         }
     }
 
@@ -1724,6 +1742,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             tag.put("Calls", writeCalls(control));
         }
         tag.put("Fixtures", ConfigTags.writeFixtures(fixtures));
+        tag.put("Interior", ConfigTags.writeInterior(interior));
         tag.put("Labels", writeLabels(labels));
         tag.put("Announcements", ConfigTags.writeAnnouncements(announcements));
         tag.putInt("CurrentFloor", currentFloor);
@@ -1757,6 +1776,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         landingOpened = tag.getBoolean("LandingOpened");
         setup(new CarSpec(model, door), facing, tag.getIntArray("Floors"), speed);
         setFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")));
+        setInterior(ConfigTags.readInterior(tag.getCompound("Interior")));
         setLabels(readLabels(tag));
         setAnnouncements(ConfigTags.readAnnouncements(tag.getCompound("Announcements")));
         // 保存時に走行中・開閉中だった場合は、ゲーム時刻に合わせてそのまま続きから動く

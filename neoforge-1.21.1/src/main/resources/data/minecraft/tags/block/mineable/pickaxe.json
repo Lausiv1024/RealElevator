@@ -3,6 +3,12 @@
   "values": [
     "realelevator:installer",
     "realelevator:guide_rail",
-    "realelevator:power_receiver"
+    "realelevator:power_receiver",
+    "realelevator:stainless_hairline",
+    "realelevator:stainless_mirror",
+    "realelevator:stainless_etched",
+    "realelevator:bronze_hairline",
+    "realelevator:vinyl_gray",
+    "realelevator:vinyl_beige"
   ]
 }

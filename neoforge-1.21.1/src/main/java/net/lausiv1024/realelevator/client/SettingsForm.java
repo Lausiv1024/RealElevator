@@ -11,7 +11,9 @@ import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.core.car.FloorEntrances;
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
+import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
+import net.lausiv1024.realelevator.design.Materials;
 import net.lausiv1024.realelevator.entity.ConfigTags;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -48,6 +50,7 @@ final class SettingsForm {
     private FixtureConfig fixtures;
     private AnnouncementConfig announcements;
     private boolean landingOpen;
+    private InteriorConfig interior;
     private int[] floors;
     /** 停止階のY座標ごとの階名。入力欄の内容で更新する。 */
     private final Map<Integer, String> labels = new HashMap<>();
@@ -64,6 +67,7 @@ final class SettingsForm {
         this.fixtures = ConfigTags.readFixtures(settings.getCompound("Fixtures"));
         this.announcements = ConfigTags.readAnnouncements(settings.getCompound("Announcements"));
         this.landingOpen = settings.getBoolean("LandingOpen");
+        this.interior = ConfigTags.readInterior(settings.getCompound("Interior"));
         setFloors(settings.getIntArray("Floors"));
         CompoundTag labelTag = settings.getCompound("Labels");
         CompoundTag entranceTag = settings.getCompound("Entrances");
@@ -115,6 +119,12 @@ final class SettingsForm {
         widgets.add(onOff("close_announcement", announcements.doorClose(), v -> announcements = announcements.withDoorClose(v), send));
         widgets.add(onOff("chime", announcements.chime(), v -> announcements = announcements.withChime(v), send));
         widgets.add(onOff("landing_open", landingOpen, v -> landingOpen = v, send));
+        for (InteriorConfig.Part part : InteriorConfig.Part.values()) {
+            widgets.add(materialButton(part, send));
+        }
+        widgets.add(enumButton("ceiling", InteriorConfig.CeilingType.values(), interior.ceiling(), v -> interior = interior.withCeiling(v), send));
+        widgets.add(enumButton("handrail", InteriorConfig.HandrailPlacement.values(), interior.handrail(),
+                v -> interior = interior.withHandrail(v), send));
         return widgets;
     }
 
@@ -220,6 +230,7 @@ final class SettingsForm {
         tag.put("Fixtures", ConfigTags.writeFixtures(fixtures));
         tag.put("Announcements", ConfigTags.writeAnnouncements(announcements));
         tag.putBoolean("LandingOpen", landingOpen);
+        tag.put("Interior", ConfigTags.writeInterior(interior));
         CompoundTag labelTag = new CompoundTag();
         for (int floorY : floors) {
             labelTag.putString(Integer.toString(floorY), labels.getOrDefault(floorY, ""));
@@ -239,6 +250,22 @@ final class SettingsForm {
                     setter.set(v);
                     send.run();
                 });
+    }
+
+    /** 部位 part の素材を、タグの候補の順に切り替えるボタン。表示はブロックの名前。 */
+    private CycleButton<String> materialButton(InteriorConfig.Part part, Runnable send) {
+        List<String> values = new ArrayList<>(Materials.candidates(part));
+        String current = interior.material(part);
+        if (!values.contains(current)) {
+            values.add(0, current);
+        }
+        return CycleButton.<String>builder(id -> Materials.block(id).getName())
+                .withValues(values).withInitialValue(current)
+                .create(0, 0, MAX_SETTING_WIDTH, 20,
+                        Component.translatable("gui.realelevator.panel.material_" + part.name().toLowerCase(Locale.ROOT)), (b, v) -> {
+                            interior = interior.withMaterial(part, v);
+                            send.run();
+                        });
     }
 
     static CycleButton<Boolean> onOff(String key, boolean initial, Setter<Boolean> setter, Runnable send) {

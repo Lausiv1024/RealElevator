@@ -19,7 +19,10 @@ public final class CarGeometry {
 
     public enum PartType {
         FLOOR,
+        /** 側壁と奥壁。 */
         WALL,
+        /** 正面の袖壁とトランサム（二方向出入口では奥のものも）。 */
+        FRONT_WALL,
         CEILING
     }
 
@@ -83,9 +86,9 @@ public final class CarGeometry {
                 // 奥壁
                 new Part(PartType.WALL, Box.ofPixels(-outerX, 0, -outerZ, outerX, height, -halfDepth)),
                 // 袖壁（正面）とトランサム
-                new Part(PartType.WALL, Box.ofPixels(-outerX, 0, halfDepth, entranceMinX, height, outerZ)),
-                new Part(PartType.WALL, Box.ofPixels(entranceMaxX, 0, halfDepth, outerX, height, outerZ)),
-                new Part(PartType.WALL, Box.ofPixels(entranceMinX, CarModel.ENTRANCE_HEIGHT_PX, halfDepth,
+                new Part(PartType.FRONT_WALL, Box.ofPixels(-outerX, 0, halfDepth, entranceMinX, height, outerZ)),
+                new Part(PartType.FRONT_WALL, Box.ofPixels(entranceMaxX, 0, halfDepth, outerX, height, outerZ)),
+                new Part(PartType.FRONT_WALL, Box.ofPixels(entranceMinX, CarModel.ENTRANCE_HEIGHT_PX, halfDepth,
                         entranceMaxX, height, outerZ)));
     }
 

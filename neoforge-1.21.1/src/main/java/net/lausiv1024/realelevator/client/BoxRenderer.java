@@ -10,6 +10,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
+import net.lausiv1024.realelevator.core.design.InteriorGeometry;
 import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.display.HallLantern;
 import net.lausiv1024.realelevator.core.panel.ButtonGlyphs;
@@ -81,6 +82,43 @@ final class BoxRenderer {
             GLYPHS.clear();
         }
         return GLYPHS.computeIfAbsent(new GlyphKey(button, label), key -> ButtonGlyphs.of(key.button(), key.label()));
+    }
+
+    /** 天井の板（裏側から見える面も含めて、明るい灰色）。 */
+    private static final int CEILING_COLOR = 0xD6D6D2;
+    /** 天井の光る部分（少し暖かい白）。 */
+    private static final int GLOW_COLOR = 0xFFF7E6;
+    /** 壁と天井の板の継ぎ目の色。 */
+    private static final int SEAM_COLOR = 0x3E3A36;
+    /** 手すりの棒の色（暗い茶）。 */
+    private static final int HANDRAIL_COLOR = 0x2E2622;
+    /** 手すりの金具の色（ステンレス）。 */
+    private static final int BRACKET_COLOR = 0xC9CDD1;
+
+    /** かごの天井（明るい灰色の板）を描く。 */
+    static void renderCeiling(PoseStack.Pose pose, VertexConsumer consumer, Box box, int light) {
+        renderBox(pose, consumer, box, blockSprite(WHITE_BASE), light, CEILING_COLOR);
+    }
+
+    /**
+     * かご内装の細部（壁の継ぎ目、幅木、天井の板と照明、手すり）を描く。天井の光る部分は、まわりの明るさによらず光って見えるようにする。
+     *
+     * @param baseboard 幅木の素材のテクスチャ
+     */
+    static void renderInterior(PoseStack.Pose pose, VertexConsumer consumer, List<InteriorGeometry.Part> parts, int quarterTurns, int light,
+                               TextureAtlasSprite baseboard) {
+        TextureAtlasSprite base = blockSprite(WHITE_BASE);
+        for (InteriorGeometry.Part part : parts) {
+            Box box = part.box().rotateQuarterTurns(quarterTurns);
+            switch (part.type()) {
+                case SEAM -> renderBox(pose, consumer, box, base, light, SEAM_COLOR);
+                case BASEBOARD -> renderBox(pose, consumer, box, baseboard, light);
+                case CEILING_PANEL -> renderBox(pose, consumer, box, base, light, CEILING_COLOR);
+                case CEILING_GLOW -> renderBox(pose, consumer, box, base, LightTexture.FULL_BRIGHT, GLOW_COLOR);
+                case HANDRAIL -> renderBox(pose, consumer, box, base, light, HANDRAIL_COLOR);
+                case HANDRAIL_BRACKET -> renderBox(pose, consumer, box, base, light, BRACKET_COLOR);
+            }
+        }
     }
 
     /** 操作盤の板・帯・車椅子マークを描く。 */

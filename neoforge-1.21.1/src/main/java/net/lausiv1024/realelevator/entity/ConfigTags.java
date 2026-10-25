@@ -1,6 +1,7 @@
 package net.lausiv1024.realelevator.entity;
 
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
+import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.minecraft.nbt.CompoundTag;
 
@@ -33,6 +34,30 @@ public final class ConfigTags {
                 parseEnum(FixtureConfig.HallLanternPlacement.class, tag.getString("HallLantern"), defaults.hallLantern()),
                 tag.getBoolean("WheelchairPanel"),
                 parseEnum(FixtureConfig.IndicatorColor.class, tag.getString("IndicatorColor"), defaults.indicatorColor()));
+    }
+
+    public static CompoundTag writeInterior(InteriorConfig interior) {
+        CompoundTag tag = new CompoundTag();
+        for (InteriorConfig.Part part : InteriorConfig.Part.values()) {
+            tag.putString(part.name(), interior.material(part));
+        }
+        tag.putString("Ceiling", interior.ceiling().name());
+        tag.putString("Handrail", interior.handrail().name());
+        return tag;
+    }
+
+    /** 書かれていない項目は初期値にする。 */
+    public static InteriorConfig readInterior(CompoundTag tag) {
+        InteriorConfig defaults = InteriorConfig.DEFAULT;
+        InteriorConfig interior = new InteriorConfig(defaults.wall(), defaults.front(), defaults.door(), defaults.floor(), defaults.baseboard(),
+                parseEnum(InteriorConfig.CeilingType.class, tag.getString("Ceiling"), defaults.ceiling()),
+                parseEnum(InteriorConfig.HandrailPlacement.class, tag.getString("Handrail"), defaults.handrail()));
+        for (InteriorConfig.Part part : InteriorConfig.Part.values()) {
+            if (tag.contains(part.name())) {
+                interior = interior.withMaterial(part, tag.getString(part.name()));
+            }
+        }
+        return interior;
     }
 
     public static CompoundTag writeAnnouncements(AnnouncementConfig announcements) {

@@ -88,6 +88,7 @@ public class ControllerBlockEntity extends BlockEntity {
             car.setFixtures(plan.fixtures());
             car.setAnnouncements(plan.announcements());
             car.setLandingOpen(plan.landingOpen());
+            car.setInterior(plan.interior());
             car.setLabels(plan.labelArray());
         }
         setChanged();
