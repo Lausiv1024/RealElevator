@@ -401,6 +401,17 @@ public class InstallGameTests {
     }
 
     @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void floorsAreLimitedToEighteen(GameTestHelper helper) {
+        ElevatorPlan plan = new ElevatorPlan(BlockPos.ZERO, Direction.SOUTH);
+        for (int i = 1; i < ShaftLayout.MAX_FLOORS; i++) {
+            helper.assertTrue(plan.toggleFloor(i * ShaftLayout.MIN_FLOOR_SPACING).changed(), "floor " + (i + 1) + " should be added");
+        }
+        helper.assertTrue(plan.floorYs().length == ShaftLayout.MAX_FLOORS, "18 floors: " + plan.floorYs().length);
+        helper.assertTrue(!plan.toggleFloor(ShaftLayout.MAX_FLOORS * ShaftLayout.MIN_FLOOR_SPACING).changed(), "the 19th floor should be refused");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
     public static void presetsAreLoadedFromTheDataPack(GameTestHelper helper) {
         List<DesignPreset> presets = Presets.all();
         helper.assertTrue(presets.stream().map(p -> p.id().getPath()).toList()

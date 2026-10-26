@@ -65,8 +65,16 @@ public final class ShaftLayout {
         /** 間隔が {@value #MIN_FLOOR_SPACING} ブロック未満の停止階がある。 */
         TOO_CLOSE,
         /** 制御盤（最下階）より下に停止階がある。 */
-        BELOW_PANEL
+        BELOW_PANEL,
+        /** 停止階が {@value #MAX_FLOORS} を超える。 */
+        TOO_MANY
     }
+
+    /**
+     * 停止階の数の上限。主操作盤に行先ボタンが収まる数（2px角のボタンで非常呼びを省いて18階床）。
+     * これを超える建物は、将来は乗場で行先を選ぶ方式（行先予約）に限って対応し、それまでは低層・高層などに分けて運用する。
+     */
+    public static final int MAX_FLOORS = 18;
 
     /** 釣合い重りの位置。 */
     public enum CounterweightPosition {
@@ -148,6 +156,9 @@ public final class ShaftLayout {
     public static FloorProblem check(int[] floors) {
         if (floors.length < 2) {
             return FloorProblem.TOO_FEW;
+        }
+        if (floors.length > MAX_FLOORS) {
+            return FloorProblem.TOO_MANY;
         }
         int[] sorted = floors.clone();
         Arrays.sort(sorted);

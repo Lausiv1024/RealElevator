@@ -158,5 +158,7 @@
   "preset.realelevator.mansion": "Apartment",
   "preset.realelevator.office": "Office",
   "preset.realelevator.luxury": "Luxury",
-  "preset.realelevator.observation": "Observation"
+  "preset.realelevator.observation": "Observation",
+  "message.realelevator.floor.too_many": "Up to %s floors (split the building into low-rise and high-rise banks)",
+  "message.realelevator.install.floors.too_many": "Up to 18 floors"
 }

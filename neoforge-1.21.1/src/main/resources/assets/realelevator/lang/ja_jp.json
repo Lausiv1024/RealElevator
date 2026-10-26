@@ -158,5 +158,7 @@
   "preset.realelevator.mansion": "マンション",
   "preset.realelevator.office": "オフィス",
   "preset.realelevator.luxury": "高級",
-  "preset.realelevator.observation": "展望"
+  "preset.realelevator.observation": "展望",
+  "message.realelevator.floor.too_many": "停止階は%s階床までです（高層・低層などに分けてください）",
+  "message.realelevator.install.floors.too_many": "停止階は18階床までです"
 }

@@ -181,6 +181,9 @@ public final class ElevatorPlan {
             entrances.remove(y);
             return new FloorChange(true, Component.translatable("message.realelevator.floor.removed", y, floors.size()));
         }
+        if (floors.size() >= ShaftLayout.MAX_FLOORS) {
+            return new FloorChange(false, Component.translatable("message.realelevator.floor.too_many", ShaftLayout.MAX_FLOORS));
+        }
         for (int floor : floors) {
             if (Math.abs(floor - y) < ShaftLayout.MIN_FLOOR_SPACING) {
                 return new FloorChange(false, Component.translatable("message.realelevator.floor.too_close", ShaftLayout.MIN_FLOOR_SPACING, floor));

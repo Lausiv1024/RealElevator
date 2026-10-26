@@ -31,6 +31,15 @@ class ShaftLayoutTest {
         assertEquals(FloorProblem.TOO_CLOSE, ShaftLayout.check(new int[] {0, 3}));
         assertEquals(FloorProblem.BELOW_PANEL, ShaftLayout.check(new int[] {-5, 0}));
         assertEquals(FloorProblem.NONE, ShaftLayout.check(new int[] {9, 0, 4}));
+        // 18階床まで（主操作盤に行先ボタンが収まる数）
+        int[] eighteen = new int[ShaftLayout.MAX_FLOORS];
+        for (int i = 0; i < eighteen.length; i++) {
+            eighteen[i] = i * ShaftLayout.MIN_FLOOR_SPACING;
+        }
+        assertEquals(FloorProblem.NONE, ShaftLayout.check(eighteen));
+        int[] nineteen = java.util.Arrays.copyOf(eighteen, eighteen.length + 1);
+        nineteen[eighteen.length] = eighteen.length * ShaftLayout.MIN_FLOOR_SPACING;
+        assertEquals(FloorProblem.TOO_MANY, ShaftLayout.check(nineteen));
     }
 
     @ParameterizedTest
