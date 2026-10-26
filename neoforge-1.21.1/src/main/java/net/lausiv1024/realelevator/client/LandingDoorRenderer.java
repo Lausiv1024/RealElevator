@@ -35,8 +35,6 @@ import net.minecraft.resources.ResourceLocation;
  * <p>エンティティの位置は昇降路の中なので、明るさは乗場の側（出入口の前）のものを使う。
  */
 public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
-    /** 操作盤の板とランタンの背面プレートの素材。 */
-    private static final String STAINLESS = "realelevator:stainless_hairline";
 
     public LandingDoorRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -64,13 +62,24 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
             BoxRenderer.renderDoorPanel(pose, consumer, panel, doorSprite, light, interior.securityWindow(), glass);
         }
         InteriorConfig.Landing landing = interior.landing();
-        BoxRenderer.renderLanding(pose, consumer, layout.parts(), turns, light, MaterialSprites.side(landing.frameMaterial()),
-                MaterialSprites.side(STAINLESS));
+        // 戸の上の、三方枠の張り出し
+        TextureAtlasSprite frameSprite = MaterialSprites.side(landing.frameMaterial());
+        for (Box soffit : DoorGeometry.soffits(door.spec(), DoorGeometry.Side.LANDING)) {
+            BoxRenderer.renderBox(pose, consumer, soffit.rotateQuarterTurns(turns), frameSprite, light);
+        }
+        // 片開きの、戸袋と反対側の戸当たり
+        for (Box jamb : DoorGeometry.jambReturns(door.spec(), DoorGeometry.Side.LANDING)) {
+            BoxRenderer.renderBox(pose, consumer, jamb.rotateQuarterTurns(turns), frameSprite, light);
+        }
+        BoxRenderer.renderLanding(pose, consumer, layout.parts(), turns, light, frameSprite,
+                MaterialSprites.side(BoxRenderer.STAINLESS));
+        Box range = LandingLayout.bounds(door.spec(), door.faceOffset());
+        Box wallRange = new Box(range.minX(), 0, range.minZ(), range.maxX(), DoorGeometry.LANDING_FRAME_HEIGHT, range.maxZ());
         if (InteriorConfig.AUTO.equals(landing.wallMaterial())) {
             ChameleonWall.Look look = ChameleonWall.look(door);
-            BoxRenderer.renderWall(pose, consumer, layout.wall(), turns, light, look.sprite(), look.rgb());
+            BoxRenderer.renderWall(pose, consumer, layout.wall(), wallRange, turns, light, look.sprite(), look.rgb());
         } else {
-            BoxRenderer.renderWall(pose, consumer, layout.wall(), turns, light, MaterialSprites.side(landing.wallMaterial()), 0xFFFFFF);
+            BoxRenderer.renderWall(pose, consumer, layout.wall(), wallRange, turns, light, MaterialSprites.side(landing.wallMaterial()), 0xFFFFFF);
         }
 
         BoxRenderer.renderButtons(pose, consumer, door, turns, light, rgb);

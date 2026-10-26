@@ -6,6 +6,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.lausiv1024.realelevator.core.car.Box;
+import net.lausiv1024.realelevator.core.car.Entrance;
+import net.lausiv1024.realelevator.core.hoist.CarFrame;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism.Point;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism.Sheave;
@@ -34,6 +36,16 @@ final class HoistRenderer {
     private static final int COUNTERWEIGHT = 0x6A6A6A;
     private static final int RAIL = 0xB0B0B0;
     private static final int BRACKET = 0x606060;
+    /** かご枠・ローラーガイドの台（暗い塗装色）。 */
+    private static final int FRAME = 0x454B52;
+    private static final int GUIDE_PLATE = 0x3A3F45;
+    private static final int SAFETY_GEAR = 0x5A5550;
+    private static final int OPERATOR = 0x8C9298;
+    private static final int BELT = 0x222222;
+    private static final int HANGER = 0x6A6A6A;
+    /** 安全柵（黄色の塗装）。 */
+    private static final int FENCE = 0xD8B020;
+    private static final ResourceLocation GALVANIZED = ResourceLocation.fromNamespaceAndPath("realelevator", "block/galvanized");
     /** シーブを近似する多角形の辺の数と、そのうち暗くする扇形の間隔。 */
     private static final int SHEAVE_SIDES = 12;
     private static final int SPOKE_EVERY = 3;
@@ -72,10 +84,39 @@ final class HoistRenderer {
         for (Sheave sheave : hoist.sheaves(carY)) {
             frame.sheave(sheave, plain);
         }
+        renderCarFrame(car, hoist.carFrame(), carY, partialTick, frame, plain);
         double ropeHalf = HoistMechanism.ROPE_WIDTH_PX / 16 / 2;
         for (List<Point> rope : hoist.ropes(carY)) {
             for (int i = 1; i < rope.size(); i++) {
                 frame.beam(rope.get(i - 1), rope.get(i), ropeHalf, plain, ROPE);
+            }
+        }
+    }
+
+    /** かごの外側の機器。かごの位置 carY だけ上下に動かし、明るさはそれぞれの場所のもの（かご内の照明は効かない）。 */
+    private static void renderCarFrame(ElevatorCarEntity car, CarFrame carFrame, double carY, float partialTick, Frame frame,
+                                       TextureAtlasSprite plain) {
+        TextureAtlasSprite galvanized = BoxRenderer.blockSprite(GALVANIZED);
+        for (CarFrame.Part part : carFrame.parts()) {
+            Box box = part.box().move(0, carY, 0);
+            switch (part.type()) {
+                case FRAME -> frame.box(box, plain, FRAME);
+                case GUIDE_PLATE -> frame.box(box, plain, GUIDE_PLATE);
+                case SAFETY_GEAR -> frame.box(box, plain, SAFETY_GEAR);
+                case OPERATOR -> frame.box(box, plain, OPERATOR);
+                case MOTOR -> frame.box(box, plain, MOTOR);
+                case BELT -> frame.box(box, plain, BELT);
+                case APRON -> frame.box(box, galvanized, 0xFFFFFF);
+                case FENCE -> frame.box(box, plain, FENCE);
+            }
+        }
+        for (Sheave roller : carFrame.rollers(carY)) {
+            frame.sheave(roller, plain);
+        }
+        double tick = car.renderTick(partialTick);
+        for (Entrance entrance : car.entrances()) {
+            for (Box hanger : carFrame.hangers(car.doorFractionAt(tick, entrance), entrance)) {
+                frame.box(hanger.move(0, carY, 0), plain, HANGER);
             }
         }
     }

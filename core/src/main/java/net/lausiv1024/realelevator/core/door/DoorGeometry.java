@@ -2,6 +2,7 @@ package net.lausiv1024.realelevator.core.door;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeSet;
 
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
@@ -34,6 +35,8 @@ public final class DoorGeometry {
     public static final int PANEL_THICKNESS_PX = 1;
     /** かごの敷居と乗場の敷居のすき間（実機 約30 mm）。 */
     public static final int SILL_GAP_PX = 1;
+    /** 乗場の戸の上の張り出しの高さ [px]（三方枠の上の部分と同じ）。 */
+    public static final int SOFFIT_HEIGHT_PX = 4;
     /** 三方枠の高さ [ブロック]。 */
     public static final int LANDING_FRAME_HEIGHT = 4;
 
@@ -153,6 +156,96 @@ public final class DoorGeometry {
                 new Box(-half, 0, back, entrance.minX(), top, face),
                 new Box(entrance.maxX(), 0, back, half, top, face),
                 new Box(entrance.minX(), entrance.maxY(), back, entrance.maxX(), top, face));
+    }
+
+    /**
+     * 戸の上の張り出し。出入口の上（戸の上端から上）で、かごはトランサムの下面を、乗場は三方枠の上の部分の下面を、閉じた戸板の上で
+     * その戸板の奥行きまで張り出す（外のレールを通る戸、たとえば4枚戸の中の2枚や片開きの速い戸の上では深くなる）。出入口の幅を、
+     * 奥行きの同じ区間ごとの箱に分けて返す。
+     * 戸の上や戸のあいだから昇降路が見えないようにする。かごは前壁の外面から戸板の外側の面まで、天井の上面の高さまで。
+     * 乗場は戸板のかご側の面から三方枠の裏まで、枠の高さ（{@value #SOFFIT_HEIGHT_PX}px）まで。
+     */
+    public static List<Box> soffits(CarSpec spec, Side side) {
+        double px = 1.0 / CarModel.PIXELS_PER_BLOCK;
+        double bottom = CarModel.ENTRANCE_HEIGHT_PX * px;
+        Box entrance = CarGeometry.entrance(spec);
+        Box exterior = CarGeometry.exterior(spec);
+        Box travel = travelBounds(spec, side);
+        List<Box> closed = panels(spec, side, 0);
+        // 閉じた戸板の端で出入口の幅を区切り、区間ごとに、その上にあるいちばん奥（外のレール）の戸板まで張り出す。
+        // 戸板どうしは少し重なるので、重なったところは深い方にそろえる（同じ面が重なってちらつかないように）
+        TreeSet<Double> cuts = new TreeSet<>(List.of(entrance.minX(), entrance.maxX()));
+        for (Box panel : closed) {
+            cuts.add(Math.clamp(panel.minX(), entrance.minX(), entrance.maxX()));
+            cuts.add(Math.clamp(panel.maxX(), entrance.minX(), entrance.maxX()));
+        }
+        List<Box> boxes = new ArrayList<>();
+        Double from = null;
+        double depth = Double.NaN;
+        Double previous = null;
+        for (double cut : cuts) {
+            if (previous != null && cut - previous > 1e-9) {
+                double mid = (previous + cut) / 2;
+                double d = Double.NaN;
+                for (Box panel : closed) {
+                    if (panel.minX() < mid && panel.maxX() > mid) {
+                        double edge = side == Side.CAR ? panel.maxZ() : panel.minZ();
+                        d = Double.isNaN(d) ? edge : side == Side.CAR ? Math.max(d, edge) : Math.min(d, edge);
+                    }
+                }
+                if (from != null && d != depth) {
+                    boxes.add(soffit(side, from, previous, depth, bottom, exterior, travel, px));
+                    from = null;
+                }
+                if (from == null) {
+                    from = previous;
+                    depth = d;
+                }
+            }
+            previous = cut;
+        }
+        if (from != null) {
+            boxes.add(soffit(side, from, previous, depth, bottom, exterior, travel, px));
+        }
+        return boxes;
+    }
+
+    /**
+     * 戸当たり。片開き（2S）では、閉じたときに戸袋と反対側の縁を覆うのは外のレールの戸だけなので、袖壁（乗場は三方枠）とのあいだに
+     * レール1本分のすき間が縦に残り、昇降路が見えてしまう。その縁の外に、袖壁（三方枠）から戸の動く範囲の奥行きまで伸びる、
+     * 幅1px・戸の高さの板を付けて埋める。縁を覆う戸板が壁に接するレールを通る（中央開き・4枚戸）なら付けない。
+     */
+    public static List<Box> jambReturns(CarSpec spec, Side side) {
+        double px = 1.0 / CarModel.PIXELS_PER_BLOCK;
+        Box entrance = CarGeometry.entrance(spec);
+        Box travel = travelBounds(spec, side);
+        double wall = side == Side.CAR ? CarGeometry.exterior(spec).maxZ() : travel.maxZ();
+        List<Box> closed = panels(spec, side, 0);
+        List<Box> boxes = new ArrayList<>(2);
+        for (int edge = -1; edge <= 1; edge += 2) {
+            double x = edge < 0 ? entrance.minX() + px / 2 : entrance.maxX() - px / 2;
+            boolean touchesWall = false;
+            for (Box panel : closed) {
+                if (panel.minX() < x && panel.maxX() > x) {
+                    touchesWall |= side == Side.CAR ? Math.abs(panel.minZ() - wall) < 1e-9 : Math.abs(panel.maxZ() - wall) < 1e-9;
+                }
+            }
+            if (touchesWall) {
+                continue;
+            }
+            double x0 = edge < 0 ? entrance.minX() - px : entrance.maxX();
+            double top = entrance.maxY();
+            boxes.add(side == Side.CAR
+                    ? new Box(x0, 0, wall, x0 + px, top, travel.maxZ())
+                    : new Box(x0, 0, travel.minZ(), x0 + px, top, wall));
+        }
+        return boxes;
+    }
+
+    private static Box soffit(Side side, double x0, double x1, double depth, double bottom, Box exterior, Box travel, double px) {
+        return side == Side.CAR
+                ? new Box(x0, bottom, exterior.maxZ(), x1, exterior.maxY(), depth)
+                : new Box(x0, bottom, depth, x1, bottom + SOFFIT_HEIGHT_PX * px, travel.maxZ());
     }
 
     /**

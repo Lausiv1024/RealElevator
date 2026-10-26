@@ -7,6 +7,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.lausiv1024.realelevator.core.car.Box;
+import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarGeometry.Part;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.Entrance;
@@ -63,13 +64,16 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
         // ガラスは半透明なので、ほかを描き終えてから描く
         List<Box> clearGlass = new ArrayList<>();
         List<Box> wiredGlass = new ArrayList<>();
+        // かごの外を向く面は、亜鉛メッキ調で、まわりの明るさで描く
+        Box outer = CarShapes.exterior(car.spec(), car.facing());
+        BoxRenderer.Look outside = new BoxRenderer.Look(BoxRenderer.blockSprite(BoxRenderer.GALVANIZED), packedLight);
         for (Part part : car.parts()) {
             switch (part.type()) {
-                case FLOOR -> BoxRenderer.renderBox(pose, consumer, part.box(), floor, light);
-                case WALL -> BoxRenderer.renderBox(pose, consumer, part.box(), wall, light);
-                case FRONT_WALL -> BoxRenderer.renderBox(pose, consumer, part.box(), front, light);
-                case TRANSOM -> BoxRenderer.renderBox(pose, consumer, part.box(), transom, light);
-                case CEILING -> BoxRenderer.renderCeiling(pose, consumer, part.box(), light);
+                case FLOOR -> BoxRenderer.renderCarBox(pose, consumer, part.box(), outer, new BoxRenderer.Look(floor, light), outside);
+                case WALL -> BoxRenderer.renderCarBox(pose, consumer, part.box(), outer, new BoxRenderer.Look(wall, light), outside);
+                case FRONT_WALL -> BoxRenderer.renderCarBox(pose, consumer, part.box(), outer, new BoxRenderer.Look(front, light), outside);
+                case TRANSOM -> BoxRenderer.renderCarBox(pose, consumer, part.box(), outer, new BoxRenderer.Look(transom, light), outside);
+                case CEILING -> BoxRenderer.renderCeiling(pose, consumer, part.box(), outer, light, outside);
                 case GLASS -> clearGlass.add(part.box());
             }
         }
@@ -78,10 +82,25 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
                 interior.carpet().blockId() != null ? MaterialSprites.side(interior.carpet().blockId()) : wall);
         double tick = car.renderTick(partialTick);
         TextureAtlasSprite door = MaterialSprites.side(interior.door());
+        // 戸板は袖壁の外のレール（4枚戸の中の2枚などは、さらに1つ外）を通るので、戸の動く範囲までをかごの内側として面を分ける
+        Box travel = DoorGeometry.travelBounds(car.spec(), DoorGeometry.Side.CAR);
+        Box exterior = CarGeometry.exterior(car.spec());
+        Box doorOuter = new Box(exterior.minX(), exterior.minY(), -travel.maxZ(), exterior.maxX(), exterior.maxY(), travel.maxZ())
+                .rotateQuarterTurns(car.facing().get2DDataValue());
         for (Entrance entrance : car.entrances()) {
             double fraction = car.doorFractionAt(tick, entrance);
             for (Box panel : CarShapes.doorPanels(car.spec(), car.facing(), DoorGeometry.Side.CAR, fraction, entrance)) {
-                BoxRenderer.renderDoorPanel(pose, consumer, panel, door, light, interior.securityWindow(), wiredGlass);
+                BoxRenderer.renderDoorPanel(pose, consumer, panel, door, light, packedLight, doorOuter, interior.securityWindow(), wiredGlass);
+            }
+            // 戸の上の、トランサムの張り出し
+            for (Box soffit : DoorGeometry.soffits(car.spec(), DoorGeometry.Side.CAR)) {
+                BoxRenderer.renderCarBox(pose, consumer, soffit.rotateQuarterTurns(car.facing().get2DDataValue() + entrance.quarterTurns()),
+                        doorOuter, new BoxRenderer.Look(transom, light), new BoxRenderer.Look(transom, packedLight));
+            }
+            // 片開きの、戸袋と反対側の戸当たり
+            for (Box jamb : DoorGeometry.jambReturns(car.spec(), DoorGeometry.Side.CAR)) {
+                BoxRenderer.renderCarBox(pose, consumer, jamb.rotateQuarterTurns(car.facing().get2DDataValue() + entrance.quarterTurns()),
+                        doorOuter, new BoxRenderer.Look(front, light), new BoxRenderer.Look(front, packedLight));
             }
             // 敷居（かごの床と同じ高さ）
             BoxRenderer.renderLanding(pose, consumer, LandingLayout.sill(car.spec(), DoorGeometry.Side.CAR, 0),

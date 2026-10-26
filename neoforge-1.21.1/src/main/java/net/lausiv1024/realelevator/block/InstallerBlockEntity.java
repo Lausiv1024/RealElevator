@@ -228,8 +228,10 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
         Direction toCar = facing().getCounterClockWise();
         for (ShaftLayout.Rail rail : layout.rails()) {
             Direction railFacing = rail.left() ? toCar : toCar.getOpposite();
+            // 壁への取り付け金具は、ピットの底から数ブロックおきに付ける
+            boolean bracket = Math.floorMod(rail.cell().y() - layout.bottom(), GuideRailBlock.BRACKET_SPACING) == 1;
             level.setBlock(cellPos(rail.cell()), ModBlocks.GUIDE_RAIL.get().defaultBlockState()
-                    .setValue(HorizontalDirectionalBlock.FACING, railFacing), Block.UPDATE_ALL);
+                    .setValue(HorizontalDirectionalBlock.FACING, railFacing).setValue(GuideRailBlock.BRACKET, bracket), Block.UPDATE_ALL);
         }
 
         List<Cell> controllerCells = layout.controllerCells();

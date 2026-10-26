@@ -2,19 +2,52 @@
   "parent": "minecraft:block/block",
   "textures": {
     "rail": "minecraft:block/iron_block",
-    "particle": "minecraft:block/iron_block"
+    "particle": "minecraft:block/iron_block",
+    "bracket": "minecraft:block/gray_concrete"
   },
   "elements": [
     {
       "from": [
         6,
         0,
-        12
+        15
       ],
       "to": [
         10,
         16,
         16
+      ],
+      "faces": {
+        "north": {
+          "texture": "#rail"
+        },
+        "south": {
+          "texture": "#rail"
+        },
+        "east": {
+          "texture": "#rail"
+        },
+        "west": {
+          "texture": "#rail"
+        },
+        "up": {
+          "texture": "#rail"
+        },
+        "down": {
+          "texture": "#rail"
+        }
+      }
+    },
+    {
+      "from": [
+        7.5,
+        0,
+        12
+      ],
+      "to": [
+        8.5,
+        16,
+        15
       ],
       "faces": {
         "north": {

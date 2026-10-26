@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.lausiv1024.realelevator.RealElevator;
+import net.lausiv1024.realelevator.block.GuideRailBlock;
 import net.lausiv1024.realelevator.block.ControllerBlock;
 import net.lausiv1024.realelevator.block.ControllerBlockEntity;
 import net.lausiv1024.realelevator.block.ElevatorPlan;
@@ -94,9 +95,14 @@ public class InstallGameTests {
                 .filter(door -> door.carUuid().filter(car.getUUID()::equals).isPresent()).count();
         helper.assertTrue(doors == 2, "a landing door per floor: " + doors);
         ShaftLayout layout = plan.layout();
+        int brackets = 0;
         for (ShaftLayout.Rail rail : layout.rails()) {
-            helper.assertTrue(helper.getLevel().getBlockState(plan.cellPos(rail.cell())).is(ModBlocks.GUIDE_RAIL.get()), "rail at " + rail);
+            BlockState railState = helper.getLevel().getBlockState(plan.cellPos(rail.cell()));
+            helper.assertTrue(railState.is(ModBlocks.GUIDE_RAIL.get()), "rail at " + rail);
+            brackets += railState.getValue(GuideRailBlock.BRACKET) ? 1 : 0;
         }
+        // 壁への取り付け金具は数ブロックおき
+        helper.assertTrue(brackets > 0 && brackets < layout.rails().size() / 2, "some rails should have brackets: " + brackets);
         // 頂部の左奥に、縦2ブロックの制御盤
         List<ShaftLayout.Cell> cells = layout.controllerCells();
         BlockPos lower = plan.cellPos(cells.get(0));
@@ -344,7 +350,8 @@ public class InstallGameTests {
                 .filter(door -> door.spec().equals(car.spec())).count();
         helper.assertTrue(doors == 2, "the landing doors should share the door type: " + doors);
         // 4枚の戸で当たり判定ができ、開いて閉じる
-        helper.assertTrue(car.collisionBoxesAt(helper.getLevel().getGameTime()).size() == car.parts().size() + 4, "four car door panels");
+        helper.assertTrue(car.collisionBoxesAt(helper.getLevel().getGameTime()).size()
+                == car.parts().size() + 4 + car.hoist().carFrame().fence().size(), "four car door panels and the roof fence");
         car.pressCarCall(1);
         BlockPos panelPos = helper.absolutePos(PANEL);
         helper.succeedWhen(() -> helper.assertTrue(!car.isMoving() && car.getY() == panelPos.getY() + RISE

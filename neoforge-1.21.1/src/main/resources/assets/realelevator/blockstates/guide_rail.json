@@ -1,19 +1,35 @@
 {
   "variants": {
-    "facing=north": {
+    "bracket=false,facing=north": {
       "model": "realelevator:block/guide_rail",
       "y": 0
     },
-    "facing=east": {
+    "bracket=true,facing=north": {
+      "model": "realelevator:block/guide_rail_bracket",
+      "y": 0
+    },
+    "bracket=false,facing=east": {
       "model": "realelevator:block/guide_rail",
       "y": 90
     },
-    "facing=south": {
+    "bracket=true,facing=east": {
+      "model": "realelevator:block/guide_rail_bracket",
+      "y": 90
+    },
+    "bracket=false,facing=south": {
       "model": "realelevator:block/guide_rail",
       "y": 180
     },
-    "facing=west": {
+    "bracket=true,facing=south": {
+      "model": "realelevator:block/guide_rail_bracket",
+      "y": 180
+    },
+    "bracket=false,facing=west": {
       "model": "realelevator:block/guide_rail",
+      "y": 270
+    },
+    "bracket=true,facing=west": {
+      "model": "realelevator:block/guide_rail_bracket",
       "y": 270
     }
   }

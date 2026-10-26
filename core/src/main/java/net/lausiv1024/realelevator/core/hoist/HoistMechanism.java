@@ -108,6 +108,8 @@ public final class HoistMechanism {
     private final double counterweightZ;
     private final double counterweightSheaveX;
     private final double backWallZ;
+    /** かごの外側の機器。 */
+    private final CarFrame carFrame;
 
     /**
      * @param floors 停止階の床面のY座標（ワールド座標）
@@ -162,6 +164,7 @@ public final class HoistMechanism {
                 through ? new FloorEntrances[] {FloorEntrances.BOTH, FloorEntrances.BOTH} : null);
         this.backWallZ = layout.backRow() - 0.5 - layout.carZ();
         this.carRopeZ = carRopeZ(layout.railRowZ() - layout.carZ());
+        this.carFrame = new CarFrame(spec, pitMode, through, layout.railRowZ() - layout.carZ(), px(shaftHalfWidthPx));
         this.columnX = layout.counterweightColumn() - layout.carX();
         if (side) {
             // 重りのシーブの前の端に、綱車から下りたロープが来る
@@ -193,6 +196,11 @@ public final class HoistMechanism {
 
     public CarModel model() {
         return model;
+    }
+
+    /** かごの外側の機器（かご枠・ローラーガイド・非常止め・ドアオペレーター・エプロン・安全柵）。 */
+    public CarFrame carFrame() {
+        return carFrame;
     }
 
     public PitMode pitMode() {

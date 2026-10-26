@@ -1568,6 +1568,13 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         for (Part part : parts()) {
             boxes.add(CarShapes.toAabb(part.box(), getX(), y, getZ()));
         }
+        // かご上の安全柵（ウィザードで設置したかごだけ）
+        HoistMechanism hoist = hoist();
+        if (hoist != null) {
+            for (Box fence : hoist.carFrame().fence()) {
+                boxes.add(CarShapes.toAabb(fence.rotateQuarterTurns(facing().get2DDataValue()), getX(), y, getZ()));
+            }
+        }
         // カーペットはバニラと同じく1pxの段になる
         if (interior.carpet() != InteriorConfig.Carpet.NONE) {
             boxes.add(CarShapes.toAabb(InteriorGeometry.carpet(spec()).rotateQuarterTurns(facing().get2DDataValue()), getX(), y, getZ()));

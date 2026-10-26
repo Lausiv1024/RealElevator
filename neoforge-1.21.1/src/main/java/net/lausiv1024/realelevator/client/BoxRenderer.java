@@ -35,8 +35,8 @@ final class BoxRenderer {
     private static final ResourceLocation WHITE_BASE = ResourceLocation.withDefaultNamespace("block/white_concrete");
     private static final ResourceLocation INDICATOR_FACE = ResourceLocation.withDefaultNamespace("block/black_concrete");
     private static final ResourceLocation INDICATOR_DOT = ResourceLocation.withDefaultNamespace("block/white_concrete");
-    /** 操作盤の板（仮のステンレス。デザインシステムの素材で差し替える）。 */
-    private static final ResourceLocation PLATE = ResourceLocation.withDefaultNamespace("block/iron_block");
+    /** かごと乗場の操作盤の板、ランタンの背面プレートの素材（ステンレスのヘアライン）。 */
+    static final String STAINLESS = "realelevator:stainless_hairline";
     private static final int WHITE = 0xFFFFFF;
     /** ボタンの地の色（明るいステンレス）。 */
     private static final int BUTTON_BODY = 0xC9CDD1;
@@ -87,6 +87,43 @@ final class BoxRenderer {
         return GLYPHS.computeIfAbsent(new GlyphKey(button, label), key -> ButtonGlyphs.of(key.button(), key.label()));
     }
 
+    /** かごの外側の面のテクスチャ（亜鉛メッキ調）。 */
+    static final ResourceLocation GALVANIZED = ResourceLocation.fromNamespaceAndPath("realelevator", "block/galvanized");
+
+    /** 面の見た目と明るさ。 */
+    record Look(TextureAtlasSprite sprite, int light, int rgb) {
+        Look(TextureAtlasSprite sprite, int light) {
+            this(sprite, light, WHITE);
+        }
+    }
+
+    /**
+     * かごの部位を描く。面ごとに、かごの中を向く面（面の少し外側の点がかごの外形 outer の中にある面）は inside で、
+     * かごの外を向く面は outside で描く。かごの中の照明の明るさが、外から見た面に効かないようにするため。
+     */
+    static void renderCarBox(PoseStack.Pose pose, VertexConsumer consumer, Box b, Box outer, Look inside, Look outside) {
+        float x0 = (float) b.minX(), y0 = (float) b.minY(), z0 = (float) b.minZ();
+        float x1 = (float) b.maxX(), y1 = (float) b.maxY(), z1 = (float) b.maxZ();
+        double cx = (b.minX() + b.maxX()) / 2;
+        double cy = (b.minY() + b.maxY()) / 2;
+        double cz = (b.minZ() + b.maxZ()) / 2;
+        double e = 0.01;
+        face(pose, consumer, inside(outer, cx, b.minY() - e, cz) ? inside : outside).draw(0, -1, 0, x0, x1, z0, z1, (u, v) -> new float[] {u, y0, v});
+        face(pose, consumer, inside(outer, cx, b.maxY() + e, cz) ? inside : outside).draw(0, 1, 0, x0, x1, z1, z0, (u, v) -> new float[] {u, y1, v});
+        face(pose, consumer, inside(outer, cx, cy, b.minZ() - e) ? inside : outside).draw(0, 0, -1, x1, x0, y0, y1, (u, v) -> new float[] {u, v, z0});
+        face(pose, consumer, inside(outer, cx, cy, b.maxZ() + e) ? inside : outside).draw(0, 0, 1, x0, x1, y0, y1, (u, v) -> new float[] {u, v, z1});
+        face(pose, consumer, inside(outer, b.minX() - e, cy, cz) ? inside : outside).draw(-1, 0, 0, z0, z1, y0, y1, (u, v) -> new float[] {x0, v, u});
+        face(pose, consumer, inside(outer, b.maxX() + e, cy, cz) ? inside : outside).draw(1, 0, 0, z1, z0, y0, y1, (u, v) -> new float[] {x1, v, u});
+    }
+
+    private static Face face(PoseStack.Pose pose, VertexConsumer consumer, Look look) {
+        return new Face(pose, consumer, look.sprite(), look.light(), look.rgb());
+    }
+
+    private static boolean inside(Box box, double x, double y, double z) {
+        return x > box.minX() && x < box.maxX() && y > box.minY() && y < box.maxY() && z > box.minZ() && z < box.maxZ();
+    }
+
     /** 天井の板（裏側から見える面も含めて、明るい灰色）。 */
     private static final int CEILING_COLOR = 0xD6D6D2;
     /** 天井の光る部分（少し暖かい白）。 */
@@ -98,9 +135,9 @@ final class BoxRenderer {
     /** 手すりの金具の色（ステンレス）。 */
     private static final int BRACKET_COLOR = 0xC9CDD1;
 
-    /** かごの天井（明るい灰色の板）を描く。 */
-    static void renderCeiling(PoseStack.Pose pose, VertexConsumer consumer, Box box, int light) {
-        renderBox(pose, consumer, box, blockSprite(WHITE_BASE), light, CEILING_COLOR);
+    /** かごの天井（かごの中から見える面は明るい灰色の板、外側は outside）を描く。 */
+    static void renderCeiling(PoseStack.Pose pose, VertexConsumer consumer, Box box, Box outer, int light, Look outside) {
+        renderCarBox(pose, consumer, box, outer, new Look(blockSprite(WHITE_BASE), light, CEILING_COLOR), outside);
     }
 
     /**
@@ -135,9 +172,21 @@ final class BoxRenderer {
      */
     static void renderDoorPanel(PoseStack.Pose pose, VertexConsumer consumer, Box panel, TextureAtlasSprite sprite, int light,
                                 InteriorConfig.SecurityWindow window, List<Box> glass) {
+        renderDoorPanel(pose, consumer, panel, sprite, light, light, null, window, glass);
+    }
+
+    /**
+     * かごの戸板を描く。かごの外形 outer の中を向く面は insideLight、外を向く面は outsideLight の明るさで描く（outer が null ならすべて insideLight）。
+     */
+    static void renderDoorPanel(PoseStack.Pose pose, VertexConsumer consumer, Box panel, TextureAtlasSprite sprite, int insideLight,
+                                int outsideLight, Box outer, InteriorConfig.SecurityWindow window, List<Box> glass) {
         DoorWindows.Pieces pieces = DoorWindows.split(panel, window);
         for (Box piece : pieces.frame()) {
-            renderBox(pose, consumer, piece, sprite, light);
+            if (outer == null) {
+                renderBox(pose, consumer, piece, sprite, insideLight);
+            } else {
+                renderCarBox(pose, consumer, piece, outer, new Look(sprite, insideLight), new Look(sprite, outsideLight));
+            }
         }
         if (pieces.glass() != null) {
             glass.add(pieces.glass());
@@ -190,14 +239,33 @@ final class BoxRenderer {
     }
 
     /**
-     * 乗場の枠のまわりの壁を描く。乗場の側の面だけを、まわりのブロックとテクスチャの継ぎ目がそろうように貼る。
+     * 乗場の枠のまわりの壁を描く。乗場の側の面は、まわりのブロックとテクスチャの継ぎ目がそろうように貼る。
+     * 昇降路の側（裏）の面も、同じテクスチャを左右を映して貼る（昇降路の中から見て抜けないように）。三方枠の範囲 range の外周
+     * （左右の端・上端・下端）にあたる面も描く（隣にブロックがないときに抜けないように）。
      *
      * @param rgb テクスチャに掛ける色（草などの色付きのブロック用。ふつうは白）
      */
-    static void renderWall(PoseStack.Pose pose, VertexConsumer consumer, List<LandingLayout.WallCell> cells, int quarterTurns, int light,
-                           TextureAtlasSprite sprite, int rgb) {
+    static void renderWall(PoseStack.Pose pose, VertexConsumer consumer, List<LandingLayout.WallCell> cells, Box range, int quarterTurns,
+                           int light, TextureAtlasSprite sprite, int rgb) {
+        double e = 1e-6;
         for (LandingLayout.WallCell cell : cells) {
             Box b = cell.box();
+            Face edge = new Face(pose, consumer, sprite, light, rgb);
+            Box r = b.rotateQuarterTurns(quarterTurns);
+            if (b.maxY() >= range.maxY() - e) {
+                drawFace(edge, r, 0, 1, 0);
+            }
+            if (b.minY() <= range.minY() + e) {
+                drawFace(edge, r, 0, -1, 0);
+            }
+            if (b.minX() <= range.minX() + e) {
+                float[] n = rotate(-1, 0, quarterTurns);
+                drawFace(edge, r, (int) n[0], 0, (int) n[1]);
+            }
+            if (b.maxX() >= range.maxX() - e) {
+                float[] n = rotate(1, 0, quarterTurns);
+                drawFace(edge, r, (int) n[0], 0, (int) n[1]);
+            }
             float u0 = (float) cell.u();
             float v0 = (float) cell.v();
             float u1 = u0 + (float) b.sizeX();
@@ -209,6 +277,30 @@ final class BoxRenderer {
             face.vertex(point(b.maxX(), b.minY(), b.maxZ(), quarterTurns), sprite.getU(u1), sprite.getV(1 - v0), normal[0], 0, normal[1]);
             face.vertex(point(b.maxX(), b.maxY(), b.maxZ(), quarterTurns), sprite.getU(u1), sprite.getV(1 - v1), normal[0], 0, normal[1]);
             face.vertex(point(b.minX(), b.maxY(), b.maxZ(), quarterTurns), sprite.getU(u0), sprite.getV(1 - v1), normal[0], 0, normal[1]);
+            // 裏の面（−Z から見て反時計回り）
+            face.vertex(point(b.maxX(), b.minY(), b.minZ(), quarterTurns), sprite.getU(u1), sprite.getV(1 - v0), -normal[0], 0, -normal[1]);
+            face.vertex(point(b.minX(), b.minY(), b.minZ(), quarterTurns), sprite.getU(u0), sprite.getV(1 - v0), -normal[0], 0, -normal[1]);
+            face.vertex(point(b.minX(), b.maxY(), b.minZ(), quarterTurns), sprite.getU(u0), sprite.getV(1 - v1), -normal[0], 0, -normal[1]);
+            face.vertex(point(b.maxX(), b.maxY(), b.minZ(), quarterTurns), sprite.getU(u1), sprite.getV(1 - v1), -normal[0], 0, -normal[1]);
+        }
+    }
+
+    /** 箱 b の、外向きの法線が (nx, ny, nz) の面を描く（テクスチャは1ブロックごとに敷き詰める）。 */
+    private static void drawFace(Face face, Box b, int nx, int ny, int nz) {
+        float x0 = (float) b.minX(), y0 = (float) b.minY(), z0 = (float) b.minZ();
+        float x1 = (float) b.maxX(), y1 = (float) b.maxY(), z1 = (float) b.maxZ();
+        if (ny < 0) {
+            face.draw(0, -1, 0, x0, x1, z0, z1, (u, v) -> new float[] {u, y0, v});
+        } else if (ny > 0) {
+            face.draw(0, 1, 0, x0, x1, z1, z0, (u, v) -> new float[] {u, y1, v});
+        } else if (nz < 0) {
+            face.draw(0, 0, -1, x1, x0, y0, y1, (u, v) -> new float[] {u, v, z0});
+        } else if (nz > 0) {
+            face.draw(0, 0, 1, x0, x1, y0, y1, (u, v) -> new float[] {u, v, z1});
+        } else if (nx < 0) {
+            face.draw(-1, 0, 0, z0, z1, y0, y1, (u, v) -> new float[] {x0, v, u});
+        } else {
+            face.draw(1, 0, 0, z1, z0, y0, y1, (u, v) -> new float[] {x1, v, u});
         }
     }
 
@@ -230,7 +322,7 @@ final class BoxRenderer {
 
     /** 操作盤の板・帯・車椅子マークを描く。 */
     static void renderParts(PoseStack.Pose pose, VertexConsumer consumer, List<PanelPart> parts, int quarterTurns, int light) {
-        TextureAtlasSprite plate = blockSprite(PLATE);
+        TextureAtlasSprite plate = MaterialSprites.side(STAINLESS);
         TextureAtlasSprite black = blockSprite(INDICATOR_FACE);
         TextureAtlasSprite base = blockSprite(WHITE_BASE);
         for (PanelPart part : parts) {
