@@ -376,5 +376,14 @@
     "sounds": [
       "realelevator:announce/door_close"
     ]
+  },
+  "announce.voicevox": {
+    "subtitle": "subtitles.realelevator.announcement",
+    "sounds": [
+      {
+        "name": "realelevator:announce/door_close",
+        "stream": true
+      }
+    ]
   }
 }

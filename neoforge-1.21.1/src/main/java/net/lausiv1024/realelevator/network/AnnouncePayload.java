@@ -10,7 +10,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * かごのアナウンスをクライアントへ伝える。送るのは種別・階名・方向だけで、どう鳴らすかはクライアントに任せる。
+ * かごのアナウンスをクライアントへ伝える。送るのは種別・階名・読み上げ名・方向だけで、どう鳴らすかはクライアントに任せる。
  */
 public record AnnouncePayload(int carId, Announcement announcement) implements CustomPacketPayload {
     public static final Type<AnnouncePayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(RealElevator.MODID, "announce"));
@@ -18,9 +18,10 @@ public record AnnouncePayload(int carId, Announcement announcement) implements C
             ByteBufCodecs.VAR_INT, AnnouncePayload::carId,
             ByteBufCodecs.VAR_INT, p -> p.announcement().type().ordinal(),
             ByteBufCodecs.STRING_UTF8, p -> p.announcement().floorLabel(),
+            ByteBufCodecs.STRING_UTF8, p -> p.announcement().speechName(),
             ByteBufCodecs.VAR_INT, p -> p.announcement().direction().ordinal(),
-            (carId, type, label, direction) -> new AnnouncePayload(carId, new Announcement(
-                    Announcement.Type.values()[Math.floorMod(type, Announcement.Type.values().length)], label,
+            (carId, type, label, speechName, direction) -> new AnnouncePayload(carId, new Announcement(
+                    Announcement.Type.values()[Math.floorMod(type, Announcement.Type.values().length)], label, speechName,
                     TravelDirection.values()[Math.floorMod(direction, TravelDirection.values().length)])));
 
     @Override

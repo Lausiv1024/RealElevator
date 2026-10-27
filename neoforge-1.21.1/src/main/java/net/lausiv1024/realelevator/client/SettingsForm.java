@@ -11,6 +11,7 @@ import javax.annotation.Nullable;
 
 import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.core.car.FloorEntrances;
+import net.lausiv1024.realelevator.core.announce.Announcement;
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
@@ -40,11 +41,15 @@ final class SettingsForm {
     static final int GAP = 4;
     /** 設定のボタンの幅の上限。 */
     static final int MAX_SETTING_WIDTH = 200;
-    /** 停止階の欄の幅（「◯階（Y=◯）」、階名の入力欄、出入口のボタン、スクロールのボタン）。 */
-    static final int FLOOR_COLUMN_WIDTH = 194;
-    /** 出入口のボタンと、スクロールのボタンの、停止階の欄の左端からの位置。 */
-    private static final int ENTRANCE_BUTTON_X = 144;
-    private static final int SCROLL_BUTTON_X = 170;
+    /** 停止階の欄の幅（「◯階（Y=◯）」、階名と読み上げ名の入力欄、出入口のボタン、スクロールのボタン）。 */
+    static final int FLOOR_COLUMN_WIDTH = 250;
+    /** 階名と読み上げ名の入力欄、出入口のボタン、スクロールのボタンの、停止階の欄の左端からの位置と幅。 */
+    private static final int LABEL_BOX_X = 88;
+    private static final int LABEL_BOX_WIDTH = 32;
+    private static final int SPEECH_BOX_X = 124;
+    private static final int SPEECH_BOX_WIDTH = 74;
+    private static final int ENTRANCE_BUTTON_X = 202;
+    private static final int SCROLL_BUTTON_X = 230;
 
     interface Setter<T> {
         void set(T value);
@@ -59,6 +64,8 @@ final class SettingsForm {
     private int[] floors;
     /** 停止階のY座標ごとの階名。入力欄の内容で更新する。 */
     private final Map<Integer, String> labels = new HashMap<>();
+    /** 停止階のY座標ごとの読み上げ名。 */
+    private final Map<Integer, String> speechNames = new HashMap<>();
     /** 停止階のY座標ごとの出入口（二方向出入口のとき）。 */
     private final Map<Integer, FloorEntrances> entrances = new HashMap<>();
     /** 二方向出入口で、停止階ごとの出入口を選べるか（設置する前の設定画面だけ）。 */
@@ -75,9 +82,11 @@ final class SettingsForm {
         this.interior = ConfigTags.readInterior(settings.getCompound("Interior"));
         setFloors(settings.getIntArray("Floors"));
         CompoundTag labelTag = settings.getCompound("Labels");
+        CompoundTag speechTag = settings.getCompound("SpeechNames");
         CompoundTag entranceTag = settings.getCompound("Entrances");
         for (int floorY : floors) {
             labels.put(floorY, labelTag.getString(Integer.toString(floorY)));
+            speechNames.put(floorY, speechTag.getString(Integer.toString(floorY)));
             entrances.put(floorY, ConfigTags.parseEnum(FloorEntrances.class, entranceTag.getString(Integer.toString(floorY)), FloorEntrances.FRONT));
         }
     }
@@ -205,7 +214,8 @@ final class SettingsForm {
         for (int row = 0; row < shown; row++) {
             int index = floors.length - 1 - (row + scroll);
             int floorY = floors[index];
-            EditBox box = new EditBox(font, floorColumnX + 90, TOP + row * ROW, 50, 18, Component.translatable("gui.realelevator.panel.label"));
+            EditBox box = new EditBox(font, floorColumnX + LABEL_BOX_X, TOP + row * ROW, LABEL_BOX_WIDTH, 18,
+                    Component.translatable("gui.realelevator.panel.label"));
             box.setMaxLength(ElevatorPlan.MAX_LABEL_LENGTH);
             box.setHint(Component.literal(String.valueOf(index + 1)));
             box.setValue(labels.getOrDefault(floorY, ""));
@@ -215,6 +225,17 @@ final class SettingsForm {
             });
             labelBoxes.add(box);
             add.accept(box);
+            // 読み上げ名（音声合成で「（読み上げ名）です。」と読む。同梱音声では読めない）
+            EditBox speech = new EditBox(font, floorColumnX + SPEECH_BOX_X, TOP + row * ROW, SPEECH_BOX_WIDTH, 18,
+                    Component.translatable("gui.realelevator.panel.speech_name"));
+            speech.setMaxLength(Announcement.MAX_SPEECH_NAME_LENGTH);
+            speech.setHint(Component.translatable("gui.realelevator.panel.speech_name_hint"));
+            speech.setValue(speechNames.getOrDefault(floorY, ""));
+            speech.setResponder(text -> {
+                speechNames.put(floorY, text);
+                send.run();
+            });
+            add.accept(speech);
             if (editableEntrances) {
                 // 最下階（設置用ブロックの階）は前を必ず使う
                 boolean lowest = index == 0;
@@ -278,6 +299,11 @@ final class SettingsForm {
             labelTag.putString(Integer.toString(floorY), labels.getOrDefault(floorY, ""));
         }
         tag.put("Labels", labelTag);
+        CompoundTag speechTag = new CompoundTag();
+        for (int floorY : floors) {
+            speechTag.putString(Integer.toString(floorY), speechNames.getOrDefault(floorY, ""));
+        }
+        tag.put("SpeechNames", speechTag);
         CompoundTag entranceTag = new CompoundTag();
         for (int floorY : floors) {
             entranceTag.putString(Integer.toString(floorY), entrances.getOrDefault(floorY, FloorEntrances.FRONT).name());

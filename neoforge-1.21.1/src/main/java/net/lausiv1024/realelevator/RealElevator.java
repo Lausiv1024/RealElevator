@@ -47,6 +47,7 @@ public class RealElevator {
         ModMenus.MENU_TYPES.register(modEventBus);
         modEventBus.addListener(RealElevator::registerPayloads);
         modContainer.registerConfig(ModConfig.Type.SERVER, RealElevatorConfig.SPEC);
+        modContainer.registerConfig(ModConfig.Type.CLIENT, RealElevatorClientConfig.SPEC);
         modEventBus.addListener(RealElevator::addCreativeTabItems);
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent event) -> DebugCommands.register(event.getDispatcher()));
     }

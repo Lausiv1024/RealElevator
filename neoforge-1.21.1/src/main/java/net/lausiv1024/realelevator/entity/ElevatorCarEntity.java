@@ -160,6 +160,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private HoistMechanism hoist;
     /** 停止階の階名（下から順）。空文字なら初期値（下から 1、2、3…）を使う。 */
     private String[] labels = new String[0];
+    /** 停止階の読み上げ名（下から順。空なら階名から読む）。 */
+    private String[] speechNames = new String[0];
     private List<Button> buttons = List.of();
     private FixtureConfig fixtures = FixtureConfig.DEFAULT;
     /** かご内装。描画にだけ使う。 */
@@ -1118,7 +1120,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         spokenDirection = TravelDirection.NONE;
         // 戸を開き始めるときに「◯階です。」を流し（戸はアナウンスを待たない）、開ききったら行先方向を流す
         if (announcements.arrival()) {
-            announce(Announcement.arrival(floorLabel(currentFloor)));
+            announce(Announcement.arrival(floorLabel(currentFloor), floorSpeechName(currentFloor)));
             directionAnnouncementPending = true;
         }
     }
@@ -1464,6 +1466,24 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         this.entityData.set(DATA_FLOORS, tag);
     }
 
+    /** 停止階 floor の読み上げ名。なければ空。 */
+    public String floorSpeechName(int floor) {
+        return floor >= 0 && floor < speechNames.length ? speechNames[floor] : "";
+    }
+
+    /** 停止階の読み上げ名を変える（下から順）。サーバーで呼ぶ。 */
+    public void setSpeechNames(String[] names) {
+        this.speechNames = Arrays.copyOf(names, floors.length);
+        for (int i = 0; i < this.speechNames.length; i++) {
+            if (this.speechNames[i] == null) {
+                this.speechNames[i] = "";
+            }
+        }
+        CompoundTag tag = this.entityData.get(DATA_FLOORS).copy();
+        tag.put("SpeechNames", writeLabels(this.speechNames));
+        this.entityData.set(DATA_FLOORS, tag);
+    }
+
     private static ListTag writeLabels(String[] labels) {
         ListTag list = new ListTag();
         for (String label : labels) {
@@ -1473,7 +1493,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     private static String[] readLabels(CompoundTag tag) {
-        ListTag list = tag.getList("Labels", Tag.TAG_STRING);
+        return readStrings(tag, "Labels");
+    }
+
+    private static String[] readStrings(CompoundTag tag, String key) {
+        ListTag list = tag.getList(key, Tag.TAG_STRING);
         String[] labels = new String[list.size()];
         for (int i = 0; i < labels.length; i++) {
             labels[i] = list.getString(i);
@@ -1685,6 +1709,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             hoist = null;
             applyFloors(floorTag.getIntArray("Floors"));
             labels = readLabels(floorTag);
+            speechNames = readStrings(floorTag, "SpeechNames");
             readCalls(this.entityData.get(DATA_CALLS));
         } else if (DATA_TRIP.equals(key)) {
             Trip previous = trip;
@@ -1774,6 +1799,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.put("Fixtures", ConfigTags.writeFixtures(fixtures));
         tag.put("Interior", ConfigTags.writeInterior(interior));
         tag.put("Labels", writeLabels(labels));
+        tag.put("SpeechNames", writeLabels(speechNames));
         tag.put("Announcements", ConfigTags.writeAnnouncements(announcements));
         tag.putInt("CurrentFloor", currentFloor);
         tag.putInt("TargetFloor", targetFloor);
@@ -1808,6 +1834,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         setFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")));
         setInterior(ConfigTags.readInterior(tag.getCompound("Interior")));
         setLabels(readLabels(tag));
+        setSpeechNames(readStrings(tag, "SpeechNames"));
         setAnnouncements(ConfigTags.readAnnouncements(tag.getCompound("Announcements")));
         // 保存時に走行中・開閉中だった場合は、ゲーム時刻に合わせてそのまま続きから動く
         setTrip(tag.contains("Trip") ? readTrip(tag.getCompound("Trip")) : null);

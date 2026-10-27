@@ -160,5 +160,19 @@
   "preset.realelevator.luxury": "Luxury",
   "preset.realelevator.observation": "Observation",
   "message.realelevator.floor.too_many": "Up to %s floors (split the building into low-rise and high-rise banks)",
-  "message.realelevator.install.floors.too_many": "Up to 18 floors"
+  "message.realelevator.install.floors.too_many": "Up to 18 floors",
+  "gui.realelevator.panel.speech_name": "Spoken name",
+  "gui.realelevator.panel.speech_name_hint": "Spoken name",
+  "gui.realelevator.voicevox.title": "Real Elevator: VOICEVOX",
+  "gui.realelevator.voicevox.enabled": "Announce with VOICEVOX",
+  "gui.realelevator.voicevox.url": "Engine URL",
+  "gui.realelevator.voicevox.load": "Load speakers",
+  "gui.realelevator.voicevox.speaker": "Speaker",
+  "gui.realelevator.voicevox.speaker_current": "Speaker: %s (%s)",
+  "gui.realelevator.voicevox.test": "Test",
+  "gui.realelevator.voicevox.loading": "Asking the engine…",
+  "gui.realelevator.voicevox.failed": "Couldn't reach the engine (is VOICEVOX running? check the URL)",
+  "gui.realelevator.voicevox.loaded": "Loaded %s speakers",
+  "gui.realelevator.voicevox.credit": "Credit: VOICEVOX:%s",
+  "gui.realelevator.voicevox.terms": "Follow each character's terms of use"
 }

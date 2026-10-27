@@ -12,14 +12,15 @@ import net.lausiv1024.realelevator.core.control.TravelDirection;
  * アナウンスの文面のテンプレート。
  *
  * <ul>
- * <li>到着：「◯階です。」</li>
+ * <li>到着：「◯階です。」。読み上げ名があれば「（読み上げ名）です。」</li>
  * <li>行先方向：「上へ参ります。」「下へ参ります。」（方向が決まっていなければ何も流さない）</li>
  * <li>戸閉：「ドアが閉まります。」</li>
  * </ul>
  *
  * <p>同梱音声では、あらかじめ録った音声のかたまり（クリップ）をつなげて鳴らす。階は読みが崩れないよう、
  * 「◯階です。」までを1つのクリップにする。対応している階名は、数字の階（1〜{@value #MAX_FLOOR}）、
- * 地下（B1〜B{@value #MAX_BASEMENT}）、屋上（R）。それ以外の階名は、階のクリップを鳴らさない。
+ * 地下（B1〜B{@value #MAX_BASEMENT}）、屋上（R）。それ以外の階名と、読み上げ名がある階は、階のクリップを鳴らさない
+ * （読み上げ名は音声合成でだけ読める）。
  */
 public final class AnnouncementScript {
     public static final int MAX_FLOOR = 50;
@@ -48,7 +49,7 @@ public final class AnnouncementScript {
         List<String> clips = new ArrayList<>(2);
         switch (announcement.type()) {
             case ARRIVAL -> {
-                String floor = floorClip(announcement.floorLabel());
+                String floor = announcement.speechName().isBlank() ? floorClip(announcement.floorLabel()) : null;
                 if (floor != null) {
                     clips.add(floor);
                 }
@@ -69,7 +70,7 @@ public final class AnnouncementScript {
     public static String text(Announcement announcement) {
         return switch (announcement.type()) {
             case ARRIVAL -> {
-                String floor = floorSpeech(announcement.floorLabel());
+                String floor = announcement.speechName().isBlank() ? floorSpeech(announcement.floorLabel()) : announcement.speechName().trim();
                 yield floor != null ? floor + "です。" : "";
             }
             case DIRECTION -> switch (announcement.direction()) {

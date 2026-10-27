@@ -53,4 +53,14 @@ class AnnouncementScriptTest {
         assertEquals("ドアが閉まります。", AnnouncementScript.text(Announcement.doorClose()));
         assertEquals(30, AnnouncementScript.DOOR_CLOSE_WAIT_TICKS);
     }
+
+    @org.junit.jupiter.api.Test
+    void speechNameIsReadOnlyBySynthesis() {
+        Announcement named = Announcement.arrival("3", " ブランチマイニング場 ");
+        assertEquals("ブランチマイニング場です。", AnnouncementScript.text(named));
+        // 同梱音声では読めないので、階のクリップを鳴らさない（階名が対応していても）
+        assertEquals(List.of(), AnnouncementScript.clips(named));
+        assertEquals("3階です。", AnnouncementScript.text(Announcement.arrival("3", "")));
+        assertEquals(List.of("floor_3"), AnnouncementScript.clips(Announcement.arrival("3")));
+    }
 }

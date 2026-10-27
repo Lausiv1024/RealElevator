@@ -160,5 +160,19 @@
   "preset.realelevator.luxury": "高級",
   "preset.realelevator.observation": "展望",
   "message.realelevator.floor.too_many": "停止階は%s階床までです（高層・低層などに分けてください）",
-  "message.realelevator.install.floors.too_many": "停止階は18階床までです"
+  "message.realelevator.install.floors.too_many": "停止階は18階床までです",
+  "gui.realelevator.panel.speech_name": "読み上げ名",
+  "gui.realelevator.panel.speech_name_hint": "読み上げ名",
+  "gui.realelevator.voicevox.title": "Real Elevator：VOICEVOX 連携",
+  "gui.realelevator.voicevox.enabled": "VOICEVOX でアナウンス",
+  "gui.realelevator.voicevox.url": "エンジンの URL",
+  "gui.realelevator.voicevox.load": "話者を読み込む",
+  "gui.realelevator.voicevox.speaker": "話者",
+  "gui.realelevator.voicevox.speaker_current": "話者：%s（%s）",
+  "gui.realelevator.voicevox.test": "試しに読む",
+  "gui.realelevator.voicevox.loading": "エンジンに問い合わせています…",
+  "gui.realelevator.voicevox.failed": "エンジンにつながりませんでした（VOICEVOX が起動しているか、URL を確かめてください）",
+  "gui.realelevator.voicevox.loaded": "%s 件の話者を読み込みました",
+  "gui.realelevator.voicevox.credit": "クレジット：VOICEVOX:%s",
+  "gui.realelevator.voicevox.terms": "キャラクターごとの利用規約に従ってお使いください"
 }

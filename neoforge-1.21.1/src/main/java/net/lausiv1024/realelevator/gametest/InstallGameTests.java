@@ -203,6 +203,9 @@ public class InstallGameTests {
         CompoundTag labels = new CompoundTag();
         labels.putString(Integer.toString(car.floors()[1]), "R");
         renewal.put("Labels", labels);
+        CompoundTag speechNames = new CompoundTag();
+        speechNames.putString(Integer.toString(car.floors()[1]), " ブランチマイニング場 ");
+        renewal.put("SpeechNames", speechNames);
         renewal.putString("Speed", SpeedSpec.NORMAL_HIGH.name());
         helper.assertTrue(!car.landingOpen(), "landing open is off by default");
         renewal.putBoolean("LandingOpen", true);
@@ -222,6 +225,9 @@ public class InstallGameTests {
         helper.assertTrue(car.interior().transom().equals(InteriorConfig.SAME_AS_DOOR), "the transom should follow the doors");
         helper.assertTrue(car.fixtures().panelSides() == FixtureConfig.PanelSides.BOTH, "the fixtures should change");
         helper.assertTrue(car.floorLabel(1).equals("R"), "the label should change: " + car.floorLabel(1));
+        // 読み上げ名は前後の空白を除いて持ち、到着のアナウンスで送る
+        helper.assertTrue(car.floorSpeechName(1).equals("ブランチマイニング場") && car.floorSpeechName(0).isEmpty(),
+                "the spoken name should change: " + car.floorSpeechName(1));
         helper.assertTrue(car.speed().spec() == SpeedSpec.NORMAL_LOW, "the speed should not change");
         helper.assertTrue(car.landingOpen() && controller.renewalTag().getBoolean("LandingOpen"), "landing open should be turned on");
         helper.assertTrue(car.interior().wall().equals("realelevator:woodgrain_dark") && car.interior().ceiling() == InteriorConfig.CeilingType.INDIRECT,

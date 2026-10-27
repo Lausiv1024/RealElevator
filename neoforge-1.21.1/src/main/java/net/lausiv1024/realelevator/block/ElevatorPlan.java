@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.TreeSet;
 
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
+import net.lausiv1024.realelevator.core.announce.Announcement;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.design.Materials;
 import net.lausiv1024.realelevator.core.car.CarModel;
@@ -41,6 +42,8 @@ public final class ElevatorPlan {
     private final TreeSet<Integer> floors = new TreeSet<>();
     /** 停止階のY座標ごとの階名。空なら初期値（下から 1、2、3…）。 */
     private final Map<Integer, String> labels = new HashMap<>();
+    /** 停止階のY座標ごとの読み上げ名（音声合成で「（読み上げ名）です。」と読む）。 */
+    private final Map<Integer, String> speechNames = new HashMap<>();
     private CarModel model = CarModel.P11;
     /** 扉の方式。機種で選べない方式は、使うときに CO になる（{@link CarSpec}）。 */
     private DoorType door = DoorType.CENTER;
@@ -91,6 +94,11 @@ public final class ElevatorPlan {
     /** 停止階の階名（下から順、空なら初期値）。 */
     public String[] labelArray() {
         return floors.stream().map(y -> labels.getOrDefault(y, "")).toArray(String[]::new);
+    }
+
+    /** 停止階の読み上げ名（下から順、空なら階名から読む）。 */
+    public String[] speechNameArray() {
+        return floors.stream().map(y -> speechNames.getOrDefault(y, "")).toArray(String[]::new);
     }
 
     public CarModel model() {
@@ -178,6 +186,7 @@ public final class ElevatorPlan {
         }
         if (floors.remove(y)) {
             labels.remove(y);
+            speechNames.remove(y);
             entrances.remove(y);
             return new FloorChange(true, Component.translatable("message.realelevator.floor.removed", y, floors.size()));
         }
@@ -229,6 +238,15 @@ public final class ElevatorPlan {
                 labels.put(floorY, label.length() > MAX_LABEL_LENGTH ? label.substring(0, MAX_LABEL_LENGTH) : label);
             }
         }
+        CompoundTag speechTag = tag.getCompound("SpeechNames");
+        speechNames.clear();
+        for (int floorY : floors) {
+            String name = speechTag.getString(Integer.toString(floorY)).trim();
+            if (!name.isEmpty()) {
+                speechNames.put(floorY, name.length() > Announcement.MAX_SPEECH_NAME_LENGTH
+                        ? name.substring(0, Announcement.MAX_SPEECH_NAME_LENGTH) : name);
+            }
+        }
     }
 
     /** 設定画面へ渡す設定。{@link #applyInstallSettings} と {@link #applyRenewal} と同じ形に、停止階を足したもの。 */
@@ -253,6 +271,9 @@ public final class ElevatorPlan {
         CompoundTag labelTag = new CompoundTag();
         labels.forEach((y, label) -> labelTag.putString(Integer.toString(y), label));
         tag.put("Labels", labelTag);
+        CompoundTag speechTag = new CompoundTag();
+        speechNames.forEach((y, name) -> speechTag.putString(Integer.toString(y), name));
+        tag.put("SpeechNames", speechTag);
         tag.putIntArray("Floors", floorYs());
         return tag;
     }
@@ -353,6 +374,14 @@ public final class ElevatorPlan {
                 plan.labels.put(Integer.parseInt(key), labelTag.getString(key));
             } catch (NumberFormatException ignored) {
                 // 壊れた階名は読み飛ばす
+            }
+        }
+        CompoundTag speechTag = tag.getCompound("SpeechNames");
+        for (String key : speechTag.getAllKeys()) {
+            try {
+                plan.speechNames.put(Integer.parseInt(key), speechTag.getString(key));
+            } catch (NumberFormatException ignored) {
+                // 壊れた読み上げ名は読み飛ばす
             }
         }
         return plan;
