@@ -8,12 +8,15 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.annotation.Nullable;
 
 import net.lausiv1024.realelevator.core.announce.Announcement;
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
+import net.lausiv1024.realelevator.core.control.GroupDispatcher;
 import net.lausiv1024.realelevator.core.announce.AnnouncementScript;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
@@ -97,6 +100,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private static final EntityDataAccessor<CompoundTag> DATA_CALLS = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
     private static final EntityDataAccessor<CompoundTag> DATA_FIXTURES = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
     private static final EntityDataAccessor<CompoundTag> DATA_INTERIOR = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.COMPOUND_TAG);
+    /** 群管理の群（同じ群のかごで乗場呼びを分け合う）。群に入っていなければ空。 */
+    private static final EntityDataAccessor<Optional<UUID>> DATA_GROUP = SynchedEntityData.defineId(ElevatorCarEntity.class, EntityDataSerializers.OPTIONAL_UUID);
+    /** 群管理の見積もりで、開いている戸が閉まるまでの時間とみなす長さ [秒]。 */
+    private static final double OPEN_DOOR_SECONDS = 6;
 
     /** セーフティシューの検知に使う、戸板のまわりのわずかな余裕。 */
     private static final double SAFETY_SHOE_MARGIN = 0.01;
@@ -318,6 +325,47 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     /** 速度の設定。 */
+    /** 群管理の群。群に入っていなければ空。 */
+    public Optional<UUID> groupId() {
+        return this.entityData.get(DATA_GROUP);
+    }
+
+    /** 群管理の群を変える（null なら群から外す）。サーバーで呼ぶ。 */
+    public void setGroupId(@Nullable UUID id) {
+        this.entityData.set(DATA_GROUP, Optional.ofNullable(id));
+    }
+
+    /**
+     * 群管理で、位置 floorY の乗場呼びの割り当てを考えるときの様子。止まる予定の階は、かご呼びと乗場呼びのある階。
+     * その階に止まらないか、休止中なら、応えられない。
+     */
+    public GroupDispatcher.CarState groupState(double floorY) {
+        List<Double> stops = new ArrayList<>();
+        if (control != null) {
+            for (int i = 0; i < floors.length; i++) {
+                if (control.hasCarCall(i) || control.hasHallCall(i, TravelDirection.UP) || control.hasHallCall(i, TravelDirection.DOWN)) {
+                    stops.add((double) floors[i]);
+                }
+            }
+        }
+        boolean available = control != null && !resting && floorIndexAt(floorY) >= 0;
+        TravelDirection direction = control != null ? control.direction() : TravelDirection.NONE;
+        return new GroupDispatcher.CarState(yAt(level().getGameTime()), direction, speed.limits().maxVelocity(),
+                door.isClosed() ? 0 : OPEN_DOOR_SECONDS, stops, available);
+    }
+
+    /**
+     * 群管理で、停止階 floor の乗場呼びをこのかごに割り当てたことを、その階の乗場で、ホールランタンの位置から知らせる（即時予報）。
+     * 音は上りも下りも同じ G#5 の単音。到着チャイムの設定がオンのときだけ鳴らす。
+     */
+    public void announceAssignment(int floor) {
+        if (!announcements.chime() || resting) {
+            return;
+        }
+        Vec3 position = lanternCenter(floor);
+        level().playSound(null, position.x, position.y, position.z, ModSounds.CHIME_FORECAST.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
+    }
+
     public SpeedSetting speed() {
         return speed;
     }
@@ -411,6 +459,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         builder.define(DATA_CALLS, new CompoundTag());
         builder.define(DATA_FIXTURES, new CompoundTag());
         builder.define(DATA_INTERIOR, new CompoundTag());
+        builder.define(DATA_GROUP, Optional.empty());
     }
 
     public CarModel model() {
@@ -1798,6 +1847,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         }
         tag.put("Fixtures", ConfigTags.writeFixtures(fixtures));
         tag.put("Interior", ConfigTags.writeInterior(interior));
+        groupId().ifPresent(id -> tag.putUUID("Group", id));
         tag.put("Labels", writeLabels(labels));
         tag.put("SpeechNames", writeLabels(speechNames));
         tag.put("Announcements", ConfigTags.writeAnnouncements(announcements));
@@ -1833,6 +1883,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         setup(new CarSpec(model, door), facing, tag.getIntArray("Floors"), speed);
         setFixtures(ConfigTags.readFixtures(tag.getCompound("Fixtures")));
         setInterior(ConfigTags.readInterior(tag.getCompound("Interior")));
+        setGroupId(tag.hasUUID("Group") ? tag.getUUID("Group") : null);
         setLabels(readLabels(tag));
         setSpeechNames(readStrings(tag, "SpeechNames"));
         setAnnouncements(ConfigTags.readAnnouncements(tag.getCompound("Announcements")));

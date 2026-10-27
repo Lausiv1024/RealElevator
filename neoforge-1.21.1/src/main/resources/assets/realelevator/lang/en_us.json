@@ -91,7 +91,7 @@
   "item.realelevator.maintenance_wrench": "Maintenance Wrench",
   "tooltip.realelevator.wrench": "Right-click a hall panel to open the renewal and dismantling menu",
   "block.realelevator.power_receiver": "Elevator Operation Switch",
-  "message.realelevator.power.selected": "Elevator selected. Right-click an operation switch with this wrench to connect it",
+  "message.realelevator.power.selected": "Elevator selected. Right-click an operation switch with this wrench to link it, or use \"Join group\" in another elevator's menu",
   "message.realelevator.power.linked": "The operation switch is connected. The elevator rests while there is no redstone signal",
   "message.realelevator.power.unlinked": "The operation switch was disconnected (the elevator is always in service again)",
   "message.realelevator.power.no_car": "The selected elevator could not be found. Select it again at a hall",
@@ -174,5 +174,16 @@
   "gui.realelevator.voicevox.failed": "Couldn't reach the engine (is VOICEVOX running? check the URL)",
   "gui.realelevator.voicevox.loaded": "Loaded %s speakers",
   "gui.realelevator.voicevox.credit": "Credit: VOICEVOX:%s",
-  "gui.realelevator.voicevox.terms": "Follow each character's terms of use"
+  "gui.realelevator.voicevox.terms": "Follow each character's terms of use",
+  "gui.realelevator.renewal.group_join": "Join group",
+  "gui.realelevator.renewal.group_leave": "Leave group",
+  "gui.realelevator.renewal.group_size": " (group: %s cars)",
+  "message.realelevator.group.same": "This is the selected elevator. Use a landing of another elevator",
+  "message.realelevator.group.too_far": "Grouped elevators must be within %s blocks horizontally",
+  "message.realelevator.group.already": "Already in the same group (%s cars)",
+  "message.realelevator.group.full": "A group can have up to %s cars",
+  "message.realelevator.group.joined": "Joined the group (%s cars)",
+  "message.realelevator.group.none": "This elevator is not in a group",
+  "message.realelevator.group.left": "Left the group",
+  "message.realelevator.group.select_first": "First sneak and right-click a landing of the group's elevator with the wrench to select it"
 }

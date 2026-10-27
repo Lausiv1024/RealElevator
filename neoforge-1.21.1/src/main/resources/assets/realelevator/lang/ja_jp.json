@@ -91,7 +91,7 @@
   "item.realelevator.maintenance_wrench": "保守用レンチ",
   "tooltip.realelevator.wrench": "乗場の操作盤を右クリックすると、リニューアルと解体のメニューを開きます",
   "block.realelevator.power_receiver": "エレベーター運転切替盤",
-  "message.realelevator.power.selected": "エレベーターを選びました。このレンチで運転切替盤を右クリックしてつなぎます",
+  "message.realelevator.power.selected": "エレベーターを選びました。このレンチで運転切替盤を右クリックしてつなぐか、別のエレベーターのメニューの「群に入れる」で同じ群にします",
   "message.realelevator.power.linked": "運転切替盤をエレベーターにつなぎました。レッドストーン信号がないあいだは休止します",
   "message.realelevator.power.unlinked": "運転切替盤のつなぎを外しました（常に通常運転の扱いに戻ります）",
   "message.realelevator.power.no_car": "選んだエレベーターが見つかりません。乗場でもう一度選んでください",
@@ -174,5 +174,16 @@
   "gui.realelevator.voicevox.failed": "エンジンにつながりませんでした（VOICEVOX が起動しているか、URL を確かめてください）",
   "gui.realelevator.voicevox.loaded": "%s 件の話者を読み込みました",
   "gui.realelevator.voicevox.credit": "クレジット：VOICEVOX:%s",
-  "gui.realelevator.voicevox.terms": "キャラクターごとの利用規約に従ってお使いください"
+  "gui.realelevator.voicevox.terms": "キャラクターごとの利用規約に従ってお使いください",
+  "gui.realelevator.renewal.group_join": "群に入れる",
+  "gui.realelevator.renewal.group_leave": "群から外す",
+  "gui.realelevator.renewal.group_size": "（群管理：%s台）",
+  "message.realelevator.group.same": "選んだエレベーターと同じです。別のエレベーターの乗場で押してください",
+  "message.realelevator.group.too_far": "群に入れられるのは、水平に%sブロック以内のエレベーターです",
+  "message.realelevator.group.already": "すでに同じ群です（%s台）",
+  "message.realelevator.group.full": "群に入れられるのは%s台までです",
+  "message.realelevator.group.joined": "群に入れました（%s台）",
+  "message.realelevator.group.none": "このエレベーターは群に入っていません",
+  "message.realelevator.group.left": "群から外しました",
+  "message.realelevator.group.select_first": "先に、しゃがみながらレンチで群のエレベーターの乗場を右クリックして選んでください"
 }

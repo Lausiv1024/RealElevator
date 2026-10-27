@@ -60,6 +60,7 @@ public class RealElevator {
                 .playToServer(RenewalPayloads.Open.TYPE, RenewalPayloads.Open.STREAM_CODEC, RenewalPayloads.Open::handle)
                 .playToServer(RenewalPayloads.Apply.TYPE, RenewalPayloads.Apply.STREAM_CODEC, RenewalPayloads.Apply::handle)
                 .playToServer(RenewalPayloads.Dismantle.TYPE, RenewalPayloads.Dismantle.STREAM_CODEC, RenewalPayloads.Dismantle::handle)
+                .playToServer(RenewalPayloads.Group.TYPE, RenewalPayloads.Group.STREAM_CODEC, RenewalPayloads.Group::handle)
                 .playToServer(PowerPayloads.Select.TYPE, PowerPayloads.Select.STREAM_CODEC, PowerPayloads.Select::handle)
                 // クライアント側の処理は、ラムダの中で呼ぶのでサーバーでは読み込まれない
                 .playToClient(AnnouncePayload.TYPE, AnnouncePayload.STREAM_CODEC, (payload, context) -> ClientAnnouncements.handle(payload))

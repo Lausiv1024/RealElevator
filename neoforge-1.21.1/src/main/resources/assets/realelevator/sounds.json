@@ -385,5 +385,11 @@
         "stream": true
       }
     ]
+  },
+  "chime_forecast": {
+    "subtitle": "subtitles.realelevator.chime",
+    "sounds": [
+      "realelevator:chime_forecast"
+    ]
   }
 }

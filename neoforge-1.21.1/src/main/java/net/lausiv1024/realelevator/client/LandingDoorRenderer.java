@@ -1,6 +1,7 @@
 package net.lausiv1024.realelevator.client;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
@@ -89,9 +90,17 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
         if (indicator != null) {
             BoxRenderer.renderIndicator(pose, consumer, indicator, turns, light, rgb);
         }
-        // 点灯する段は、点滅の消灯中は消す
-        Set<TravelDirection> lit = car != null && HallLantern.isBlinkOn(car.lanternTicks(car.renderTick(partialTick)))
-                ? door.litLanternSections() : Set.of();
+        // 点灯する段は、点滅の消灯中は消す。群管理で割り当てた（まだ着いていない）呼びの段は、点滅せずに点ける
+        Set<TravelDirection> blinking = door.litLanternSections();
+        Set<TravelDirection> lit = EnumSet.noneOf(TravelDirection.class);
+        if (car != null && HallLantern.isBlinkOn(car.lanternTicks(car.renderTick(partialTick)))) {
+            lit.addAll(blinking);
+        }
+        for (TravelDirection direction : door.forecastLanternSections()) {
+            if (!blinking.contains(direction)) {
+                lit.add(direction);
+            }
+        }
         boolean terminal = car != null && door.floorIndex() >= 0 && car.isTerminalFloor(door.floorIndex());
         BoxRenderer.renderLantern(pose, consumer, layout.lantern(terminal), lit, turns, light, rgb);
         // 防犯窓のガラスは半透明なので、最後に描く

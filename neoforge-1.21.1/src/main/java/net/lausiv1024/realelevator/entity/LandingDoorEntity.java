@@ -1,6 +1,7 @@
 package net.lausiv1024.realelevator.entity;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -167,6 +168,25 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         return car != null ? car.floorIndexAt(getY()) : -1;
     }
 
+    /**
+     * 群管理で、このかごに割り当てた（まだ着いていない）この階の乗場呼びの向き。ホールランタンを点滅させずに点ける（即時予報）。
+     * 群に入っていなければ空。
+     */
+    public Set<TravelDirection> forecastLanternSections() {
+        ElevatorCarEntity car = car();
+        int floor = floorIndex();
+        if (car == null || floor < 0 || car.groupId().isEmpty() || car.isResting()) {
+            return Set.of();
+        }
+        Set<TravelDirection> directions = EnumSet.noneOf(TravelDirection.class);
+        for (TravelDirection direction : new TravelDirection[] {TravelDirection.UP, TravelDirection.DOWN}) {
+            if (car.isHallCallLit(floor, direction, entrance())) {
+                directions.add(direction);
+            }
+        }
+        return directions;
+    }
+
     /** ホールランタンの点灯する段（点滅の消灯中かどうかは含めない）。到着チャイムが鳴ってから、扉が閉まるまで点く。 */
     public Set<TravelDirection> litLanternSections() {
         ElevatorCarEntity car = car();
@@ -198,8 +218,8 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         if (car == null) {
             return false;
         }
-        return button.wheelchair() ? car.isWheelchairHallCallLit(button.floor(), direction(button), entrance())
-                : car.isHallCallLit(button.floor(), direction(button), entrance());
+        // 群管理では、群のどれかのかごに呼びがあれば点く
+        return ElevatorGroups.isHallCallLit(car, button.floor(), direction(button), entrance(), button.wheelchair());
     }
 
     @Override
@@ -207,7 +227,8 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         ElevatorCarEntity car = car();
         if (car != null) {
             Button button = buttons().get(index);
-            car.pressHallCall(button.floor(), direction(button), entrance(), button.wheelchair());
+            // 群管理では、いちばん早く着くかごに割り当てる
+            ElevatorGroups.pressHallCall(car, button.floor(), direction(button), entrance(), button.wheelchair());
         }
     }
 

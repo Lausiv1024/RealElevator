@@ -2,6 +2,7 @@
 
 実在メーカーの音は使わず、ベルに似た倍音を持つ正弦波を重ねて作る。
 上りも下りも2音で、上りは G#5 → C6（上がる）、下りは C6 → G#5（下がる）。
+群管理の即時予報（割り当てたときの知らせ）は、上りも下りも G#5 の単音。
 
 使い方（numpy と soundfile が必要）:
     python make_chime.py <出力先のフォルダ>
@@ -20,6 +21,7 @@ C_6 = 1046.50
 PATTERNS = {
     "chime_up": (G_SHARP_5, C_6),
     "chime_down": (C_6, G_SHARP_5),
+    "chime_forecast": (G_SHARP_5,),
 }
 # (基音に対する周波数比, 振幅, 減衰の速さ [1/s])
 PARTIALS = [
@@ -61,7 +63,10 @@ def chime(fundamentals: tuple) -> np.ndarray:
 def main() -> None:
     out_dir = Path(sys.argv[1])
     out_dir.mkdir(parents=True, exist_ok=True)
-    for name, fundamentals in PATTERNS.items():
+    # 名前を続けて書けば、その音だけ書き出す
+    names = sys.argv[2:] or list(PATTERNS)
+    for name in names:
+        fundamentals = PATTERNS[name]
         path = out_dir / f"{name}.ogg"
         sf.write(path, chime(fundamentals).astype(np.float32), SAMPLE_RATE, format="OGG", subtype="VORBIS")
         print(path, path.stat().st_size, "bytes")

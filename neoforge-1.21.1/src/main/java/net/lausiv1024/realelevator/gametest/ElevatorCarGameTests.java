@@ -29,6 +29,7 @@ import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
+import net.lausiv1024.realelevator.entity.ElevatorGroups;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
 import net.lausiv1024.realelevator.registry.ModBlocks;
 import net.lausiv1024.realelevator.registry.ModEntities;
@@ -636,6 +637,59 @@ public class ElevatorCarGameTests {
             long closes = car.recentAnnouncements().stream().filter(a -> a.type() == Announcement.Type.DOOR_CLOSE).count();
             helper.assertTrue(closes == 1, "the close announcement should play once: " + closes);
         });
+    }
+
+    /** 群管理のための、扉なしのかご。停止階は floors（下階からの高さ）で、start 番目の階に置く。 */
+    private static ElevatorCarEntity spawnGroupCar(GameTestHelper helper, double x, int start, int... rises) {
+        BlockPos lower = helper.absolutePos(LOWER);
+        int[] floors = new int[rises.length];
+        for (int i = 0; i < rises.length; i++) {
+            floors[i] = lower.getY() + rises[i];
+        }
+        ElevatorCarEntity car = ModEntities.ELEVATOR_CAR.get().create(helper.getLevel());
+        if (car == null) {
+            throw new IllegalStateException("failed to create the car");
+        }
+        car.moveTo(x, floors[start], lower.getZ() + 0.5, 0, 0);
+        car.setup(MODEL, Direction.SOUTH, floors, SpeedSpec.NORMAL_HIGH);
+        helper.getLevel().addFreshEntity(car);
+        return car;
+    }
+
+    /** 群管理：乗場呼びは、着くまでの時間がいちばん短いかごに割り当て、群のすべての乗場で応答灯が点く。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 40)
+    public static void aGroupHallCallGoesToTheCarThatArrivesFirst(GameTestHelper helper) {
+        double x = helper.absolutePos(LOWER).getX() + 0.5;
+        ElevatorCarEntity bottom = spawnGroupCar(helper, x - 4, 0, 0, 8, 12);
+        ElevatorCarEntity top = spawnGroupCar(helper, x + 4, 2, 0, 8, 12);
+        helper.assertTrue(ElevatorGroups.join(bottom, top).getString().length() > 0 && bottom.groupId().equals(top.groupId())
+                && bottom.groupId().isPresent(), "the two cars should be in one group");
+        // 8 の上りの呼びは、下のかご（8ブロック先）より上のかご（4ブロック先）のほうが早い
+        ElevatorGroups.pressHallCall(bottom, 1, TravelDirection.UP, Entrance.FRONT, false);
+        helper.assertTrue(top.isHallCallLit(1, TravelDirection.UP) && !bottom.isHallCallLit(1, TravelDirection.UP),
+                "the call should go to the upper car");
+        helper.assertTrue(ElevatorGroups.isHallCallLit(bottom, 1, TravelDirection.UP, Entrance.FRONT, false),
+                "the hall button should light on every landing of the group");
+        // 同じ呼びをもう一度押しても、別のかごには割り当てない
+        ElevatorGroups.pressHallCall(bottom, 1, TravelDirection.UP, Entrance.FRONT, false);
+        helper.assertTrue(!bottom.isHallCallLit(1, TravelDirection.UP), "the call should stay with the upper car");
+        // 群から外すと、残りが1台なのでその群はなくなる
+        ElevatorGroups.leave(top);
+        helper.assertTrue(top.groupId().isEmpty() && bottom.groupId().isEmpty(), "the group should be gone");
+        helper.succeed();
+    }
+
+    /** 群管理：休止中のかごや、その階に止まらないかごには割り当てない。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 40)
+    public static void aGroupSkipsCarsThatCannotAnswer(GameTestHelper helper) {
+        double x = helper.absolutePos(LOWER).getX() + 0.5;
+        ElevatorCarEntity near = spawnGroupCar(helper, x - 4, 1, 0, 4, 12);
+        ElevatorCarEntity far = spawnGroupCar(helper, x + 4, 0, 0, 8, 12);
+        ElevatorGroups.join(near, far);
+        // 8 には far だけが止まるので、near が近くても far に割り当てる
+        ElevatorGroups.pressHallCall(far, 1, TravelDirection.DOWN, Entrance.FRONT, false);
+        helper.assertTrue(far.isHallCallLit(1, TravelDirection.DOWN), "only the car that stops at 8 can answer");
+        helper.succeed();
     }
 
     /** 乗場の扉なしで、下階にかごだけを置く（扉どうしが重ならないよう、x をずらせる）。 */

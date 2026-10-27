@@ -1,11 +1,16 @@
 package net.lausiv1024.realelevator.network;
 
+import java.util.UUID;
+
 import javax.annotation.Nullable;
 
 import net.lausiv1024.realelevator.RealElevator;
 import net.lausiv1024.realelevator.block.ControllerBlockEntity;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
+import net.lausiv1024.realelevator.entity.ElevatorGroups;
+import net.lausiv1024.realelevator.entity.ElevatorTracker;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
+import net.lausiv1024.realelevator.registry.ModDataComponents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -52,7 +57,13 @@ public final class RenewalPayloads {
                 player.displayClientMessage(Component.translatable("message.realelevator.wrench.no_controller"), true);
                 return;
             }
-            PacketDistributor.sendToPlayer(player, new Show(payload.doorId(), controller.renewalTag()));
+            CompoundTag settings = controller.renewalTag();
+            // 群管理の群の台数（群に入っていなければ0）
+            if (player.level().getEntity(payload.doorId()) instanceof LandingDoorEntity door && door.car() != null
+                    && door.car().groupId().isPresent()) {
+                settings.putInt("GroupSize", ElevatorGroups.members(door.car()).size());
+            }
+            PacketDistributor.sendToPlayer(player, new Show(payload.doorId(), settings));
         }
     }
 
@@ -91,6 +102,42 @@ public final class RenewalPayloads {
                     controller.applyRenewal(payload.settings());
                 }
             }
+        }
+    }
+
+    /**
+     * 群管理の群に入れる・群から外す（クライアント → サーバー）。入れるときは、しゃがみながらレンチで選んでおいたエレベーター
+     * （レンチに覚えたもの）と同じ群にする。
+     */
+    public record Group(int doorId, boolean join) implements CustomPacketPayload {
+        public static final Type<Group> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(RealElevator.MODID, "renewal_group"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, Group> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, Group::doorId,
+                ByteBufCodecs.BOOL, Group::join,
+                Group::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+
+        public static void handle(Group payload, IPayloadContext context) {
+            if (!(context.player() instanceof ServerPlayer player) || controllerFor(player, payload.doorId(), false) == null
+                    || !(player.level().getEntity(payload.doorId()) instanceof LandingDoorEntity door) || door.car() == null) {
+                return;
+            }
+            ElevatorCarEntity car = door.car();
+            if (!payload.join()) {
+                player.displayClientMessage(ElevatorGroups.leave(car), false);
+                return;
+            }
+            UUID selectedId = player.getMainHandItem().get(ModDataComponents.SELECTED_CAR.get());
+            ElevatorCarEntity selected = selectedId != null ? ElevatorTracker.findCar(player.level(), selectedId) : null;
+            if (selected == null) {
+                player.displayClientMessage(Component.translatable("message.realelevator.group.select_first"), false);
+                return;
+            }
+            player.displayClientMessage(ElevatorGroups.join(selected, car), false);
         }
     }
 
