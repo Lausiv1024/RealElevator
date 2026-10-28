@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "XXX",
+    "XCX",
+    "XXX"
+  ],
+  "key": {
+    "X": {
+      "item": "minecraft:iron_ingot"
+    },
+    "C": {
+      "item": "minecraft:quartz"
+    }
+  },
+  "result": {
+    "id": "realelevator:stainless_hairline",
+    "count": 8
+  }
+}

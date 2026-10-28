@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "XXX",
+    "XCX",
+    "XXX"
+  ],
+  "key": {
+    "X": {
+      "item": "minecraft:oak_planks"
+    },
+    "C": {
+      "item": "minecraft:paper"
+    }
+  },
+  "result": {
+    "id": "realelevator:woodgrain_medium",
+    "count": 8
+  }
+}

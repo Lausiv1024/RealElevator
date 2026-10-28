@@ -215,5 +215,8 @@
   "gui.realelevator.profile.nothing_to_save": "白紙の仕様書は保存できません",
   "gui.realelevator.profile.hint_installer": "停止階・階名・読み上げ名・出入口は読み込みません",
   "gui.realelevator.profile.hint_renewal": "配置・アナウンス・意匠だけを読み込みます（機種・速度などは変わりません）",
-  "gui.realelevator.profile.hint_specification": "一覧から選んで仕様書に書けます"
+  "gui.realelevator.profile.hint_specification": "一覧から選んで仕様書に書けます",
+  "message.realelevator.install.materials": "鉄インゴット×%s、レッドストーン×%s",
+  "message.realelevator.install.no_materials": "材料が足りません（%s が必要）",
+  "gui.realelevator.panel.status.ready_materials": "設置できます（%s を使います）"
 }

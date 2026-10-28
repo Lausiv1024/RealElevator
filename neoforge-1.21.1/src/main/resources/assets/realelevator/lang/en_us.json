@@ -215,5 +215,8 @@
   "gui.realelevator.profile.nothing_to_save": "A blank specification can't be saved",
   "gui.realelevator.profile.hint_installer": "Floors, labels, spoken names and entrances are not loaded",
   "gui.realelevator.profile.hint_renewal": "Only the fixtures, announcements and design are loaded (the model and speed stay)",
-  "gui.realelevator.profile.hint_specification": "Pick one to write it to the specification"
+  "gui.realelevator.profile.hint_specification": "Pick one to write it to the specification",
+  "message.realelevator.install.materials": "%s iron ingots and %s redstone",
+  "message.realelevator.install.no_materials": "Not enough materials (needs %s)",
+  "gui.realelevator.panel.status.ready_materials": "Ready to install (uses %s)"
 }

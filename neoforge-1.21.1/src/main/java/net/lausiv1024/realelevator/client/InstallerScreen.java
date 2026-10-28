@@ -10,9 +10,11 @@ import org.lwjgl.glfw.GLFW;
 
 import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.block.InstallerBlockEntity;
+import net.lausiv1024.realelevator.block.MaterialStacks;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.DoorType;
+import net.lausiv1024.realelevator.core.install.InstallMaterials;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.FloorProblem;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.CounterweightPosition;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
@@ -429,8 +431,16 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
         if (frames++ % OBSTRUCTION_REFRESH == 0 && minecraft != null && minecraft.level != null) {
             obstructionCount = installer.obstructions(minecraft.level).size();
         }
-        return obstructionCount > 0
-                ? Component.translatable("message.realelevator.install.obstructed", obstructionCount)
-                : Component.translatable("gui.realelevator.panel.status.ready");
+        if (obstructionCount > 0) {
+            return Component.translatable("message.realelevator.install.obstructed", obstructionCount);
+        }
+        // クリエイティブでは材料を使わない
+        if (minecraft == null || minecraft.player == null || minecraft.player.getAbilities().instabuild) {
+            return Component.translatable("gui.realelevator.panel.status.ready");
+        }
+        InstallMaterials materials = installer.requiredMaterials();
+        return MaterialStacks.has(minecraft.player, materials)
+                ? Component.translatable("gui.realelevator.panel.status.ready_materials", MaterialStacks.describe(materials))
+                : Component.translatable("message.realelevator.install.no_materials", MaterialStacks.describe(materials));
     }
 }

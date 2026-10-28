@@ -57,7 +57,7 @@ public final class PanelPayloads {
         public static void handle(Install payload, IPayloadContext context) {
             InstallerBlockEntity panel = panelNear(context, payload.pos());
             if (panel != null) {
-                context.player().displayClientMessage(panel.install(), false);
+                context.player().displayClientMessage(panel.install(context.player()), false);
             }
         }
     }

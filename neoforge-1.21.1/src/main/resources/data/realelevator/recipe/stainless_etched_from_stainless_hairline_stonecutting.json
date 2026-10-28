@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "item": "realelevator:stainless_hairline"
+  },
+  "result": {
+    "id": "realelevator:stainless_etched",
+    "count": 1
+  }
+}

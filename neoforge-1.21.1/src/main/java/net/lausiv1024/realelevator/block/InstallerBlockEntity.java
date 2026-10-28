@@ -4,9 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import javax.annotation.Nullable;
+
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.Entrance;
+import net.lausiv1024.realelevator.core.install.InstallMaterials;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.Cell;
 import net.lausiv1024.realelevator.core.install.ShaftLayout.FloorProblem;
@@ -217,7 +220,25 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
     /**
      * 昇降路を設置する。ガイドレール・かご・各階の乗場の扉・頂部の制御盤を置き、設置用ブロックは消す。結果を伝える文を返す。
      */
+    /** 材料を使わずに設置する（ゲームテスト用）。 */
     public Component install() {
+        return install(null);
+    }
+
+    /** 設置に使う材料（ガイドレールと乗場の扉の分）。 */
+    public InstallMaterials requiredMaterials() {
+        int doors = 0;
+        for (int floorY : floorYs()) {
+            doors += plan.entrances(floorY).entrances().size();
+        }
+        return InstallMaterials.of(layout().rails().size(), doors);
+    }
+
+    /**
+     * 設置する。player の持ち物から材料を使う（足りなければ設置しない）。クリエイティブのプレイヤーと、player が null のときは使わない。
+     * 使った材料は頂部の制御盤が覚えておき、解体すると返す。
+     */
+    public Component install(@Nullable Player player) {
         if (!(level instanceof ServerLevel serverLevel)) {
             return Component.empty();
         }
@@ -228,6 +249,14 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
         List<BlockPos> obstructions = obstructions(serverLevel);
         if (!obstructions.isEmpty()) {
             return Component.translatable("message.realelevator.install.obstructed", obstructions.size());
+        }
+
+        InstallMaterials materials = player == null || player.getAbilities().instabuild ? InstallMaterials.NONE : requiredMaterials();
+        if (player != null && !MaterialStacks.has(player, materials)) {
+            return Component.translatable("message.realelevator.install.no_materials", MaterialStacks.describe(materials));
+        }
+        if (player != null) {
+            MaterialStacks.take(player, materials);
         }
 
         ShaftLayout layout = layout();
@@ -294,7 +323,7 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
         level.setBlock(controllerPos, controller.setValue(ControllerBlock.HALF, DoubleBlockHalf.LOWER), Block.UPDATE_ALL);
         level.setBlock(cellPos(controllerCells.get(1)), controller.setValue(ControllerBlock.HALF, DoubleBlockHalf.UPPER), Block.UPDATE_ALL);
         if (level.getBlockEntity(controllerPos) instanceof ControllerBlockEntity controllerEntity) {
-            controllerEntity.setup(plan, star.removeItemNoUpdate(0), car.getUUID());
+            controllerEntity.setup(plan, star.removeItemNoUpdate(0), car.getUUID(), materials);
         }
 
         int floorCount = floorYs().length;

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "XXX",
+    "XCX",
+    "XXX"
+  ],
+  "key": {
+    "X": {
+      "item": "minecraft:dark_oak_planks"
+    },
+    "C": {
+      "item": "minecraft:paper"
+    }
+  },
+  "result": {
+    "id": "realelevator:woodgrain_dark",
+    "count": 8
+  }
+}

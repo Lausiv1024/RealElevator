@@ -26,6 +26,7 @@ import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism;
+import net.lausiv1024.realelevator.core.install.InstallMaterials;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.motion.SpeedSetting;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
@@ -33,6 +34,7 @@ import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.ConfigTags;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.ElevatorTracker;
+import net.lausiv1024.realelevator.item.SpecificationItem;
 import net.lausiv1024.realelevator.menu.InstallerMenu;
 import net.lausiv1024.realelevator.registry.ModBlocks;
 import net.lausiv1024.realelevator.registry.ModItems;
@@ -41,10 +43,16 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.phys.AABB;
@@ -706,6 +714,51 @@ public class InstallGameTests {
         helper.assertTrue(car.interior().wall().equals("realelevator:woodgrain_light"), "the design should change");
         helper.assertTrue(controller.renewalTag().getString("Model").equals(CarModel.P15.name()) && car.floorLabel(1).equals("R"),
                 "the model and labels should stay");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void installingUsesMaterialsAndDismantlingReturnsThem(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        InstallMaterials needed = panel.requiredMaterials();
+        // 2階床・扉2つ：レールの分と、扉ごとに鉄4・レッドストーン1
+        helper.assertTrue(needed.redstone() == 2 && needed.iron() > 8, "materials: " + needed);
+        Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        player.getInventory().add(new ItemStack(Items.IRON_INGOT, needed.iron() - 1));
+        player.getInventory().add(new ItemStack(Items.REDSTONE, needed.redstone()));
+        ElevatorPlan plan = panel.plan();
+        panel.install(player);
+        helper.assertTrue(ElevatorTracker.cars(helper.getLevel()).stream().noneMatch(c -> c.position().distanceToSqr(plan.carOrigin()) < 1e-6),
+                "it should not install without enough materials");
+        player.getInventory().add(new ItemStack(Items.IRON_INGOT, 3));
+        panel.install(player);
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        helper.assertTrue(player.getInventory().countItem(Items.IRON_INGOT) == 2 && player.getInventory().countItem(Items.REDSTONE) == 0,
+                "the materials should be used");
+        controllerOf(helper, car).dismantle(player);
+        helper.assertTrue(player.getInventory().countItem(Items.IRON_INGOT) == needed.iron() + 2
+                && player.getInventory().countItem(Items.REDSTONE) == needed.redstone(), "the materials should be returned");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void recipesLoadAndASpecificationCanBeCopied(GameTestHelper helper) {
+        RecipeManager recipes = helper.getLevel().getRecipeManager();
+        for (String name : List.of("installer", "floor_marker", "maintenance_wrench", "power_receiver", "specification",
+                "specification_copy", "woodgrain_medium", "stainless_mirror_from_stainless_hairline_stonecutting")) {
+            helper.assertTrue(recipes.byKey(ResourceLocation.fromNamespaceAndPath(RealElevator.MODID, name)).isPresent(), "missing recipe " + name);
+        }
+        ItemStack written = new ItemStack(ModItems.SPECIFICATION.get());
+        SpecificationItem.write(written, ElevatorProfile.withName(ElevatorProfile.extract(placePanel(helper).settingsTag()), "A"));
+        ItemStack blank = new ItemStack(ModItems.SPECIFICATION.get());
+        CraftingInput input = CraftingInput.of(2, 1, List.of(written, blank));
+        List<RecipeHolder<CraftingRecipe>> matches = recipes.getRecipesFor(RecipeType.CRAFTING, input, helper.getLevel());
+        helper.assertTrue(matches.size() == 1, "the copy recipe should match");
+        ItemStack copy = matches.get(0).value().assemble(input, helper.getLevel().registryAccess());
+        helper.assertTrue(ElevatorProfile.name(SpecificationItem.profile(copy)).equals("A"), "the copy should have the profile");
+        helper.assertTrue(matches.get(0).value().getRemainingItems(input).get(0).is(ModItems.SPECIFICATION.get()), "the original should stay");
+        helper.assertTrue(recipes.getRecipesFor(RecipeType.CRAFTING, CraftingInput.of(2, 1, List.of(blank, blank.copy())), helper.getLevel()).isEmpty(),
+                "two blanks should not match");
         helper.succeed();
     }
 }

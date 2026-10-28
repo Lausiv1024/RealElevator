@@ -1,10 +1,12 @@
 package net.lausiv1024.realelevator.block;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
 
+import net.lausiv1024.realelevator.core.install.InstallMaterials;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.ElevatorTracker;
@@ -35,6 +37,8 @@ import net.minecraft.world.level.block.state.BlockState;
 public class ControllerBlockEntity extends BlockEntity {
     private ElevatorPlan plan;
     private ItemStack star = ItemStack.EMPTY;
+    /** 設置に使った材料。解体すると返す。 */
+    private InstallMaterials materials = InstallMaterials.NONE;
     @Nullable
     private UUID carUuid;
     /** 解体の途中か。解体で制御盤のブロックを消したときに、もう一度解体しないようにする。 */
@@ -45,12 +49,13 @@ public class ControllerBlockEntity extends BlockEntity {
         this.plan = new ElevatorPlan(pos, state.getValue(HorizontalDirectionalBlock.FACING));
     }
 
-    /** 設置したときに、設置用ブロックから計画とネザースターを受け取る。 */
-    public void setup(ElevatorPlan plan, ItemStack star, UUID carUuid) {
+    /** 設置したときに、設置用ブロックから計画とネザースターと、設置に使った材料を受け取る。 */
+    public void setup(ElevatorPlan plan, ItemStack star, UUID carUuid, InstallMaterials materials) {
         // 設置用ブロックとは別のものにしておく
         this.plan = ElevatorPlan.load(plan.save(), plan.origin(), plan.facing());
         this.star = star.copy();
         this.carUuid = carUuid;
+        this.materials = materials;
         setChanged();
     }
 
@@ -124,10 +129,14 @@ public class ControllerBlockEntity extends BlockEntity {
             }
         }
 
-        List<ItemStack> returned = star.isEmpty()
-                ? List.of(new ItemStack(ModItems.INSTALLER.get()))
-                : List.of(new ItemStack(ModItems.INSTALLER.get()), star.copy());
+        List<ItemStack> returned = new ArrayList<>();
+        returned.add(new ItemStack(ModItems.INSTALLER.get()));
+        if (!star.isEmpty()) {
+            returned.add(star.copy());
+        }
+        returned.addAll(MaterialStacks.stacks(materials));
         star = ItemStack.EMPTY;
+        materials = InstallMaterials.NONE;
         for (ItemStack stack : returned) {
             if (player == null || !player.getInventory().add(stack)) {
                 BlockPos drop = player != null ? player.blockPosition() : plan.origin();
@@ -156,6 +165,12 @@ public class ControllerBlockEntity extends BlockEntity {
         if (carUuid != null) {
             tag.putUUID("Car", carUuid);
         }
+        if (!materials.isEmpty()) {
+            CompoundTag materialTag = new CompoundTag();
+            materialTag.putInt("Iron", materials.iron());
+            materialTag.putInt("Redstone", materials.redstone());
+            tag.put("Materials", materialTag);
+        }
     }
 
     @Override
@@ -165,5 +180,7 @@ public class ControllerBlockEntity extends BlockEntity {
         plan = ElevatorPlan.load(tag.getCompound("Plan"), worldPosition, facing);
         star = ItemStack.parseOptional(registries, tag.getCompound("Star"));
         carUuid = tag.hasUUID("Car") ? tag.getUUID("Car") : null;
+        CompoundTag materialTag = tag.getCompound("Materials");
+        materials = new InstallMaterials(materialTag.getInt("Iron"), materialTag.getInt("Redstone"));
     }
 }
