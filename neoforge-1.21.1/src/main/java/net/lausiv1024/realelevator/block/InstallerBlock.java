@@ -5,6 +5,7 @@ import javax.annotation.Nullable;
 import com.mojang.serialization.MapCodec;
 
 import net.lausiv1024.realelevator.item.FloorMarkerItem;
+import net.lausiv1024.realelevator.item.SpecificationItem;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -65,6 +66,13 @@ public class InstallerBlock extends HorizontalDirectionalBlock implements Entity
         if (stack.getItem() instanceof FloorMarkerItem) {
             if (!level.isClientSide) {
                 FloorMarkerItem.link(stack, level, pos, player);
+            }
+            return ItemInteractionResult.sidedSuccess(level.isClientSide);
+        }
+        if (stack.getItem() instanceof SpecificationItem) {
+            // しゃがんでいるときの写し取りは SpecificationItem#useOn
+            if (!level.isClientSide && level.getBlockEntity(pos) instanceof InstallerBlockEntity installer) {
+                SpecificationItem.applyTo(stack, installer, player);
             }
             return ItemInteractionResult.sidedSuccess(level.isClientSide);
         }

@@ -10,8 +10,10 @@ import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.entity.ButtonHost;
 import net.lausiv1024.realelevator.entity.ElevatorTracker;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
+import net.lausiv1024.realelevator.item.SpecificationItem;
 import net.lausiv1024.realelevator.network.PowerPayloads;
 import net.lausiv1024.realelevator.network.PressButtonPayload;
+import net.lausiv1024.realelevator.network.ProfilePayloads;
 import net.lausiv1024.realelevator.network.RenewalPayloads;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -61,6 +63,16 @@ public final class ButtonInput {
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
         if (!event.isUseItem() || player == null || player.isSpectator() || minecraft.level == null) {
+            return;
+        }
+        if (player.getMainHandItem().getItem() instanceof SpecificationItem) {
+            LandingDoorEntity door = findLandingDoor(minecraft.level, player);
+            if (door != null) {
+                event.setCanceled(true);
+                event.setSwingHand(true);
+                // しゃがんでいれば写し取り、そうでなければ反映
+                PacketDistributor.sendToServer(new ProfilePayloads.UseOnDoor(door.getId(), player.isShiftKeyDown()));
+            }
             return;
         }
         if (player.getMainHandItem().is(Tags.Items.TOOLS_WRENCH)) {

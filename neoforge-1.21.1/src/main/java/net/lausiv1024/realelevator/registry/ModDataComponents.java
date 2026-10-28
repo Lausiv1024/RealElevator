@@ -7,6 +7,8 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.world.item.component.CustomData;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -23,6 +25,11 @@ public final class ModDataComponents {
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<UUID>> SELECTED_CAR =
             DATA_COMPONENTS.registerComponentType("selected_car",
                     builder -> builder.persistent(UUIDUtil.CODEC).networkSynchronized(UUIDUtil.STREAM_CODEC));
+
+    /** 仕様書に書いたプロファイル（{@code ElevatorProfile}）。白紙ならない。 */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<CustomData>> PROFILE =
+            DATA_COMPONENTS.registerComponentType("profile",
+                    builder -> builder.persistent(CustomData.CODEC).networkSynchronized(ByteBufCodecs.COMPOUND_TAG.map(CustomData::of, CustomData::copyTag)));
 
     private ModDataComponents() {
     }

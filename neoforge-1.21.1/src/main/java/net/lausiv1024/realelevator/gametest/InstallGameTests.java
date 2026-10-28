@@ -14,6 +14,7 @@ import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.registry.ModEntities;
 import net.lausiv1024.realelevator.design.DesignPreset;
+import net.lausiv1024.realelevator.design.ElevatorProfile;
 import net.lausiv1024.realelevator.design.Materials;
 import net.lausiv1024.realelevator.design.Presets;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
@@ -658,5 +659,53 @@ public class InstallGameTests {
             helper.assertTrue(car.isCarCallSynced(1, Entrance.FRONT) && !car.isCarCallSynced(1, Entrance.REAR),
                     "the client should see the same lamps");
         });
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void aProfileCarriesTheSpecAndDesignButNotTheFloors(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        int top = helper.absolutePos(PANEL).getY() + RISE;
+        CompoundTag settings = panel.settingsTag();
+        settings.putString("Model", CarModel.P15.name());
+        settings.putString("Speed", SpeedSpec.NORMAL_HIGH.name());
+        settings.put("Interior", ConfigTags.writeInterior(InteriorConfig.DEFAULT.withMaterial(InteriorConfig.Part.WALL, "realelevator:woodgrain_dark")));
+        CompoundTag labels = new CompoundTag();
+        labels.putString(Integer.toString(top), "R");
+        settings.put("Labels", labels);
+        panel.applySettings(settings);
+        CompoundTag profile = ElevatorProfile.withName(ElevatorProfile.extract(panel.settingsTag()), "  テスト  ");
+        helper.assertTrue(!profile.contains("Floors") && !profile.contains("Labels") && !profile.contains("Preview"),
+                "the profile should leave out the floors: " + profile);
+        helper.assertTrue(ElevatorProfile.name(profile).equals("テスト"), "the name should be trimmed");
+
+        // 別の設定にしてから読み込むと、仕様と意匠は戻り、停止階と階名はそのまま
+        CompoundTag other = panel.settingsTag();
+        other.putString("Model", CarModel.P9.name());
+        other.putString("Speed", SpeedSpec.NORMAL_LOW.name());
+        other.put("Interior", ConfigTags.writeInterior(InteriorConfig.DEFAULT));
+        panel.applySettings(other);
+        panel.applyProfile(profile);
+        helper.assertTrue(panel.model() == CarModel.P15 && panel.speed().spec() == SpeedSpec.NORMAL_HIGH
+                && panel.plan().interior().wall().equals("realelevator:woodgrain_dark"), "the profile should be applied");
+        helper.assertTrue(panel.floorYs().length == 2 && panel.label(top).equals("R"), "the floors and labels should stay");
+        // 高速仕様は、ネザースターがなければ速度を変えない
+        CompoundTag fast = profile.copy();
+        fast.putString("Speed", SpeedSpec.HIGH.name());
+        panel.applyProfile(fast);
+        helper.assertTrue(panel.speed().spec() == SpeedSpec.NORMAL_HIGH, "a high speed needs a nether star");
+
+        // 設置したかごには、設置したあとも変えられる部分だけ
+        ElevatorPlan plan = panel.plan();
+        panel.install();
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        ControllerBlockEntity controller = controllerOf(helper, car);
+        CompoundTag renewal = profile.copy();
+        renewal.putString("Model", CarModel.P6.name());
+        renewal.put("Interior", ConfigTags.writeInterior(InteriorConfig.DEFAULT.withMaterial(InteriorConfig.Part.WALL, "realelevator:woodgrain_light")));
+        controller.applyRenewal(ElevatorProfile.mergeRenewal(controller.renewalTag(), renewal));
+        helper.assertTrue(car.interior().wall().equals("realelevator:woodgrain_light"), "the design should change");
+        helper.assertTrue(controller.renewalTag().getString("Model").equals(CarModel.P15.name()) && car.floorLabel(1).equals("R"),
+                "the model and labels should stay");
+        helper.succeed();
     }
 }

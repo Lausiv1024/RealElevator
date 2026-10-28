@@ -8,6 +8,7 @@ import javax.annotation.Nullable;
 
 import org.lwjgl.glfw.GLFW;
 
+import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.block.InstallerBlockEntity;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
@@ -17,6 +18,7 @@ import net.lausiv1024.realelevator.core.install.ShaftLayout.CounterweightPositio
 import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
 import net.lausiv1024.realelevator.core.motion.SpeedSetting;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
+import net.lausiv1024.realelevator.entity.ConfigTags;
 import net.lausiv1024.realelevator.menu.InstallerMenu;
 import net.lausiv1024.realelevator.network.PanelPayloads;
 import net.minecraft.client.gui.GuiGraphics;
@@ -69,6 +71,9 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
     /** 前に見たときにネザースターがはまっていたか。変わったら、選べる速度が変わるので作り直す。 */
     private boolean hadStar;
     private int obstructionCount;
+    /** プロファイルを読み込んだ結果。次に設定を変えるまで、状態の欄に出す。 */
+    @Nullable
+    private Component notice;
     private int frames;
 
     public InstallerScreen(InstallerMenu menu, Inventory inventory, Component title) {
@@ -207,11 +212,11 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
         form.setEditableEntrances(through);
         form.layout(font, width, height - 42, settings, this::addRenderableWidget, this::send, this::rebuildWidgets);
 
-        // 下の4つのボタンは、画面の幅に合わせて縮める
+        // 下の5つのボタンは、画面の幅に合わせて縮める
         int bottom = height - 26;
         int gap = SettingsForm.GAP;
-        int buttonWidth = Math.min(110, (width - SettingsForm.MARGIN * 2 - gap * 3) / 4);
-        int buttonsLeft = (width - buttonWidth * 4 - gap * 3) / 2;
+        int buttonWidth = Math.min(100, (width - SettingsForm.MARGIN * 2 - gap * 4) / 5);
+        int buttonsLeft = (width - buttonWidth * 5 - gap * 4) / 2;
         addRenderableWidget(CycleButton.onOffBuilder(preview)
                 .create(buttonsLeft, bottom, buttonWidth, 20, Component.translatable("gui.realelevator.panel.preview"), (b, v) -> {
                     preview = v;
@@ -221,10 +226,15 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
             PacketDistributor.sendToServer(new PanelPayloads.Install(menu.pos()));
             onClose();
         }).bounds(buttonsLeft + buttonWidth + gap, bottom, buttonWidth, 20).build());
+        addRenderableWidget(Button.builder(Component.translatable("gui.realelevator.panel.profile"), b -> {
+            if (minecraft != null) {
+                minecraft.setScreen(ProfileScreen.forSettings(this, settingsTag(), this::applyProfile, false));
+            }
+        }).bounds(buttonsLeft + (buttonWidth + gap) * 2, bottom, buttonWidth, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.realelevator.panel.power"), b -> switchView(true))
-                .bounds(buttonsLeft + (buttonWidth + gap) * 2, bottom, buttonWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
                 .bounds(buttonsLeft + (buttonWidth + gap) * 3, bottom, buttonWidth, 20).build());
+        addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
+                .bounds(buttonsLeft + (buttonWidth + gap) * 4, bottom, buttonWidth, 20).build());
     }
 
     private void switchView(boolean power) {
@@ -285,11 +295,8 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
         }
     }
 
-    /** 今の設定をサーバーへ送る。 */
-    private void send() {
-        if (form == null) {
-            return;
-        }
+    /** 今の設定。{@link InstallerBlockEntity#applySettings} と同じ形。 */
+    private CompoundTag settingsTag() {
         CompoundTag tag = new CompoundTag();
         tag.putString("Model", model.name());
         tag.putString("Door", door.name());
@@ -301,8 +308,44 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
         tag.putBoolean("Through", through);
         tag.putBoolean("Observation", observation);
         tag.putBoolean("Preview", preview);
-        form.writeTo(tag);
-        PacketDistributor.sendToServer(new PanelPayloads.Settings(menu.pos(), tag));
+        if (form != null) {
+            form.writeTo(tag);
+        }
+        return tag;
+    }
+
+    /** 今の設定をサーバーへ送る。 */
+    private void send() {
+        if (form == null) {
+            return;
+        }
+        notice = null;
+        PacketDistributor.sendToServer(new PanelPayloads.Settings(menu.pos(), settingsTag()));
+    }
+
+    /**
+     * プロファイル profile を読み込む（停止階・階名・読み上げ名・出入口はそのまま）。高速仕様は、ネザースターがはまっていなければ
+     * 速度を変えずに、その旨を出す。
+     */
+    private void applyProfile(CompoundTag profile) {
+        InstallerBlockEntity installer = installer();
+        if (installer == null || form == null) {
+            return;
+        }
+        model = ConfigTags.parseEnum(CarModel.class, profile.getString("Model"), model);
+        door = new CarSpec(model, ConfigTags.parseEnum(DoorType.class, profile.getString("Door"), door)).door();
+        SpeedSpec requested = ConfigTags.parseEnum(SpeedSpec.class, profile.getString("Speed"), speed.spec());
+        boolean speedRefused = requested.isHighSpeed() && !installer.hasNetherStar();
+        if (!speedRefused) {
+            speed = ElevatorPlan.readSpeed(requested, profile);
+        }
+        pitMode = ConfigTags.parseEnum(PitMode.class, profile.getString("Pit"), pitMode);
+        counterweight = ConfigTags.parseEnum(CounterweightPosition.class, profile.getString("Counterweight"), counterweight);
+        through = profile.getBoolean("Through");
+        observation = profile.getBoolean("Observation") && !through;
+        form.applyProfile(profile);
+        send();
+        notice = Component.translatable(speedRefused ? "message.realelevator.profile.applied_no_star" : "message.realelevator.profile.applied");
     }
 
     @Override
@@ -376,6 +419,9 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
     }
 
     private Component status(InstallerBlockEntity installer) {
+        if (notice != null) {
+            return notice;
+        }
         FloorProblem problem = installer.floorProblem();
         if (problem != FloorProblem.NONE) {
             return Component.translatable("message.realelevator.install.floors." + problem.name().toLowerCase(Locale.ROOT));

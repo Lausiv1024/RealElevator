@@ -293,7 +293,7 @@ public final class ElevatorPlan {
     }
 
     /** 速度の仕様 spec と、tag に書かれた加速度・ジャーク（なければ標準の値）。 */
-    private static SpeedSetting readSpeed(SpeedSpec spec, CompoundTag tag) {
+    public static SpeedSetting readSpeed(SpeedSpec spec, CompoundTag tag) {
         SpeedSetting setting = SpeedSetting.standard(spec);
         if (tag.contains("Acceleration")) {
             setting = setting.withAcceleration(tag.getDouble("Acceleration")).withJerk(tag.getDouble("Jerk"));

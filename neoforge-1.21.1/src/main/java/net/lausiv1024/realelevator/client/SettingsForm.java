@@ -91,6 +91,14 @@ final class SettingsForm {
         }
     }
 
+    /** プロファイル profile の、設置したあとも変えられる部分（配置・アナウンス・乗場開放・意匠）を入れる。 */
+    void applyProfile(CompoundTag profile) {
+        fixtures = ShaftLayout.fitFixtures(ConfigTags.readFixtures(profile.getCompound("Fixtures")), floors);
+        announcements = ConfigTags.readAnnouncements(profile.getCompound("Announcements"));
+        landingOpen = profile.getBoolean("LandingOpen");
+        interior = ConfigTags.readInterior(profile.getCompound("Interior"));
+    }
+
     /** 停止階ごとの出入口のボタンを出すか（二方向出入口で、設置する前）。 */
     void setEditableEntrances(boolean editable) {
         this.editableEntrances = editable;

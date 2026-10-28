@@ -170,7 +170,7 @@ public final class RenewalPayloads {
      * @param needWrench レンチを手に持っている必要があるか
      */
     @Nullable
-    private static ControllerBlockEntity controllerFor(ServerPlayer player, int doorId, boolean needWrench) {
+    static ControllerBlockEntity controllerFor(ServerPlayer player, int doorId, boolean needWrench) {
         if (player.isSpectator() || (needWrench && !player.getMainHandItem().is(Tags.Items.TOOLS_WRENCH))) {
             return null;
         }

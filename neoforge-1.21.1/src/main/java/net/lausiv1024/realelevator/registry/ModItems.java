@@ -5,6 +5,7 @@ import java.util.List;
 import net.lausiv1024.realelevator.RealElevator;
 import net.lausiv1024.realelevator.item.FloorMarkerItem;
 import net.lausiv1024.realelevator.item.MaintenanceWrenchItem;
+import net.lausiv1024.realelevator.item.SpecificationItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -39,6 +40,10 @@ public final class ModItems {
     /** 保守用レンチ。乗場の操作盤を右クリックすると、リニューアルと解体のメニューを開く（{@code c:tools/wrench} のレンチならどれでも開ける）。 */
     public static final DeferredItem<MaintenanceWrenchItem> MAINTENANCE_WRENCH = ITEMS.register("maintenance_wrench",
             () -> new MaintenanceWrenchItem(new Item.Properties().stacksTo(1)));
+
+    /** 仕様書。設置用ブロックやかごの仕様と意匠（プロファイル）を写し取り、ほかの設置用ブロックやかごに反映する。 */
+    public static final DeferredItem<SpecificationItem> SPECIFICATION = ITEMS.register("specification",
+            () -> new SpecificationItem(new Item.Properties().stacksTo(1)));
 
     private ModItems() {
     }

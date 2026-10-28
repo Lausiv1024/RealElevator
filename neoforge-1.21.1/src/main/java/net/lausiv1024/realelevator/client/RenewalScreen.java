@@ -21,6 +21,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public class RenewalScreen extends Screen {
     private final int doorId;
     private final SettingsForm form;
+    /** サーバーから届いた設定（機種・速度などを含む）。プロファイルを保存するときに使う。 */
+    private final CompoundTag settings;
     /** 群管理の群の台数。群に入っていなければ0。 */
     private final int groupSize;
 
@@ -28,6 +30,7 @@ public class RenewalScreen extends Screen {
         super(Component.translatable("gui.realelevator.renewal.title"));
         this.doorId = doorId;
         this.form = new SettingsForm(settings);
+        this.settings = settings;
         this.groupSize = settings.getInt("GroupSize");
     }
 
@@ -43,8 +46,8 @@ public class RenewalScreen extends Screen {
 
         int bottom = height - 26;
         int gap = SettingsForm.GAP;
-        int buttonWidth = Math.min(110, (width - SettingsForm.MARGIN * 2 - gap * 3) / 4);
-        int buttonsLeft = (width - buttonWidth * 4 - gap * 3) / 2;
+        int buttonWidth = Math.min(100, (width - SettingsForm.MARGIN * 2 - gap * 4) / 5);
+        int buttonsLeft = (width - buttonWidth * 5 - gap * 4) / 2;
         addRenderableWidget(Button.builder(Component.translatable("gui.realelevator.renewal.dismantle"), b -> confirmDismantle())
                 .bounds(buttonsLeft, bottom, buttonWidth, 20).build());
         // 群の入れ外しは結果をチャットに出すので、画面を閉じる（開き直すと台数が新しくなる）
@@ -58,8 +61,16 @@ public class RenewalScreen extends Screen {
         }).bounds(buttonsLeft + (buttonWidth + gap) * 2, bottom, buttonWidth, 20).build();
         leave.active = groupSize > 0;
         addRenderableWidget(leave);
+        addRenderableWidget(Button.builder(Component.translatable("gui.realelevator.panel.profile"), b -> {
+            if (minecraft != null) {
+                minecraft.setScreen(ProfileScreen.forSettings(this, currentSettings(), profile -> {
+                    form.applyProfile(profile);
+                    send();
+                }, true));
+            }
+        }).bounds(buttonsLeft + (buttonWidth + gap) * 3, bottom, buttonWidth, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-                .bounds(buttonsLeft + (buttonWidth + gap) * 3, bottom, buttonWidth, 20).build());
+                .bounds(buttonsLeft + (buttonWidth + gap) * 4, bottom, buttonWidth, 20).build());
     }
 
     private void confirmDismantle() {
@@ -75,6 +86,13 @@ public class RenewalScreen extends Screen {
             }
         }, Component.translatable("gui.realelevator.renewal.confirm.title"),
                 Component.translatable("gui.realelevator.renewal.confirm.message")));
+    }
+
+    /** 今の設定（機種・速度などは届いたまま）。 */
+    private CompoundTag currentSettings() {
+        CompoundTag tag = settings.copy();
+        form.writeTo(tag);
+        return tag;
     }
 
     /** 今の設定をサーバーへ送る。 */

@@ -14,6 +14,8 @@ import net.lausiv1024.realelevator.core.install.ShaftLayout.PitMode;
 import net.lausiv1024.realelevator.core.motion.SpeedSetting;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
+import net.lausiv1024.realelevator.design.ElevatorProfile;
+import net.lausiv1024.realelevator.entity.ConfigTags;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
 import net.lausiv1024.realelevator.menu.InstallerMenu;
@@ -164,6 +166,17 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
         CompoundTag tag = plan.settingsTag();
         tag.putBoolean("Preview", preview);
         return tag;
+    }
+
+    /**
+     * 仕様書のプロファイル profile を反映する（停止階・階名・読み上げ名・出入口はそのまま）。高速仕様は、ネザースターがはまっていなければ
+     * 速度を変えない。結果を伝える文を返す。
+     */
+    public Component applyProfile(CompoundTag profile) {
+        SpeedSpec requested = ConfigTags.parseEnum(SpeedSpec.class, profile.getString("Speed"), plan.speed().spec());
+        applySettings(ElevatorProfile.mergeInstall(settingsTag(), profile));
+        return Component.translatable(requested.isHighSpeed() && !hasNetherStar()
+                ? "message.realelevator.profile.applied_no_star" : "message.realelevator.profile.applied");
     }
 
     /** 階床登録ツールで y の階を登録または解除する。結果を伝える文を返す。 */
