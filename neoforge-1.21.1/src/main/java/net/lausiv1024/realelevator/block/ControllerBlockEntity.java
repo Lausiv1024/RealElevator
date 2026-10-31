@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import javax.annotation.Nullable;
 
+import net.lausiv1024.realelevator.core.install.ElevatorAccess;
 import net.lausiv1024.realelevator.core.install.InstallMaterials;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
@@ -18,6 +19,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Containers;
 import net.minecraft.world.entity.Entity;
@@ -35,10 +38,15 @@ import net.minecraft.world.level.block.state.BlockState;
  * <p>リニューアル（配置・アナウンス・階名の変更）と解体は、乗場の操作盤を保守用レンチで右クリックして開くメニューから行う。
  */
 public class ControllerBlockEntity extends BlockEntity {
+    /** OPとして扱う権限レベル。 */
+    private static final int OP_LEVEL = 2;
+
     private ElevatorPlan plan;
     private ItemStack star = ItemStack.EMPTY;
     /** 設置に使った材料。解体すると返す。 */
     private InstallMaterials materials = InstallMaterials.NONE;
+    /** 管理できるプレイヤー（設置者と、許可されたプレイヤー）。 */
+    private ElevatorAccess access = new ElevatorAccess();
     @Nullable
     private UUID carUuid;
     /** 解体の途中か。解体で制御盤のブロックを消したときに、もう一度解体しないようにする。 */
@@ -57,6 +65,47 @@ public class ControllerBlockEntity extends BlockEntity {
         this.carUuid = carUuid;
         this.materials = materials;
         setChanged();
+    }
+
+    /** 設置者を決める（設置したプレイヤー）。 */
+    public void setOwner(Player player) {
+        access.claim(player.getUUID(), player.getGameProfile().getName());
+        setChanged();
+    }
+
+    public ElevatorAccess access() {
+        return access;
+    }
+
+    /**
+     * player がこのエレベーターを管理できるか（設置者、許可されたプレイヤー、OP）。
+     * 設置者の記録がなければ（この機能より前に設置したもの）、player を設置者にする。
+     */
+    public boolean canManage(Player player) {
+        if (!access.hasOwner()) {
+            setOwner(player);
+            return true;
+        }
+        return access.canManage(player.getUUID()) || player.hasPermissions(OP_LEVEL);
+    }
+
+    /** player が、許可するプレイヤーを変えられるか（設置者、OP）。 */
+    public boolean canEditAccess(Player player) {
+        return access.isOwner(player.getUUID()) || player.hasPermissions(OP_LEVEL);
+    }
+
+    /** かご car の頂部の制御盤。コマンドで出したかごなど、なければ null。 */
+    @Nullable
+    public static ControllerBlockEntity of(ElevatorCarEntity car) {
+        BlockPos pos = car.controllerPos();
+        return pos != null && car.level().isLoaded(pos) && car.level().getBlockEntity(pos) instanceof ControllerBlockEntity controller
+                ? controller : null;
+    }
+
+    /** player がかご car を管理できるか。制御盤のないかごは誰でも管理できる。 */
+    public static boolean canManage(Player player, ElevatorCarEntity car) {
+        ControllerBlockEntity controller = of(car);
+        return controller == null || controller.canManage(player);
     }
 
     public ElevatorPlan plan() {
@@ -171,6 +220,18 @@ public class ControllerBlockEntity extends BlockEntity {
             materialTag.putInt("Redstone", materials.redstone());
             tag.put("Materials", materialTag);
         }
+        access.owner().ifPresent(owner -> {
+            tag.putUUID("Owner", owner);
+            tag.putString("OwnerName", access.ownerName());
+        });
+        ListTag allowed = new ListTag();
+        access.allowed().forEach((id, name) -> {
+            CompoundTag entry = new CompoundTag();
+            entry.putUUID("Id", id);
+            entry.putString("Name", name);
+            allowed.add(entry);
+        });
+        tag.put("Allowed", allowed);
     }
 
     @Override
@@ -182,5 +243,16 @@ public class ControllerBlockEntity extends BlockEntity {
         carUuid = tag.hasUUID("Car") ? tag.getUUID("Car") : null;
         CompoundTag materialTag = tag.getCompound("Materials");
         materials = new InstallMaterials(materialTag.getInt("Iron"), materialTag.getInt("Redstone"));
+        access = new ElevatorAccess();
+        if (tag.hasUUID("Owner")) {
+            access.claim(tag.getUUID("Owner"), tag.getString("OwnerName"));
+        }
+        ListTag allowed = tag.getList("Allowed", Tag.TAG_COMPOUND);
+        for (int i = 0; i < allowed.size(); i++) {
+            CompoundTag entry = allowed.getCompound(i);
+            if (entry.hasUUID("Id")) {
+                access.allow(entry.getUUID("Id"), entry.getString("Name"));
+            }
+        }
     }
 }

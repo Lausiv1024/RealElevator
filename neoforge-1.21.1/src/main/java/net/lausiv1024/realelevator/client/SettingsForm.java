@@ -175,6 +175,7 @@ final class SettingsForm {
         widgets.add(enumButton("indicator_color", FixtureConfig.IndicatorColor.values(), fixtures.indicatorColor(),
                 v -> fixtures = fixtures.withIndicatorColor(v), send));
         widgets.add(onOff("wheelchair_panel", fixtures.wheelchairPanel(), v -> fixtures = fixtures.withWheelchairPanel(v), send));
+        widgets.add(onOff("open_extension", fixtures.openExtension(), v -> fixtures = fixtures.withOpenExtension(v), send));
         widgets.add(onOff("arrival_announcement", announcements.arrival(), v -> announcements = announcements.withArrival(v), send));
         widgets.add(onOff("close_announcement", announcements.doorClose(), v -> announcements = announcements.withDoorClose(v), send));
         widgets.add(onOff("chime", announcements.chime(), v -> announcements = announcements.withChime(v), send));

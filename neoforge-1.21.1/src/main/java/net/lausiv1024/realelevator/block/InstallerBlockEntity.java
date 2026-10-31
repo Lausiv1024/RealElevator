@@ -324,6 +324,9 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
         level.setBlock(cellPos(controllerCells.get(1)), controller.setValue(ControllerBlock.HALF, DoubleBlockHalf.UPPER), Block.UPDATE_ALL);
         if (level.getBlockEntity(controllerPos) instanceof ControllerBlockEntity controllerEntity) {
             controllerEntity.setup(plan, star.removeItemNoUpdate(0), car.getUUID(), materials);
+            if (player != null) {
+                controllerEntity.setOwner(player);
+            }
         }
 
         int floorCount = floorYs().length;

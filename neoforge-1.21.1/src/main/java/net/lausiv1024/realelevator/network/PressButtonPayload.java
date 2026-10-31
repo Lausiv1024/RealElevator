@@ -1,6 +1,7 @@
 package net.lausiv1024.realelevator.network;
 
 import net.lausiv1024.realelevator.RealElevator;
+import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.entity.ButtonHost;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -17,12 +18,23 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
  * クライアントでボタンを押したことをサーバーへ伝える。ボタンは、それを持つエンティティとボタンの番号で指す。
+ *
+ * <p>クリック音は押したとき（{@link Action#PRESS}）と離したとき（{@link Action#RELEASE}）に鳴らす。開ボタンを押したままのあいだの
+ * 繰り返し（{@link Action#REPEAT}）では鳴らさない。
  */
-public record PressButtonPayload(int entityId, int buttonIndex) implements CustomPacketPayload {
+public record PressButtonPayload(int entityId, int buttonIndex, Action action) implements CustomPacketPayload {
+    public enum Action {
+        PRESS,
+        /** 開ボタンを押したままのあいだの繰り返し。 */
+        REPEAT,
+        RELEASE
+    }
+
     public static final Type<PressButtonPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(RealElevator.MODID, "press_button"));
     public static final StreamCodec<RegistryFriendlyByteBuf, PressButtonPayload> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT, PressButtonPayload::entityId,
             ByteBufCodecs.VAR_INT, PressButtonPayload::buttonIndex,
+            ByteBufCodecs.VAR_INT.map(i -> Action.values()[Math.floorMod(i, Action.values().length)], Action::ordinal), PressButtonPayload::action,
             PressButtonPayload::new);
 
     /** クライアントとサーバーで位置が少しずれていても押せるよう、手の届く距離に足す余裕。 */
@@ -48,8 +60,18 @@ public record PressButtonPayload(int entityId, int buttonIndex) implements Custo
         if (box.distanceToSqr(player.getEyePosition()) > reach * reach) {
             return;
         }
-        host.pressButton(payload.buttonIndex());
         Vec3 center = box.getCenter();
-        player.level().playSound(null, center.x, center.y, center.z, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3F, 1.5F);
+        switch (payload.action()) {
+            case PRESS -> {
+                host.pressButton(payload.buttonIndex());
+                player.level().playSound(null, center.x, center.y, center.z, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3F, 1.5F);
+            }
+            case REPEAT -> {
+                if (host.buttons().get(payload.buttonIndex()).kind() == ButtonLayout.Kind.OPEN) {
+                    host.pressButton(payload.buttonIndex());
+                }
+            }
+            case RELEASE -> player.level().playSound(null, center.x, center.y, center.z, SoundEvents.STONE_BUTTON_CLICK_OFF, SoundSource.BLOCKS, 0.3F, 1.5F);
+        }
     }
 }

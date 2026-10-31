@@ -59,6 +59,9 @@ public final class ProfilePayloads {
                 player.displayClientMessage(Component.translatable("message.realelevator.profile.blank"), true);
                 return;
             }
+            if (!RenewalPayloads.checkManage(player, controller)) {
+                return;
+            }
             controller.applyRenewal(ElevatorProfile.mergeRenewal(controller.renewalTag(), profile));
             player.displayClientMessage(Component.translatable("message.realelevator.profile.applied_car"), true);
         }

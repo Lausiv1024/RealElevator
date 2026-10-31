@@ -71,6 +71,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.sounds.SoundEvent;
@@ -115,6 +116,18 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private static final double SINK_TOLERANCE = 1e-4;
     /** 床や屋根に入り込んだとみなす深さの上限。これより深いものは、かごの下にいるものとして押し上げない。 */
     private static final double MAX_SINK = 1.0;
+    /** 止まっているかごで、床に入り込んだものを押し上げる深さの下限。サーバーから届く位置の丸めの分でも衝突判定をすり抜けるので、ごく小さくする。 */
+    private static final double RESTING_SINK_TOLERANCE = 1e-7;
+    /** 止まっているかごで、床に入り込んだものを押し上げる深さの上限。かごの下にいるものを持ち上げないよう、浅くする。 */
+    private static final double RESTING_MAX_SINK = 0.05;
+    /** 到着チャイムの長さ [tick]（2音の間隔0.45秒＋余韻1.6秒）。 */
+    private static final int CHIME_TICKS = 41;
+    /** かご内でしゃがんでいるあいだ、開ボタンを押したものとして扱う間隔 [tick]（使用キーの押したままの繰り返しと同じ）。 */
+    private static final int SNEAK_OPEN_INTERVAL_TICKS = 4;
+    /** クライアントで、ほかのエンティティをかごの床に合わせるときに見込む、位置の遅れ [tick]。 */
+    private static final int REMOTE_LAG_TICKS = 20;
+    /** かごが止まったあとも、ほかのエンティティをかごの床に合わせ続ける時間 [tick]（遅れて届く位置で沈まないように）。 */
+    private static final int REMOTE_SETTLE_TICKS = 10;
 
     /** 停止階の床面のY座標（下から順）。 */
     private int[] floors = new int[0];
@@ -196,6 +209,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private int targetFloor;
     /** 最後に位置を計算した時刻（{@link ElevatorClock}）。描画の補間に使う。 */
     private double lastTick;
+    /** 最後に走っていたときの時刻。クライアントだけが使う。 */
+    private double lastTravelClock = Double.NEGATIVE_INFINITY;
+    /** 最後に到着チャイムを鳴らした階と、鳴り終わるゲーム時刻。 */
+    private int chimeFloor = -1;
+    private long chimeEndTick = Long.MIN_VALUE;
     /** この走行の到着チャイムをもう鳴らしたか。サーバーだけが使う。 */
     private boolean arrivalAnnounced;
     /** ホールランタンの点滅を始めたゲーム時刻（到着チャイムを鳴らした時刻）。点滅の位相の起点。 */
@@ -433,7 +451,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** ボタンの並びは、正面の操作盤、奥の操作盤（二方向出入口）、車椅子用操作盤の順。 */
     private void rebuildButtons() {
-        List<Button> front = ButtonLayout.carPanel(spec(), floors.length, fixtures.panelSides());
+        List<Button> front = ButtonLayout.carPanel(spec(), floors.length, fixtures.panelSides(), fixtures.openExtension());
         frontButtonCount = front.size();
         List<Button> all = new ArrayList<>(front);
         if (through) {
@@ -527,6 +545,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         this.fixtures = ShaftLayout.fitFixtures(fixtures, floors);
         this.entityData.set(DATA_FIXTURES, ConfigTags.writeFixtures(this.fixtures));
         rebuildButtons();
+        if (!this.fixtures.openExtension() && door.isExtended()) {
+            // 延長中に開延長ボタンを外したら、延長をやめる
+            door.cancelExtension();
+            syncDoor();
+        }
     }
 
     public boolean isMoving() {
@@ -841,9 +864,35 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         return true;
     }
 
-    /** 閉ボタン。開放待機中なら、すぐに閉じ始める。 */
+    /** 側 side の操作盤の開延長ボタン。戸を開き、全開になってから60秒開けておく。走行中は効かない。 */
+    public boolean extendDoor(Entrance side) {
+        if (level().isClientSide || !isStoppedForCalls() || !requestOpen(side, CallType.CAR, false)) {
+            return false;
+        }
+        door.extend(level().getGameTime());
+        syncDoor();
+        return door.isExtended();
+    }
+
+    /** 到着チャイムが鳴り終わるゲーム時刻（動作確認のテスト用）。 */
+    public long chimeEndTick() {
+        return chimeEndTick;
+    }
+
+    public boolean isDoorExtended() {
+        return door.isExtended();
+    }
+
+    /** 閉ボタン。開放待機中なら、すぐに閉じ始める。開延長は解除する。 */
     public boolean closeDoor() {
-        if (level().isClientSide || door.state() != DoorState.OPEN) {
+        if (level().isClientSide) {
+            return false;
+        }
+        if (door.state() != DoorState.OPEN) {
+            if (door.isExtended()) {
+                door.cancelExtension();
+                syncDoor();
+            }
             return false;
         }
         // 閉ボタンでは、戸閉アナウンスを流しながらすぐに閉め始める。行先方向や、自動で閉めるときの戸閉アナウンスを
@@ -912,6 +961,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     @Override
     public boolean isButtonLit(int index) {
         Button button = buttons.get(index);
+        if (button.kind() == ButtonLayout.Kind.OPEN_EXTEND) {
+            return door.isExtended();
+        }
         if (button.kind() != ButtonLayout.Kind.CAR_CALL) {
             return false;
         }
@@ -949,7 +1001,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                     }
                 }
                 case EMERGENCY -> pressEmergency(button);
-                case HALL_UP, HALL_DOWN -> {
+                case OPEN_EXTEND, HALL_UP, HALL_DOWN -> {
                 }
             }
             return;
@@ -958,6 +1010,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         switch (button.kind()) {
             case OPEN -> openDoor(side);
             case CLOSE -> closeDoor();
+            case OPEN_EXTEND -> extendDoor(side);
             case CAR_CALL -> {
                 if (!cancelIfDoublePressed(index)) {
                     pressCarCall(button.floor(), side);
@@ -979,6 +1032,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         lastTick = clock;
         if (trip != null) {
             setPos(getX(), trip.positionAt(clock), getZ());
+            lastTravelClock = clock;
         }
         // 誰も乗っていないtickでも、運搬の基準の位置を進めておく
         carryDelta(clock);
@@ -1018,6 +1072,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         // 行先方向を流している間に自動で閉めるときは、戸閉アナウンスを流さず（待たず）に閉める
         door.setCloseAnnouncementTicks(announcements.doorClose() && !isSpeakingDirection(now) && !resting
                 ? AnnouncementScript.DOOR_CLOSE_WAIT_TICKS : 0);
+        if (now % SNEAK_OPEN_INTERVAL_TICKS == 0 && isStoppedForCalls() && hasSneakingRider()) {
+            // かご内でしゃがんでいるあいだは、開ボタンを押しているものとして扱う
+            openDoor(CallType.CAR);
+        }
         if (door.state() == DoorState.OPEN && isBeamBlocked()) {
             // 開ききっているあいだにビームが人を検知していたら、待機時間を数え直す（戸閉アナウンスも流さない）
             door.hold(now);
@@ -1256,11 +1314,27 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         return probe.direction();
     }
 
-    /** 設定で有効なら、停止階 floor の乗場で、ホールランタンの位置から到着チャイムを鳴らす。下りは C6→G#5、それ以外は G#5→C6。 */
+    /** かごの中（床から天井までの内側）に、しゃがんでいるプレイヤーがいるか。 */
+    private boolean hasSneakingRider() {
+        AABB inside = CarShapes.toAabb(CarGeometry.interior(spec()).rotateQuarterTurns(facing().get2DDataValue()), getX(), getY(), getZ());
+        return !level().getEntitiesOfClass(Player.class, inside,
+                player -> player.isShiftKeyDown() && !player.isSpectator() && inside.contains(player.position().add(0, 0.01, 0))).isEmpty();
+    }
+
+    /**
+     * 設定で有効なら、停止階 floor の乗場で、ホールランタンの位置から到着チャイムを鳴らす。下りは C6→G#5、それ以外は G#5→C6。
+     * 同じ階のチャイムが鳴っているあいだは、重ねて鳴らさない。
+     */
     private void playArrivalChime(int floor, TravelDirection direction) {
         if (!announcements.chime() || resting) {
             return;
         }
+        long now = level().getGameTime();
+        if (floor == chimeFloor && now < chimeEndTick) {
+            return;
+        }
+        chimeFloor = floor;
+        chimeEndTick = now + CHIME_TICKS;
         Vec3 position = lanternCenter(floor);
         SoundEvent sound = (direction == TravelDirection.DOWN ? ModSounds.CHIME_DOWN : ModSounds.CHIME_UP).get();
         level().playSound(null, position.x, position.y, position.z, sound, SoundSource.BLOCKS, 1.0F, 1.0F);
@@ -1455,6 +1529,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 休止で着床した（または止まっていた）階で、乗客が降りるまで戸を開ける。そのあとは普通に閉まって休止する。 */
     private void openForRest(long now) {
+        door.cancelExtension();
         Set<Entrance> available = entrancesAt(currentFloor);
         if (openSides.isEmpty() || !available.containsAll(openSides)) {
             openSides.clear();
@@ -1704,6 +1779,46 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      * 運搬では1tick分の移動量しか加えないので、上昇中は床の中に取り残されて下へ抜けてしまう。それを防ぐために使う。
      */
     public double sunkSurface(Entity entity, double tick) {
+        return sunkSurface(entity, tick, SINK_TOLERANCE, MAX_SINK);
+    }
+
+    /**
+     * 止まっているかごの床に、entity の足がごく浅く入り込んでいれば、その上面のY座標を返す。入り込んでいなければ NaN。
+     *
+     * <p>エンティティがサーバーからの位置で動いていたあと（プレイヤーがボートに乗ったときなど）は、位置の丸めの分だけ床より下にいることがある。
+     * 衝突判定は重なっている箱を無視するので、そのまま動かすと床をすり抜ける。
+     */
+    public double restingSunkSurface(Entity entity, double tick) {
+        return sunkSurface(entity, tick, RESTING_SINK_TOLERANCE, RESTING_MAX_SINK);
+    }
+
+    /**
+     * クライアントで、サーバーからの位置で動くエンティティ entity を、走っているかごの床に合わせるときの面のY座標。
+     * かごの当たり判定の面のうち、足にいちばん近い面。遅れて見込まれる範囲に面がなければ NaN。
+     *
+     * <p>サーバーから届く位置は遅れて補間されるので、かごの位置を時刻から求めているクライアントでは、
+     * そのままだと上昇中に沈み、下降中に浮いて見える。
+     */
+    public double restingSurface(Entity entity, double tick) {
+        double feet = entity.getY();
+        double reach = Math.abs(yAt(tick) - yAt(tick - REMOTE_LAG_TICKS)) + 0.25;
+        double best = Double.NaN;
+        for (AABB box : collisionBoxesAt(tick)) {
+            boolean above = entity.getX() > box.minX && entity.getX() < box.maxX && entity.getZ() > box.minZ && entity.getZ() < box.maxZ;
+            double distance = Math.abs(box.maxY - feet);
+            if (above && distance <= reach && (Double.isNaN(best) || distance < Math.abs(best - feet))) {
+                best = box.maxY;
+            }
+        }
+        return best;
+    }
+
+    /** クライアントで、ほかのエンティティをかごの床に合わせる必要があるか（走っている、または止まった直後）。 */
+    public boolean isSettling(double clock) {
+        return trip != null || clock - lastTravelClock < REMOTE_SETTLE_TICKS;
+    }
+
+    private double sunkSurface(Entity entity, double tick, double minDepth, double maxDepth) {
         double y = yAt(tick);
         double feet = entity.getY();
         for (Part part : parts()) {
@@ -1713,7 +1828,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             AABB box = CarShapes.toAabb(part.box(), getX(), y, getZ());
             boolean above = entity.getX() > box.minX && entity.getX() < box.maxX
                     && entity.getZ() > box.minZ && entity.getZ() < box.maxZ;
-            if (above && feet < box.maxY - SINK_TOLERANCE && feet > box.maxY - MAX_SINK) {
+            if (above && feet < box.maxY - minDepth && feet > box.maxY - maxDepth) {
                 return box.maxY;
             }
         }
@@ -1936,6 +2051,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         tag.putInt("Dwell", door.dwellTicks());
         tag.putBoolean("Slow", door.isSlowClose());
         tag.putBoolean("Nudge", door.isNudging());
+        tag.putBoolean("Extend", door.isExtended());
         return tag;
     }
 
@@ -1960,7 +2076,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private static void readDoor(CompoundTag tag, DoorController door) {
         door.restore(parseEnum(DoorState.class, tag.getString("State"), DoorState.CLOSED),
                 tag.getLong("StartTick"), tag.getDouble("StartFraction"), tag.getInt("Dwell"), tag.getBoolean("Slow"),
-                tag.getBoolean("Nudge"));
+                tag.getBoolean("Nudge"), tag.getBoolean("Extend"));
     }
 
     private static byte sideMask(Set<Entrance> sides) {

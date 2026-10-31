@@ -59,8 +59,9 @@ class CarPanelLayoutTest {
         for (int floors = 2; floors <= 18; floors++) {
             CarPanelLayout layout = CarPanelLayout.of(spec, floors);
             for (boolean right : ButtonLayout.panelJambs(spec, FixtureConfig.PanelSides.BOTH)) {
-                List<Button> buttons = layout.buttons(spec, floors, right);
-                assertEquals(floors + (layout.hasEmergency() ? 3 : 2), buttons.size());
+                assertEquals(floors + (layout.hasEmergency() ? 3 : 2), layout.buttons(spec, floors, right).size());
+                List<Button> buttons = layout.buttons(spec, floors, right, true);
+                assertEquals(floors + (layout.hasEmergency() ? 4 : 3), buttons.size());
                 Box plate = layout.parts(spec, right, false).get(0).box();
                 Box window = CarPanelLayout.window(spec, right);
                 assertTrue(plate.maxY() <= CarModel.CEILING_HEIGHT_PX * PX);
@@ -72,7 +73,12 @@ class CarPanelLayoutTest {
                     Box b = buttons.get(i).box();
                     // 板の両脇に1px以上の余白を残す
                     assertTrue(b.minX() >= plate.minX() + PX - EPS && b.maxX() <= plate.maxX() - PX + EPS, spec + " " + floors + " " + buttons.get(i));
-                    assertTrue(b.minY() >= CarPanelLayout.MIN_BOTTOM_PX * PX - EPS);
+                    if (buttons.get(i).kind() == Kind.OPEN_EXTEND) {
+                        // 開延長ボタンは開ボタンの下で、板の下端より上
+                        assertTrue(b.minY() >= plate.minY() + PX - EPS, spec + " " + floors + " " + buttons.get(i));
+                    } else {
+                        assertTrue(b.minY() >= CarPanelLayout.MIN_BOTTOM_PX * PX - EPS);
+                    }
                     assertTrue(b.maxY() <= window.minY() - PX + EPS, spec + " " + floors + " floors: " + buttons.get(i));
                     assertEquals(plate.minZ(), b.maxZ(), EPS);
                     for (int j = 0; j < i; j++) {
@@ -91,5 +97,20 @@ class CarPanelLayoutTest {
         for (Button button : buttons.subList(0, buttons.size() - 1)) {
             assertTrue(sos.box().minY() > button.box().maxY());
         }
+    }
+
+    @Test
+    void theExtensionButtonIsBelowTheOpenButtonEvenWithoutTheEmergencyRow() {
+        for (int floors : new int[] {2, 6, 18}) {
+            List<Button> buttons = ButtonLayout.carPanel(CarSpec.of(CarModel.P11), floors, FixtureConfig.PanelSides.RIGHT, true);
+            Button open = buttons.get(0);
+            Button extend = buttons.get(buttons.size() - 1);
+            assertEquals(Kind.OPEN, open.kind());
+            assertEquals(Kind.OPEN_EXTEND, extend.kind());
+            assertEquals(open.box().minX(), extend.box().minX(), EPS);
+            assertTrue(extend.box().maxY() < open.box().minY());
+        }
+        // 18階床は非常呼びの段を省く構成
+        assertFalse(CarPanelLayout.of(CarSpec.of(CarModel.P11), 18).hasEmergency());
     }
 }

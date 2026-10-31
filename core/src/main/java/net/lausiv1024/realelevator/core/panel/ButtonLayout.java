@@ -37,7 +37,9 @@ public final class ButtonLayout {
         HALL_UP,
         HALL_DOWN,
         /** 非常呼び（飾り。押すと短い音が鳴る）。 */
-        EMERGENCY
+        EMERGENCY,
+        /** 開延長（設定で付ける。押すと戸を60秒開けておく。閉ボタンで解除）。 */
+        OPEN_EXTEND
     }
 
     /**
@@ -75,10 +77,19 @@ public final class ButtonLayout {
     }
 
     public static List<Button> carPanel(CarSpec spec, int floorCount, FixtureConfig.PanelSides sides) {
+        return carPanel(spec, floorCount, sides, false);
+    }
+
+    /**
+     * かごの操作盤のボタン。
+     *
+     * @param openExtension 開延長ボタンを付けるか（各操作盤の並びの最後）
+     */
+    public static List<Button> carPanel(CarSpec spec, int floorCount, FixtureConfig.PanelSides sides, boolean openExtension) {
         CarPanelLayout layout = CarPanelLayout.of(spec, floorCount);
         List<Button> buttons = new ArrayList<>((floorCount + 3) * 2);
         for (boolean right : panelJambs(spec, sides)) {
-            buttons.addAll(layout.buttons(spec, floorCount, right));
+            buttons.addAll(layout.buttons(spec, floorCount, right, openExtension));
         }
         return buttons;
     }

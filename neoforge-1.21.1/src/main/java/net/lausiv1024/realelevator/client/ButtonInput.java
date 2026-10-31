@@ -8,6 +8,7 @@ import javax.annotation.Nullable;
 import net.lausiv1024.realelevator.RealElevator;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.entity.ButtonHost;
+import net.lausiv1024.realelevator.entity.CarCollisions;
 import net.lausiv1024.realelevator.entity.ElevatorTracker;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
 import net.lausiv1024.realelevator.item.SpecificationItem;
@@ -32,6 +33,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * 右クリックでボタンを押す。視線の先をボタン1つずつの箱でレイキャストし、ブロックより手前にあれば押す。
+ * かごの壁や戸などにさえぎられたボタン（戸の窓越しに見えるかごのボタンなど）は押せない。
  *
  * <p>レンチ（{@code c:tools/wrench} タグのアイテム）を持って乗場の操作盤のあたり（三方枠）を右クリックしたときは、
  * ボタンを押さずに保守用レンチのメニューを開く。
@@ -44,6 +46,9 @@ public final class ButtonInput {
      * 戸を開けたままにする（離してから開放待機の時間がたつと閉まる）。
      */
     private static boolean useHeld;
+    /** 押したままのボタン。離したときに知らせる（クリック音を鳴らす）。 */
+    @Nullable
+    private static Target pressed;
 
     private ButtonInput() {
     }
@@ -52,6 +57,10 @@ public final class ButtonInput {
     static void onClientTick(ClientTickEvent.Post event) {
         if (useHeld && !Minecraft.getInstance().options.keyUse.isDown()) {
             useHeld = false;
+            if (pressed != null && Minecraft.getInstance().getConnection() != null) {
+                PacketDistributor.sendToServer(new PressButtonPayload(pressed.host().getId(), pressed.index(), PressButtonPayload.Action.RELEASE));
+            }
+            pressed = null;
         }
     }
 
@@ -98,14 +107,18 @@ public final class ButtonInput {
         event.setCanceled(true);
         boolean openButton = target.host() instanceof ButtonHost host
                 && host.buttons().get(target.index()).kind() == ButtonLayout.Kind.OPEN;
-        if (useHeld && !openButton) {
-            // 押したままの繰り返し
+        if (useHeld) {
+            // 押したままの繰り返し。開ボタンだけ、同じボタンを押し続けていれば音を鳴らさずに押し直す
             event.setSwingHand(false);
+            if (openButton && pressed != null && pressed.host() == target.host() && pressed.index() == target.index()) {
+                PacketDistributor.sendToServer(new PressButtonPayload(target.host().getId(), target.index(), PressButtonPayload.Action.REPEAT));
+            }
             return;
         }
         useHeld = true;
+        pressed = target;
         event.setSwingHand(true);
-        PacketDistributor.sendToServer(new PressButtonPayload(target.host().getId(), target.index()));
+        PacketDistributor.sendToServer(new PressButtonPayload(target.host().getId(), target.index(), PressButtonPayload.Action.PRESS));
     }
 
     /** 視線の先にある乗場の扉（三方枠を含む外形）。ブロックのほうが手前なら null。 */
@@ -152,7 +165,7 @@ public final class ButtonInput {
                         continue;
                     }
                     Optional<Vec3> point = box.clip(eye, end);
-                    if (point.isPresent()) {
+                    if (point.isPresent() && !CarCollisions.isObstructed(level, eye, point.get())) {
                         double distanceSqr = point.get().distanceToSqr(eye);
                         if (best == null || distanceSqr < best.distanceSqr()) {
                             best = new Target(entity, i, distanceSqr);

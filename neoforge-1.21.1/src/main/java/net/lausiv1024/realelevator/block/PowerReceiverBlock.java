@@ -86,6 +86,11 @@ public class PowerReceiverBlock extends HorizontalDirectionalBlock implements En
         }
         if (!level.isClientSide && level.getBlockEntity(pos) instanceof PowerReceiverBlockEntity receiver) {
             if (player.isShiftKeyDown()) {
+                ElevatorCarEntity linked = receiver.car() != null ? ElevatorTracker.findCar(level, receiver.car()) : null;
+                if (linked != null && !ControllerBlockEntity.canManage(player, linked)) {
+                    player.displayClientMessage(Component.translatable("message.realelevator.access.denied_selected"), true);
+                    return ItemInteractionResult.sidedSuccess(level.isClientSide);
+                }
                 unlink(level, pos, receiver);
                 player.displayClientMessage(Component.translatable("message.realelevator.power.unlinked"), true);
             } else if (stack.has(ModDataComponents.SELECTED_CAR.get())) {
@@ -102,6 +107,10 @@ public class PowerReceiverBlock extends HorizontalDirectionalBlock implements En
         ElevatorCarEntity car = ElevatorTracker.findCar(level, carId);
         if (car == null) {
             player.displayClientMessage(Component.translatable("message.realelevator.power.no_car"), true);
+            return;
+        }
+        if (!ControllerBlockEntity.canManage(player, car)) {
+            player.displayClientMessage(Component.translatable("message.realelevator.access.denied_selected"), true);
             return;
         }
         unlink(level, pos, receiver);

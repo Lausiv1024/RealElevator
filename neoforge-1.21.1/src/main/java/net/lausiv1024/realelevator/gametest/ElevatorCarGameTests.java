@@ -12,6 +12,7 @@ import net.lausiv1024.realelevator.RealElevator;
 import net.lausiv1024.realelevator.block.PowerReceiverBlock;
 import net.lausiv1024.realelevator.block.PowerReceiverBlockEntity;
 import net.lausiv1024.realelevator.core.announce.Announcement;
+import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.announce.AnnouncementScript;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
@@ -29,6 +30,7 @@ import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.CarTransport;
+import net.lausiv1024.realelevator.entity.CarCollisions;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.ElevatorGroups;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
@@ -41,7 +43,10 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -159,6 +164,117 @@ public class ElevatorCarGameTests {
             }
         });
         helper.succeedWhen(() -> helper.assertTrue(lagged.get() && !car.isMoving(), "not arrived yet"));
+    }
+
+    /** 閉まった戸越しにかごのボタンへの線は通らず、かごの中から、また乗場の側から乗場のボタンへの線は通る。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 40)
+    public static void buttonsCannotBeReachedThroughClosedDoors(GameTestHelper helper) {
+        Elevator elevator = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE);
+        ElevatorCarEntity car = elevator.car();
+        Vec3 button = car.buttonBox(indexOf(car.buttons(), ButtonLayout.Kind.OPEN, -1)).getCenter();
+        Vec3 outward = Vec3.atLowerCornerOf(car.facing().getNormal());
+        Vec3 inside = new Vec3(car.getX(), button.y, car.getZ());
+        Vec3 landing = inside.add(outward.scale(4));
+        helper.assertTrue(CarCollisions.isObstructed(helper.getLevel(), landing, button), "the closed door should block the line");
+        helper.assertTrue(!CarCollisions.isObstructed(helper.getLevel(), inside, button), "the panel should be reachable from inside the car");
+
+        LandingDoorEntity door = elevator.landingDoors().get(0);
+        Vec3 hallButton = door.buttonBox(0).getCenter();
+        helper.assertTrue(!CarCollisions.isObstructed(helper.getLevel(), hallButton.add(outward), hallButton), "the hall button should be reachable from the landing");
+        helper.assertTrue(CarCollisions.isObstructed(helper.getLevel(), inside, hallButton), "the hall button should not be reachable from inside the closed car");
+        helper.succeed();
+    }
+
+    /** 開延長ボタンは既定では付かず、設定でオンにすると付く。オフに戻すと、延長中でも延長をやめる。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 100)
+    public static void openExtensionButtonFollowsTheSetting(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE).car();
+        helper.assertTrue(car.buttons().stream().noneMatch(b -> b.kind() == ButtonLayout.Kind.OPEN_EXTEND), "off by default");
+        car.setFixtures(car.fixtures().withOpenExtension(true));
+        car.pressButton(indexOf(car.buttons(), ButtonLayout.Kind.OPEN_EXTEND, -1));
+        helper.assertTrue(car.isDoorExtended(), "the extension should be on");
+        car.setFixtures(car.fixtures().withOpenExtension(false));
+        helper.assertTrue(!car.isDoorExtended(), "turning it off should end the extension");
+        helper.assertTrue(car.buttons().stream().noneMatch(b -> b.kind() == ButtonLayout.Kind.OPEN_EXTEND), "the button should be removed");
+        helper.succeed();
+    }
+
+    /** 開延長ボタンを押すと戸を開けたままにし、閉ボタンで解除して閉める。ボタンの応答灯は延長中だけ点く。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 400)
+    public static void openExtensionKeepsTheDoorOpenUntilClosePressed(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE).car();
+        car.setFixtures(car.fixtures().withOpenExtension(true));
+        int extend = indexOf(car.buttons(), ButtonLayout.Kind.OPEN_EXTEND, -1);
+        int close = indexOf(car.buttons(), ButtonLayout.Kind.CLOSE, -1);
+        car.pressButton(extend);
+        helper.assertTrue(car.isDoorExtended() && car.isButtonLit(extend), "the extension should be on");
+        helper.runAtTickTime(200, () -> {
+            helper.assertTrue(car.doorState() == DoorState.OPEN && car.isDoorExtended(), "should stay open past the usual dwell");
+            car.pressButton(close);
+            helper.assertTrue(!car.isDoorExtended() && !car.isButtonLit(extend), "the close button should cancel the extension");
+            helper.assertTrue(car.doorState() == DoorState.CLOSING, "should start closing");
+            helper.succeed();
+        });
+    }
+
+    /** かご内でしゃがんでいるプレイヤーがいると、開ボタンを押したものとして戸が開く。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 100)
+    public static void aSneakingRiderHoldsTheDoorOpen(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE).car();
+        Player rider = helper.makeMockPlayer(GameType.SURVIVAL);
+        rider.moveTo(car.getX(), car.getY(), car.getZ());
+        rider.setShiftKeyDown(true);
+        helper.getLevel().addFreshEntity(rider);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(car.doorState() != DoorState.CLOSED, "the door should open");
+            rider.discard();
+        });
+    }
+
+    /** 到着チャイムは、鳴り終わるまで乗場のボタンを押しても鳴らし直さない。鳴り終わったあとは鳴らす。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 100)
+    public static void chimeDoesNotOverlapWhenHallButtonIsMashed(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE).car();
+        car.setAnnouncements(new AnnouncementConfig(false, false, true));
+        car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT, false);
+        long first = car.chimeEndTick();
+        helper.assertTrue(first > helper.getLevel().getGameTime(), "the chime should ring");
+        helper.runAfterDelay(5, () -> {
+            car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT, false);
+            helper.assertTrue(car.chimeEndTick() == first, "should not ring again while ringing");
+        });
+        helper.runAfterDelay(50, () -> {
+            car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT, false);
+            helper.assertTrue(car.chimeEndTick() > first, "should ring again after it ended");
+            helper.succeed();
+        });
+    }
+
+    /** 止まっているかごの床にごく浅く入り込んだものは、衝突判定をすり抜けないよう、床の上へ戻す（プレイヤーが乗ったボートと同じ状況）。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 100)
+    public static void entitySlightlyInsideARestingFloorIsLiftedBack(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE).car();
+        ArmorStand stand = helper.spawn(EntityType.ARMOR_STAND, LOWER);
+        stand.moveTo(car.getX(), car.getY() - 0.001, car.getZ());
+        helper.succeedWhen(() -> helper.assertTrue(helper.getTick() > 5 && stand.getY() >= car.getY() - 1e-6 && stand.getY() < car.getY() + 0.01,
+                "not back on the floor: " + (stand.getY() - car.getY())));
+    }
+
+    /** 走っているかごの床に合わせる面は、足にいちばん近い床の面で、遠すぎれば合わせない。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 300)
+    public static void restingSurfaceIsTheNearestFloorOfTheMovingCar(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.HIGH, 0, RISE).car();
+        ArmorStand stand = helper.spawn(EntityType.ARMOR_STAND, LOWER);
+        stand.setNoGravity(true);
+        car.pressCarCall(1);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(car.isMoving() && car.getY() > car.floors()[0] + 1, "not moving yet");
+            double now = helper.getLevel().getGameTime();
+            stand.setPos(car.getX(), car.getY() - 0.2, car.getZ());
+            helper.assertTrue(Math.abs(car.restingSurface(stand, now) - car.yAt(now)) < 1e-6, "should match the floor");
+            stand.setPos(car.getX() + 100, car.getY(), car.getZ());
+            helper.assertTrue(Double.isNaN(car.restingSurface(stand, now)), "should not match outside the car");
+        });
     }
 
     /** 着床すると戸が開き、行先階の乗場の扉だけが一緒に開く。開放待機のあと閉じる。 */

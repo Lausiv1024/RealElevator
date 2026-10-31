@@ -12,20 +12,21 @@ package net.lausiv1024.realelevator.core.panel;
  * @param wheelchairPanel    車椅子用操作盤（かごの両側の側壁）と乗場の車椅子用ボタンを付けるか
  * @param indicatorColor     階床表示器・ホールランタン・ボタンの応答灯の色
  * @param groupControl       群管理向け。乗場の階床表示器を付けず、ホールランタンを扉の右にも置けるようにする
+ * @param openExtension      かごの主操作盤に開延長ボタンを付けるか
  */
 public record FixtureConfig(PanelSides panelSides, CarIndicator carIndicator, boolean leftPanelIndicator, HallIndicator hallIndicator,
                             HallLanternPlacement hallLantern, boolean wheelchairPanel, IndicatorColor indicatorColor,
-                            boolean groupControl) {
+                            boolean groupControl, boolean openExtension) {
     /**
      * 日本の標準仕様に合わせた初期値。かごは右側の操作盤の上に表示器、乗場はボタンの上（三方枠の横）に表示器。
-     * ホールランタンは有償の付加仕様なので付けない。車椅子用操作盤も付けない。
+     * ホールランタンは有償の付加仕様なので付けない。車椅子用操作盤と開延長ボタンも付けない。
      */
     public static final FixtureConfig DEFAULT = new FixtureConfig(PanelSides.RIGHT, CarIndicator.OVER_PANEL, false,
-            HallIndicator.OVER_BUTTONS, HallLanternPlacement.NONE, false, IndicatorColor.AMBER, false);
+            HallIndicator.OVER_BUTTONS, HallLanternPlacement.NONE, false, IndicatorColor.AMBER, false, false);
 
     public FixtureConfig(PanelSides panelSides, CarIndicator carIndicator, boolean leftPanelIndicator, HallIndicator hallIndicator,
                          HallLanternPlacement hallLantern) {
-        this(panelSides, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, false, IndicatorColor.AMBER, false);
+        this(panelSides, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, false, IndicatorColor.AMBER, false, false);
     }
 
     /** 表示器などの光る色。 */
@@ -93,38 +94,42 @@ public record FixtureConfig(PanelSides panelSides, CarIndicator carIndicator, bo
         return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator,
                 hallIndicator == HallIndicator.OVER_DOOR ? HallIndicator.OVER_BUTTONS : hallIndicator,
                 hallLantern == HallLanternPlacement.OVER_DOOR ? HallLanternPlacement.BESIDE_DOOR : hallLantern, wheelchairPanel, indicatorColor,
-                groupControl);
+                groupControl, openExtension);
     }
 
     public FixtureConfig withPanelSides(PanelSides value) {
-        return new FixtureConfig(value, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, wheelchairPanel, indicatorColor, groupControl);
+        return new FixtureConfig(value, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, wheelchairPanel, indicatorColor, groupControl, openExtension);
     }
 
     public FixtureConfig withCarIndicator(CarIndicator value) {
-        return new FixtureConfig(panelSides, value, leftPanelIndicator, hallIndicator, hallLantern, wheelchairPanel, indicatorColor, groupControl);
+        return new FixtureConfig(panelSides, value, leftPanelIndicator, hallIndicator, hallLantern, wheelchairPanel, indicatorColor, groupControl, openExtension);
     }
 
     public FixtureConfig withLeftPanelIndicator(boolean value) {
-        return new FixtureConfig(panelSides, carIndicator, value, hallIndicator, hallLantern, wheelchairPanel, indicatorColor, groupControl);
+        return new FixtureConfig(panelSides, carIndicator, value, hallIndicator, hallLantern, wheelchairPanel, indicatorColor, groupControl, openExtension);
     }
 
     public FixtureConfig withHallIndicator(HallIndicator value) {
-        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, value, hallLantern, wheelchairPanel, indicatorColor, groupControl);
+        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, value, hallLantern, wheelchairPanel, indicatorColor, groupControl, openExtension);
     }
 
     public FixtureConfig withHallLantern(HallLanternPlacement value) {
-        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, hallIndicator, value, wheelchairPanel, indicatorColor, groupControl);
+        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, hallIndicator, value, wheelchairPanel, indicatorColor, groupControl, openExtension);
     }
 
     public FixtureConfig withWheelchairPanel(boolean value) {
-        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, value, indicatorColor, groupControl);
+        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, value, indicatorColor, groupControl, openExtension);
     }
 
     public FixtureConfig withGroupControl(boolean value) {
-        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, wheelchairPanel, indicatorColor, value);
+        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, wheelchairPanel, indicatorColor, value, openExtension);
+    }
+
+    public FixtureConfig withOpenExtension(boolean value) {
+        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, wheelchairPanel, indicatorColor, groupControl, value);
     }
 
     public FixtureConfig withIndicatorColor(IndicatorColor value) {
-        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, wheelchairPanel, value, groupControl);
+        return new FixtureConfig(panelSides, carIndicator, leftPanelIndicator, hallIndicator, hallLantern, wheelchairPanel, value, groupControl, openExtension);
     }
 }

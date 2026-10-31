@@ -10,7 +10,7 @@ import net.lausiv1024.realelevator.core.display.FaceGrid;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
 
 /**
- * ボタンの面の図柄。行先ボタンは階名、開・閉ボタンは ◀|▶・▶|◀、乗場のボタンは矢印、非常呼びは「SOS」。
+ * ボタンの面の図柄。行先ボタンは階名、開・閉ボタンは ◀|▶・▶|◀、開延長は ◀|▶ と「＋」、乗場のボタンは矢印、非常呼びは「SOS」。
  * 応答灯がつくと、図柄そのものが光る。
  *
  * <p>図柄だけは、1px を4分割した細かいドット（1/64 ブロック）で描く（1ブロック＝16px の原則の例外）。
@@ -24,6 +24,9 @@ public final class ButtonGlyphs {
     private static final String[] CLOSE = {"#...#...#", "##..#..##", "###.#.###", "##..#..##", "#...#...#"};
     private static final String[] OPEN_SMALL = {".#.#.#.", "##.#.##", ".#.#.#."};
     private static final String[] CLOSE_SMALL = {"#..#..#", "##.#.##", "#..#..#"};
+    private static final String[] EXTEND = {"..#.#.#..", ".##.#.##.", "###.#.###", ".##.#.##.", "..#.#.#..", ".........",
+            "....#....", "....#....", "..#####..", "....#....", "....#...."};
+    private static final String[] EXTEND_SMALL = {".#.#.#.", "##.#.##", ".#.#.#.", ".......", "...#...", "..###..", "...#..."};
     private static final String[] UP = {"..#..", ".###.", "#.#.#", "..#..", "..#.."};
 
     /**
@@ -51,6 +54,7 @@ public final class ButtonGlyphs {
                     (size - UP.length) / 2);
             case OPEN -> addPattern(symbol, grid, small ? OPEN_SMALL : OPEN, size, (size - (small ? 3 : 5)) / 2);
             case CLOSE -> addPattern(symbol, grid, small ? CLOSE_SMALL : CLOSE, size, (size - (small ? 3 : 5)) / 2);
+            case OPEN_EXTEND -> addPattern(symbol, grid, small ? EXTEND_SMALL : EXTEND, size, (size - (small ? EXTEND_SMALL : EXTEND).length) / 2);
             case EMERGENCY -> addText(symbol, grid, small ? "S" : "SOS", size, (size - DotFont.HEIGHT) / 2);
         }
         return new Glyph(symbol);

@@ -25,6 +25,9 @@ package net.lausiv1024.realelevator.core.door;
  * （{@value #NUDGE_CLOSE_TICKS} tick）で閉める。
  * ナッジング中は開く操作（{@link #open}）と多光軸ビーム（{@link #hold}）を受け付けない。セーフティシュー（{@link #obstruct}）では
  * 開き直すが、開ききったらすぐにまた閉め始め、閉まりきるまでナッジングを続ける。
+ *
+ * <p>開延長（{@link #extend}）：全開になってから {@value #EXTENSION_TICKS} tick（60秒）開けておく。そのあいだは開く操作と多光軸ビームで
+ * 時間を変えず、強制戸閉の60秒も数えない（終わると数え直す）。閉ボタンで解除する。
  */
 public final class DoorController {
     /** {@link #tick} で起きたこと。 */
@@ -44,6 +47,8 @@ public final class DoorController {
     public static final int NUDGE_OPEN_TICKS = 1200;
     /** ナッジングで閉じるのにかかる時間 [tick]（普通の2倍）。 */
     public static final int NUDGE_CLOSE_TICKS = 100;
+    /** 開延長で開けておく時間 [tick]（60秒）。 */
+    public static final int EXTENSION_TICKS = 1200;
 
     private final DoorTiming timing;
     /** 自動で閉めるとき、戸閉アナウンスを流してから閉め始めるまでの時間 [tick]。0なら待たない。 */
@@ -58,6 +63,8 @@ public final class DoorController {
     private boolean slowClose;
     /** ナッジング中か。閉まりきると終わる。 */
     private boolean nudging;
+    /** 開延長中か。 */
+    private boolean extended;
     /** 閉まりきってから開き始めたゲーム時刻。サーバーだけが使う。 */
     private long openedAt;
     /** 閉まりきるまでに続けて反転した回数。サーバーだけが使う。 */
@@ -110,6 +117,11 @@ public final class DoorController {
                 this.slowClose |= slowClose;
             }
             case OPEN -> {
+                if (extended) {
+                    // 開延長の時間は、開く操作では変えない
+                    this.slowClose |= slowClose;
+                    return;
+                }
                 startTick = now;
                 this.dwellTicks = this.slowClose ? Math.max(this.dwellTicks, dwellTicks) : dwellTicks;
                 this.slowClose |= slowClose;
@@ -123,14 +135,44 @@ public final class DoorController {
      * 検知がなくなってから待機時間がたつと閉め始める。反転の回数（ナッジング）には数えない。
      */
     public void hold(long now) {
-        if (state == DoorState.OPEN && !nudging) {
+        if (state == DoorState.OPEN && !nudging && !extended) {
             startTick = now;
             closeAt = -1;
         }
     }
 
+    /**
+     * 開延長。開いている（開きかけの）戸を、全開になってから {@value #EXTENSION_TICKS} tick 開けておく。延長中に押すと数え直す。
+     * 閉まっている戸は先に {@link #open} で開いておくこと。強制戸閉中は受け付けない。
+     */
+    public void extend(long now) {
+        if (nudging || (state != DoorState.OPEN && state != DoorState.OPENING)) {
+            return;
+        }
+        extended = true;
+        if (state == DoorState.OPEN) {
+            startTick = now;
+            closeAt = -1;
+        }
+    }
+
+    /** 開延長中か。 */
+    public boolean isExtended() {
+        return extended;
+    }
+
+    /** 開延長を解除する。戸は閉めない（全開の戸を閉めるのは {@link #close}）。 */
+    public void cancelExtension() {
+        if (extended && state == DoorState.OPEN) {
+            // 通常の開放待機が終わったものとして閉める
+            startTick -= dwellTicks;
+        }
+        extended = false;
+    }
+
     /** 閉ボタン。開放待機中なら、待機時間を打ち切り、戸閉アナウンスも待たずにすぐに閉じ始める。 */
     public void close(long now) {
+        extended = false;
         if (state == DoorState.OPEN) {
             startClosing(now);
         }
@@ -175,6 +217,7 @@ public final class DoorController {
                         // 反転の開き直しが終わったので、ナッジングで閉め始める
                         nudgePending = false;
                         nudging = true;
+                        extended = false;
                         startClosing(now);
                         return Event.NUDGING_STARTED;
                     }
@@ -186,6 +229,15 @@ public final class DoorController {
                     // ナッジング中は、開ききったらすぐにまた閉める
                     startClosing(now);
                     return Event.STATE_CHANGED;
+                }
+                if (extended) {
+                    if (now - startTick < EXTENSION_TICKS) {
+                        return Event.NONE;
+                    }
+                    // 延長が終わった。強制戸閉の時間を数え直し、開放待機が終わったものとして閉める
+                    extended = false;
+                    openedAt = now;
+                    startTick = now - dwellTicks;
                 }
                 if (now - openedAt >= NUDGE_OPEN_TICKS) {
                     nudging = true;
@@ -245,6 +297,12 @@ public final class DoorController {
 
     /** サーバーから届いた状態をそのまま反映する（クライアント用、読み込み用）。 */
     public void restore(DoorState state, long startTick, double startFraction, int dwellTicks, boolean slowClose, boolean nudging) {
+        restore(state, startTick, startFraction, dwellTicks, slowClose, nudging, false);
+    }
+
+    /** サーバーから届いた状態をそのまま反映する（クライアント用、読み込み用）。 */
+    public void restore(DoorState state, long startTick, double startFraction, int dwellTicks, boolean slowClose, boolean nudging, boolean extended) {
+        this.extended = extended;
         this.slowClose = slowClose;
         this.nudging = nudging;
         this.openedAt = startTick;

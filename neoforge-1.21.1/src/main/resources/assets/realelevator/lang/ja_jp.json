@@ -218,5 +218,20 @@
   "gui.realelevator.profile.hint_specification": "一覧から選んで仕様書に書けます",
   "message.realelevator.install.materials": "鉄インゴット×%s、レッドストーン×%s",
   "message.realelevator.install.no_materials": "材料が足りません（%s が必要）",
-  "gui.realelevator.panel.status.ready_materials": "設置できます（%s を使います）"
+  "gui.realelevator.panel.status.ready_materials": "設置できます（%s を使います）",
+  "gui.realelevator.access.open": "権限…",
+  "gui.realelevator.access.title": "管理できるプレイヤー",
+  "gui.realelevator.access.owner": "設置者：%s",
+  "gui.realelevator.access.name": "プレイヤー名（オンラインの人）",
+  "gui.realelevator.access.add": "追加",
+  "gui.realelevator.access.remove": "削除",
+  "gui.realelevator.access.none": "許可したプレイヤーはいません",
+  "message.realelevator.access.denied": "このエレベーターを管理できるのは、設置者（%s）と許可されたプレイヤーだけです",
+  "message.realelevator.access.denied_selected": "このエレベーターを管理する権限がありません",
+  "message.realelevator.access.added": "%s を許可しました",
+  "message.realelevator.access.removed": "%s の許可を取り消しました",
+  "message.realelevator.access.not_listed": "%s は許可されていません",
+  "message.realelevator.access.not_online": "%s はオンラインではありません",
+  "message.realelevator.access.cannot_add": "%s は追加できません（設置者、許可済み、または上限です）",
+  "gui.realelevator.panel.open_extension": "開延長ボタン"
 }

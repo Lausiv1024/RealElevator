@@ -15,7 +15,7 @@ import net.lausiv1024.realelevator.core.panel.ButtonLayout.Kind;
  * かごの主操作盤（袖壁の縦長の板）の配置。
  *
  * <p>袖壁の幅いっぱいの板を、床の近くから天井の近くまで、袖壁から1px浮かせて貼る。上から、黒い表示窓（矢印と階）、
- * 黒い帯、非常呼びボタン、行先ボタン（2列）、開・閉ボタンの順に並べる。
+ * 黒い帯、非常呼びボタン、行先ボタン（2列）、開・閉ボタン、開延長ボタン（設定で付ける。開ボタンの下）の順に並べる。
  *
  * <p>ボタンは3px角を基本とする。袖壁が狭く、3px角を2列に並べると両脇に1pxずつの余白が残らない（{@value #MIN_JAMB_FOR_LARGE_PX}px 未満の）
  * 機種では、はじめから2px角にする。行先ボタンが多くて収まらないときは、まず操作盤の下端（開・閉ボタンの下端、
@@ -132,6 +132,14 @@ public final class CarPanelLayout {
      * 袖壁 right（かごの中から扉の方を向いて右側か）の操作盤のボタン。並びは開、閉、1階、2階…、非常呼び（あれば）。
      */
     public List<Button> buttons(CarSpec spec, int floorCount, boolean right) {
+        return buttons(spec, floorCount, right, false);
+    }
+
+    /**
+     * {@link #buttons(CarSpec, int, boolean)} に、openExtension なら開延長ボタンを足したもの（開ボタンの下で、並びの最後）。
+     * 開・閉ボタンの下端は {@value #MIN_BOTTOM_PX}px より下がらないので、板の下端（{@value #PLATE_BOTTOM_PX}px）までに必ず収まる。
+     */
+    public List<Button> buttons(CarSpec spec, int floorCount, boolean right, boolean openExtension) {
         int pitch = buttonPx + ButtonLayout.GAP_PX;
         int jambMin = ButtonLayout.jambMinPx(spec, right);
         int groupWidth = buttonPx * 2 + ButtonLayout.GAP_PX;
@@ -150,6 +158,9 @@ public final class CarPanelLayout {
         }
         if (emergency) {
             buttons.add(new Button(Kind.EMERGENCY, -1, button(leftColumn, emergencyBottom(buttonPx), face), Normal.NEG_Z));
+        }
+        if (openExtension) {
+            buttons.add(new Button(Kind.OPEN_EXTEND, -1, button(leftColumn, bottomPx - pitch, face), Normal.NEG_Z));
         }
         return buttons;
     }

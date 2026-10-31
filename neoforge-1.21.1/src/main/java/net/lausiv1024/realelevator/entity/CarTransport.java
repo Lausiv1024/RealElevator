@@ -19,6 +19,8 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
  * <p>プレイヤーはクライアントが位置を決めるので、クライアントでローカルプレイヤーだけを動かす。
  * それ以外のエンティティはサーバーで動かす。どちらも、そのエンティティの移動処理の直前に、
  * 前のtickからかごが実際に動いた量（{@link ElevatorCarEntity#carryDelta}）を加える。
+ *
+ * <p>サーバーからの位置で動くエンティティ（モブ、ボートなど）は、クライアントでは遅れて見えるので、描画のためにかごの床に合わせる。
  */
 @EventBusSubscriber(modid = RealElevator.MODID)
 public final class CarTransport {
@@ -35,7 +37,9 @@ public final class CarTransport {
             return;
         }
         Level level = entity.level();
-        boolean movedHere = level.isClientSide ? entity.isControlledByLocalInstance() : !(entity instanceof Player);
+        // プレイヤーが操縦している乗り物の位置も、プレイヤーのクライアントが決める
+        boolean movedHere = level.isClientSide ? entity.isControlledByLocalInstance()
+                : !(entity instanceof Player) && !(entity.getControllingPassenger() instanceof Player);
         if (!movedHere) {
             return;
         }
@@ -50,18 +54,45 @@ public final class CarTransport {
                 continue;
             }
             double dy = car.carryDelta(now);
-            if (dy == 0 || !car.carries(entity, car.carryFromY(now))) {
+            if (!car.carries(entity, car.carryFromY(now))) {
                 continue;
             }
-            entity.setPos(entity.getX(), entity.getY() + dy, entity.getZ());
-            // ゲーム時刻が飛んで床が1tick分より大きく動いたときは、床の中に取り残されるので押し上げる
-            double surface = car.sunkSurface(entity, now);
+            double surface;
+            if (dy != 0) {
+                entity.setPos(entity.getX(), entity.getY() + dy, entity.getZ());
+                // ゲーム時刻が飛んで床が1tick分より大きく動いたときは、床の中に取り残されるので押し上げる
+                surface = car.sunkSurface(entity, now);
+            } else {
+                surface = car.restingSunkSurface(entity, now);
+            }
             if (!Double.isNaN(surface)) {
                 entity.setPos(entity.getX(), surface, entity.getZ());
                 Vec3 motion = entity.getDeltaMovement();
                 entity.setDeltaMovement(motion.x, Math.max(0, motion.y), motion.z);
             }
             return;
+        }
+    }
+
+    /** サーバーからの位置で動くエンティティが地面に立っていれば、クライアントで、走っているかごの床に合わせる。 */
+    @SubscribeEvent
+    static void onEntityTickPost(EntityTickEvent.Post event) {
+        Entity entity = event.getEntity();
+        Level level = entity.level();
+        if (!level.isClientSide || ElevatorTracker.isElevatorPart(entity) || entity.isSpectator() || entity.isPassenger()
+                || entity.isControlledByLocalInstance() || !entity.onGround()) {
+            return;
+        }
+        double now = ElevatorClock.now(level);
+        for (ElevatorCarEntity car : ElevatorTracker.cars(level)) {
+            if (car.isRemoved() || !car.isSettling(now)) {
+                continue;
+            }
+            double surface = car.restingSurface(entity, now);
+            if (!Double.isNaN(surface)) {
+                entity.setPos(entity.getX(), surface, entity.getZ());
+                return;
+            }
         }
     }
 
@@ -76,6 +107,8 @@ public final class CarTransport {
     static void onPlayerTickPost(PlayerTickEvent.Post event) {
         if (event.getEntity() instanceof ServerPlayer player && ridesLagging(player)) {
             player.connection.aboveGroundTickCount = 0;
+            // ボートなどに乗っているときは、乗り物の浮遊時間でキックされる
+            player.connection.aboveGroundVehicleTickCount = 0;
         }
     }
 

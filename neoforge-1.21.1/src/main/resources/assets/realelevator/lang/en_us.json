@@ -218,5 +218,20 @@
   "gui.realelevator.profile.hint_specification": "Pick one to write it to the specification",
   "message.realelevator.install.materials": "%s iron ingots and %s redstone",
   "message.realelevator.install.no_materials": "Not enough materials (needs %s)",
-  "gui.realelevator.panel.status.ready_materials": "Ready to install (uses %s)"
+  "gui.realelevator.panel.status.ready_materials": "Ready to install (uses %s)",
+  "gui.realelevator.access.open": "Access…",
+  "gui.realelevator.access.title": "Players who can manage",
+  "gui.realelevator.access.owner": "Owner: %s",
+  "gui.realelevator.access.name": "Player name (online)",
+  "gui.realelevator.access.add": "Add",
+  "gui.realelevator.access.remove": "Remove",
+  "gui.realelevator.access.none": "No players allowed",
+  "message.realelevator.access.denied": "Only the owner (%s) and allowed players can manage this elevator",
+  "message.realelevator.access.denied_selected": "You don't have permission to manage this elevator",
+  "message.realelevator.access.added": "Allowed %s",
+  "message.realelevator.access.removed": "Removed %s",
+  "message.realelevator.access.not_listed": "%s is not on the list",
+  "message.realelevator.access.not_online": "%s is not online",
+  "message.realelevator.access.cannot_add": "Can't add %s (owner, already allowed, or the list is full)",
+  "gui.realelevator.panel.open_extension": "Door hold button"
 }

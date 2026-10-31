@@ -46,8 +46,8 @@ public class RenewalScreen extends Screen {
 
         int bottom = height - 26;
         int gap = SettingsForm.GAP;
-        int buttonWidth = Math.min(100, (width - SettingsForm.MARGIN * 2 - gap * 4) / 5);
-        int buttonsLeft = (width - buttonWidth * 5 - gap * 4) / 2;
+        int buttonWidth = Math.min(100, (width - SettingsForm.MARGIN * 2 - gap * 5) / 6);
+        int buttonsLeft = (width - buttonWidth * 6 - gap * 5) / 2;
         addRenderableWidget(Button.builder(Component.translatable("gui.realelevator.renewal.dismantle"), b -> confirmDismantle())
                 .bounds(buttonsLeft, bottom, buttonWidth, 20).build());
         // 群の入れ外しは結果をチャットに出すので、画面を閉じる（開き直すと台数が新しくなる）
@@ -69,8 +69,13 @@ public class RenewalScreen extends Screen {
                 }, true));
             }
         }).bounds(buttonsLeft + (buttonWidth + gap) * 3, bottom, buttonWidth, 20).build());
+        addRenderableWidget(Button.builder(Component.translatable("gui.realelevator.access.open"), b -> {
+            if (minecraft != null) {
+                minecraft.setScreen(new AccessScreen(this, doorId, this.settings.getCompound("Access")));
+            }
+        }).bounds(buttonsLeft + (buttonWidth + gap) * 4, bottom, buttonWidth, 20).build());
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
-                .bounds(buttonsLeft + (buttonWidth + gap) * 4, bottom, buttonWidth, 20).build());
+                .bounds(buttonsLeft + (buttonWidth + gap) * 5, bottom, buttonWidth, 20).build());
     }
 
     private void confirmDismantle() {

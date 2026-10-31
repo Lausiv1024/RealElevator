@@ -7,6 +7,7 @@ import com.mojang.logging.LogUtils;
 import net.lausiv1024.realelevator.command.DebugCommands;
 import net.lausiv1024.realelevator.client.ClientAnnouncements;
 import net.lausiv1024.realelevator.client.ClientPresets;
+import net.lausiv1024.realelevator.client.AccessScreen;
 import net.lausiv1024.realelevator.client.RenewalScreen;
 import net.lausiv1024.realelevator.network.AnnouncePayload;
 import net.lausiv1024.realelevator.network.PressButtonPayload;
@@ -64,12 +65,14 @@ public class RealElevator {
                 .playToServer(RenewalPayloads.Apply.TYPE, RenewalPayloads.Apply.STREAM_CODEC, RenewalPayloads.Apply::handle)
                 .playToServer(RenewalPayloads.Dismantle.TYPE, RenewalPayloads.Dismantle.STREAM_CODEC, RenewalPayloads.Dismantle::handle)
                 .playToServer(RenewalPayloads.Group.TYPE, RenewalPayloads.Group.STREAM_CODEC, RenewalPayloads.Group::handle)
+                .playToServer(RenewalPayloads.AccessEdit.TYPE, RenewalPayloads.AccessEdit.STREAM_CODEC, RenewalPayloads.AccessEdit::handle)
                 .playToServer(PowerPayloads.Select.TYPE, PowerPayloads.Select.STREAM_CODEC, PowerPayloads.Select::handle)
                 .playToServer(ProfilePayloads.UseOnDoor.TYPE, ProfilePayloads.UseOnDoor.STREAM_CODEC, ProfilePayloads.UseOnDoor::handle)
                 .playToServer(ProfilePayloads.Write.TYPE, ProfilePayloads.Write.STREAM_CODEC, ProfilePayloads.Write::handle)
                 // クライアント側の処理は、ラムダの中で呼ぶのでサーバーでは読み込まれない
                 .playToClient(AnnouncePayload.TYPE, AnnouncePayload.STREAM_CODEC, (payload, context) -> ClientAnnouncements.handle(payload))
                 .playToClient(RenewalPayloads.Show.TYPE, RenewalPayloads.Show.STREAM_CODEC, (payload, context) -> RenewalScreen.open(payload))
+                .playToClient(RenewalPayloads.AccessList.TYPE, RenewalPayloads.AccessList.STREAM_CODEC, (payload, context) -> AccessScreen.update(payload))
                 .playToClient(PresetPayloads.Sync.TYPE, PresetPayloads.Sync.STREAM_CODEC, (payload, context) -> ClientPresets.handle(payload));
     }
 

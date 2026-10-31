@@ -84,6 +84,22 @@ public class InstallGameTests {
         return panel;
     }
 
+    /** 設置者と許可されたプレイヤーだけが管理できる。設置者の記録がなければ、最初に操作したプレイヤーが設置者になる。 */
+    @GameTest(template = "empty_shaft", timeoutTicks = 20)
+    public static void onlyTheOwnerAndAllowedPlayersCanManage(GameTestHelper helper) {
+        ControllerBlockEntity controller = new ControllerBlockEntity(BlockPos.ZERO, ModBlocks.CONTROLLER.get().defaultBlockState());
+        Player first = helper.makeMockPlayer(GameType.SURVIVAL);
+        Player other = helper.makeMockPlayer(GameType.SURVIVAL);
+        helper.assertTrue(!controller.access().hasOwner(), "no owner yet");
+        helper.assertTrue(controller.canManage(first), "the first player should claim it");
+        helper.assertTrue(controller.access().isOwner(first.getUUID()), "the first player should be the owner");
+        helper.assertTrue(!controller.canManage(other), "another player should be denied");
+        controller.access().allow(other.getUUID(), "other");
+        helper.assertTrue(controller.canManage(other), "an allowed player should be accepted");
+        helper.assertTrue(!controller.canEditAccess(other), "an allowed player should not edit the list");
+        helper.succeed();
+    }
+
     @GameTest(template = TEMPLATE, timeoutTicks = 400)
     public static void installPlacesTheCarDoorsRailsAndController(GameTestHelper helper) {
         InstallerBlockEntity panel = placePanel(helper);

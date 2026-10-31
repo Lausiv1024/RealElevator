@@ -1,6 +1,7 @@
 package net.lausiv1024.realelevator.network;
 
 import net.lausiv1024.realelevator.RealElevator;
+import net.lausiv1024.realelevator.block.ControllerBlockEntity;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
 import net.lausiv1024.realelevator.registry.ModDataComponents;
@@ -48,6 +49,10 @@ public final class PowerPayloads {
             double reach = player.blockInteractionRange() + REACH_MARGIN;
             ElevatorCarEntity car = door.car();
             if (car == null || door.getBoundingBox().distanceToSqr(player.getEyePosition()) > reach * reach) {
+                return;
+            }
+            if (!ControllerBlockEntity.canManage(player, car)) {
+                player.displayClientMessage(Component.translatable("message.realelevator.access.denied_selected"), true);
                 return;
             }
             wrench.set(ModDataComponents.SELECTED_CAR.get(), car.getUUID());
