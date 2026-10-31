@@ -1683,13 +1683,17 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
      * 足元が床面（少し下まで許す）から屋根の少し上までの間にあれば運ぶ。
      */
     public boolean carries(Entity entity, double carY) {
+        return carries(entity, carY, carY);
+    }
+
+    /** {@link #carries(Entity, double)} の、かごの床面が lowY から highY までのどこかにあればよいもの。 */
+    public boolean carries(Entity entity, double lowY, double highY) {
         Box exterior = CarShapes.exterior(spec(), facing());
         double localX = entity.getX() - getX();
         double localZ = entity.getZ() - getZ();
-        double feet = entity.getY() - carY;
         return localX > exterior.minX() && localX < exterior.maxX()
                 && localZ > exterior.minZ() && localZ < exterior.maxZ()
-                && feet > exterior.minY() - 0.25 && feet < exterior.maxY() + 0.5;
+                && entity.getY() > lowY + exterior.minY() - 0.25 && entity.getY() < highY + exterior.maxY() + 0.5;
     }
 
     /**

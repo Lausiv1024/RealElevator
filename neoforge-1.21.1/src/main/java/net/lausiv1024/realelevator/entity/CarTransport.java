@@ -22,6 +22,9 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
  */
 @EventBusSubscriber(modid = RealElevator.MODID)
 public final class CarTransport {
+    /** 浮遊時間を数えないときに見込む、サーバーにあるプレイヤーの位置の遅れ [tick]。 */
+    private static final int FLOATING_LAG_TICKS = 40;
+
     private CarTransport() {
     }
 
@@ -65,17 +68,30 @@ public final class CarTransport {
     /**
      * かごの下は昇降路の空間なので、バニラの「足元にブロックがない」判定で浮遊とみなされ、
      * 飛行が許可されていないサーバーでキックされてしまう。かごの中にいる間は浮遊時間を数えない。
+     *
+     * <p>サーバーにあるプレイヤーの位置は、クライアントの時計の遅れと通信の分だけ、かごより前の時刻のものになる。
+     * 上昇中はかごの床より下に見えるので、直近 {@value #FLOATING_LAG_TICKS} tick のかごの位置のどこかに乗っていればよいことにする。
      */
     @SubscribeEvent
     static void onPlayerTickPost(PlayerTickEvent.Post event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
-            return;
+        if (event.getEntity() instanceof ServerPlayer player && ridesLagging(player)) {
+            player.connection.aboveGroundTickCount = 0;
         }
-        for (ElevatorCarEntity car : ElevatorTracker.cars(player.level())) {
-            if (!car.isRemoved() && car.carries(player, car.getY())) {
-                player.connection.aboveGroundTickCount = 0;
-                return;
+    }
+
+    /** サーバーにある entity の位置が、直近 {@value #FLOATING_LAG_TICKS} tick のどこかのかごの位置に乗っているか。 */
+    public static boolean ridesLagging(Entity entity) {
+        double now = ElevatorClock.now(entity.level());
+        for (ElevatorCarEntity car : ElevatorTracker.cars(entity.level())) {
+            if (car.isRemoved()) {
+                continue;
+            }
+            double past = car.yAt(now - FLOATING_LAG_TICKS);
+            double present = car.yAt(now);
+            if (car.carries(entity, Math.min(past, present), Math.max(past, present))) {
+                return true;
             }
         }
+        return false;
     }
 }

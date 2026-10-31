@@ -28,6 +28,7 @@ import net.lausiv1024.realelevator.core.door.DoorTiming;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
+import net.lausiv1024.realelevator.entity.CarTransport;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.ElevatorGroups;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
@@ -133,6 +134,31 @@ public class ElevatorCarGameTests {
             helper.assertTrue(pushed.get() && !car.isMoving(), "not arrived yet");
             helper.assertTrue(Math.abs(stand.getY() - car.getY()) < EPS, "not on the floor: " + (stand.getY() - car.getY()));
         });
+    }
+
+    /**
+     * 上昇中、サーバーにあるプレイヤーの位置は通信の遅れの分だけかごの床より下に見える。
+     * 1秒遅れた位置でも、浮遊時間を数えない（飛行でキックしない）対象になる。
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = 300)
+    public static void aLaggingRiderIsNotCountedAsFloating(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.HIGH, 0, RISE).car();
+        ArmorStand stand = helper.spawn(EntityType.ARMOR_STAND, LOWER);
+        stand.setNoGravity(true);
+        helper.runAtTickTime(5, () -> car.pressCarCall(1));
+        AtomicBoolean lagged = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            double now = helper.getLevel().getGameTime();
+            double laggingY = car.yAt(now - 20);
+            stand.setPos(car.getX(), laggingY, car.getZ());
+            if (car.isMoving() && car.getY() - laggingY > 1) {
+                lagged.set(true);
+            }
+            if (!CarTransport.ridesLagging(stand)) {
+                helper.fail("counted as floating " + (laggingY - car.getY()) + " below the floor", stand);
+            }
+        });
+        helper.succeedWhen(() -> helper.assertTrue(lagged.get() && !car.isMoving(), "not arrived yet"));
     }
 
     /** 着床すると戸が開き、行先階の乗場の扉だけが一緒に開く。開放待機のあと閉じる。 */
