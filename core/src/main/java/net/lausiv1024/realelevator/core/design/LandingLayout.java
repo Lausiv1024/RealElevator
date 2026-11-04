@@ -34,7 +34,7 @@ import net.lausiv1024.realelevator.core.panel.WheelchairPanelLayout;
  * <li>枠：出入口のまわりに幅{@value #FRAME_PX}px、壁の面から{@value #FRAME_PROTRUSION_PX}px出っ張る枠。幕板付きでは、上の部分を
  * 三方枠の範囲の上端まで伸ばす。埋め込みの操作盤では、右の枠を{@value #EMBEDDED_FRAME_PX}pxにする。</li>
  * <li>壁：三方枠の範囲のうち枠の外。ブロックの格子に合わせて1ブロックずつに分け、まわりの壁と同じ素材の見た目で描く。</li>
- * <li>操作盤：壁付けでは、枠のすぐ右（1px空ける。脇が狭ければ接して）に幅{@value #PANEL_WIDTH_PX}pxの板を貼る。上から、表示窓、▲▼、車椅子マーク、
+ * <li>操作盤：壁付けでは、枠のすぐ右（1px空ける。脇が狭ければ接して）に幅{@value #PANEL_WIDTH_PX}pxの板を貼る（3文字の階名があれば、板と表示窓を{@value #LONG_LABEL_EXTRA_PX}px広げる）。上から、表示窓、▲▼、車椅子マーク、
  * 車椅子用の▲▼、鍵スイッチ（飾り）。埋め込みでは、同じ並びを右の枠に埋め込む。表示窓がないとき（群管理向けや、表示器が扉の上のとき）は、
  * ボタンを少し下げる。</li>
  * <li>ホールランタン：扉の横は、枠のすぐ左（1px空ける）に縦長。扉の右（群管理向けだけ）は操作盤の上に縦長。扉の上は、細枠なら枠の上の壁に、
@@ -49,6 +49,8 @@ public final class LandingLayout {
     /** 枠と、壁付けの操作盤やランタンの間のすき間 [px]。 */
     public static final int PANEL_GAP_PX = 1;
     public static final int WINDOW_WIDTH_PX = 4;
+    /** 3文字の階名のために、壁付けの操作盤の板と表示窓を広げる幅 [px]（0.5px のドットで 3×5 の文字3つ）。 */
+    public static final int LONG_LABEL_EXTRA_PX = 2;
     public static final int WINDOW_HEIGHT_PX = 7;
     public static final int MARK_PX = 4;
     public static final int KEY_PX = 2;
@@ -122,14 +124,22 @@ public final class LandingLayout {
     private final int headTop;
     private final boolean embedded;
     private final boolean window;
+    /** 3文字の階名があるか（表示器を広げる）。 */
+    private final boolean longLabels;
+    /** 壁付けの操作盤の板と、表示窓の幅 [px]。 */
+    private final int panelWidth;
+    private final int windowWidth;
     private final int down;
     /** 操作盤の列の中心の X [px]。 */
     private final double column;
     /** 操作盤の部品を付ける面の Z [ブロック]。 */
     private final double surface;
 
-    private LandingLayout(CarSpec spec, FixtureConfig fixtures, Landing landing, double faceOffset) {
+    private LandingLayout(CarSpec spec, FixtureConfig fixtures, Landing landing, double faceOffset, boolean longLabels) {
         this.spec = spec;
+        this.longLabels = longLabels;
+        this.panelWidth = PANEL_WIDTH_PX + (longLabels ? LONG_LABEL_EXTRA_PX : 0);
+        this.windowWidth = WINDOW_WIDTH_PX + (longLabels ? LONG_LABEL_EXTRA_PX : 0);
         this.fixtures = fit(fixtures, landing);
         this.landing = landing;
         this.face = DoorGeometry.landingFace(spec, faceOffset);
@@ -145,14 +155,19 @@ public final class LandingLayout {
         this.window = this.fixtures.hasHallIndicator() && this.fixtures.hallIndicator() == HallIndicator.OVER_BUTTONS;
         this.down = window ? DOWN_WITH_WINDOW_PX : DOWN_WITHOUT_WINDOW_PX;
         // 脇が狭くて（片開きの P-13 など）すき間を空けると収まらないときは、枠に接して貼る
-        int gap = Math.clamp(half - rightOuter - PANEL_WIDTH_PX, 0, PANEL_GAP_PX);
-        this.column = embedded ? entranceMax + EMBEDDED_FRAME_PX / 2.0 : rightOuter + gap + PANEL_WIDTH_PX / 2.0;
+        int gap = Math.clamp(half - rightOuter - panelWidth, 0, PANEL_GAP_PX);
+        this.column = embedded ? entranceMax + EMBEDDED_FRAME_PX / 2.0 : rightOuter + gap + panelWidth / 2.0;
         this.surface = embedded ? frameFront() : face + PX;
     }
 
     /** 出入口 entrance の乗場（乗場の面を faceOffset だけずらしたもの）の配置。fixtures は {@link #fit} で選べる配置に直す。 */
     public static LandingLayout of(CarSpec spec, FixtureConfig fixtures, Landing landing, double faceOffset) {
-        return new LandingLayout(spec, fixtures, landing, faceOffset);
+        return of(spec, fixtures, landing, faceOffset, false);
+    }
+
+    /** {@link #of(CarSpec, FixtureConfig, Landing, double)} の、longLabels なら3文字の階名の分だけ表示器を広げたもの。 */
+    public static LandingLayout of(CarSpec spec, FixtureConfig fixtures, Landing landing, double faceOffset, boolean longLabels) {
+        return new LandingLayout(spec, fixtures, landing, faceOffset, longLabels);
     }
 
     /**
@@ -211,7 +226,7 @@ public final class LandingLayout {
         parts.add(new Part(Type.FRAME, box(leftOuter, entranceTop, rightOuter, headTop, back, front)));
         parts.addAll(sill(spec, DoorGeometry.Side.LANDING, front));
         if (!embedded) {
-            parts.add(new Part(Type.PLATE, box(column - PANEL_WIDTH_PX / 2.0, plateBottom(), column + PANEL_WIDTH_PX / 2.0, plateTop(),
+            parts.add(new Part(Type.PLATE, box(column - panelWidth / 2.0, plateBottom(), column + panelWidth / 2.0, plateTop(),
                     face, face + PX)));
         }
         if (window) {
@@ -331,7 +346,7 @@ public final class LandingLayout {
         }
         boolean fascia = landing.frame() == FrameStyle.FASCIA;
         int facePx = (int) Math.round((fascia ? frameFront() : face) * BLOCK_PX);
-        return FloorIndicator.hallOverDoor(spec, overDoorIndicatorBottom(), facePx, label, direction);
+        return FloorIndicator.hallOverDoor(spec, overDoorIndicatorBottom(), facePx, label, direction, longLabels);
     }
 
     /** 扉の上の表示器の下端 [px]。幕板付きなら出入口の1px上、細枠なら枠の1px上。 */
@@ -396,7 +411,7 @@ public final class LandingLayout {
 
     private Box windowBox() {
         int bottom = down + ButtonLayout.BUTTON_PX * 2 + GAP_PX * 2;
-        return box(column - WINDOW_WIDTH_PX / 2.0, bottom, column + WINDOW_WIDTH_PX / 2.0, bottom + WINDOW_HEIGHT_PX, surface, surface + SURFACE);
+        return box(column - windowWidth / 2.0, bottom, column + windowWidth / 2.0, bottom + WINDOW_HEIGHT_PX, surface, surface + SURFACE);
     }
 
     private int plateBottom() {

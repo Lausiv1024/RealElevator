@@ -127,9 +127,8 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
     /** この乗場の配置。かごが読み込まれていなければ、初期値の設定で求める。 */
     public LandingLayout layout() {
         ElevatorCarEntity car = car();
-        FixtureConfig fixtures = car != null ? car.fixtures() : FixtureConfig.DEFAULT;
-        InteriorConfig.Landing landing = car != null ? car.interior().landing() : InteriorConfig.Landing.DEFAULT;
-        return LandingLayout.of(spec(), fixtures, landing, faceOffset());
+        return car != null ? car.landingLayout(faceOffset())
+                : LandingLayout.of(spec(), FixtureConfig.DEFAULT, InteriorConfig.Landing.DEFAULT, faceOffset());
     }
 
     /** かごがこの階に着床しているかどうか（ランディングオープンでは、着床の直前に戸が開き始めたときから）。 */

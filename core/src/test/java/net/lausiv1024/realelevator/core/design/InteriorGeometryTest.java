@@ -67,6 +67,22 @@ class InteriorGeometryTest {
         assertEquals(2, of(Type.BASEBOARD, InteriorGeometry.parts(spec, true, InteriorConfig.DEFAULT)).size());
     }
 
+    /** 扉の上に表示器があるときは、間接照明の天井の縁取りの前の辺を下げず、トランサムの表示器を隠さない。 */
+    @Test
+    void indirectCeilingDoesNotHideTheTransomIndicator() {
+        CarSpec spec = CarSpec.of(CarModel.P11);
+        InteriorConfig indirect = InteriorConfig.DEFAULT.withCeiling(InteriorConfig.CeilingType.INDIRECT);
+        Box in = CarGeometry.interior(spec);
+        double lowest = of(Type.CEILING_PANEL, InteriorGeometry.parts(spec, false, false, indirect, true)).stream()
+                .filter(part -> part.box().maxZ() >= in.maxZ() - EPS && part.box().minX() <= in.minX() + EPS && part.box().maxX() >= in.maxX() - EPS)
+                .mapToDouble(part -> part.box().minY()).min().orElseThrow();
+        assertTrue(lowest > in.maxY() - 0.01, "the front edge should stay at the ceiling: " + lowest);
+        double dropped = of(Type.CEILING_PANEL, InteriorGeometry.parts(spec, false, false, indirect, false)).stream()
+                .filter(part -> part.box().maxZ() >= in.maxZ() - EPS && part.box().minX() <= in.minX() + EPS && part.box().maxX() >= in.maxX() - EPS)
+                .mapToDouble(part -> part.box().minY()).min().orElseThrow();
+        assertEquals(in.maxY() - 1.0 / 16, dropped, EPS);
+    }
+
     @Test
     void ceilingsHaveTheirLights() {
         CarSpec spec = CarSpec.of(CarModel.P11);

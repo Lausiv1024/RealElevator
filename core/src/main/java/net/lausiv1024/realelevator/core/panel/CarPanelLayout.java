@@ -7,6 +7,7 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.car.Normal;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout.Kind;
@@ -182,13 +183,40 @@ public final class CarPanelLayout {
         return parts;
     }
 
-    /** 袖壁 right の操作盤の表示窓。両端に0.5pxずつ板を残す。 */
+    /**
+     * 袖壁 right の操作盤の表示窓。どの機種も同じ幅（{@link #windowWidthPx}）で、袖壁の幅の中央に置く。
+     */
     public static Box window(CarSpec spec, boolean right) {
-        int jambMin = ButtonLayout.jambMinPx(spec, right);
-        int jambMax = jambMin + ButtonLayout.jambWidthPx(spec, right);
+        double center = ButtonLayout.jambMinPx(spec, right) + ButtonLayout.jambWidthPx(spec, right) / 2.0;
+        double half = windowWidthPx() / 2.0;
         double plate = CarGeometry.interior(spec).maxZ() - PLATE_THICKNESS_PX * PX;
-        return new Box((jambMin + 0.5) * PX, windowBottom() * PX, plate - SURFACE_DEPTH,
-                (jambMax - 0.5) * PX, windowTop() * PX, plate);
+        return new Box((center - half) * PX, windowBottom() * PX, plate - SURFACE_DEPTH,
+                (center + half) * PX, windowTop() * PX, plate);
+    }
+
+    /** 表示窓の幅 [px]。操作盤を置くどの袖壁でも、両端に0.5pxずつ板が残る幅（袖壁がいちばん狭い機種に合わせる）。 */
+    public static int windowWidthPx() {
+        return WindowWidth.PX;
+    }
+
+    private static final class WindowWidth {
+        static final int PX = narrowestJambPx() - 1;
+
+        private static int narrowestJambPx() {
+            int narrowest = Integer.MAX_VALUE;
+            for (CarModel model : CarModel.values()) {
+                for (DoorType door : DoorType.values()) {
+                    if (!door.isAvailable(model)) {
+                        continue;
+                    }
+                    CarSpec spec = new CarSpec(model, door);
+                    for (boolean right : ButtonLayout.panelJambs(spec, FixtureConfig.PanelSides.BOTH)) {
+                        narrowest = Math.min(narrowest, ButtonLayout.jambWidthPx(spec, right));
+                    }
+                }
+            }
+            return narrowest;
+        }
     }
 
     /** ボタンを付ける面（板の面）の Z [ブロック]。 */

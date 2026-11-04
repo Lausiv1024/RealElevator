@@ -21,6 +21,7 @@ import net.lausiv1024.realelevator.core.design.LandingLayout;
 import net.lausiv1024.realelevator.core.display.FloorIndicator.Frame;
 import net.lausiv1024.realelevator.core.door.DoorGeometry;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
+import net.lausiv1024.realelevator.core.panel.CarPanelLayout;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 
 class FloorIndicatorTest {
@@ -124,9 +125,66 @@ class FloorIndicatorTest {
     }
 
     @Test
-    void longLabelsAreCutToTwoCharacters() {
+    void longLabelsAreCutToTwoCharactersUnlessTheIndicatorIsWidened() {
         assertEquals(hall(CarModel.P11, OVER_DOOR, "12", TravelDirection.NONE).dots(),
                 hall(CarModel.P11, OVER_DOOR, "123", TravelDirection.NONE).dots());
+        assertTrue(FloorIndicator.hasLongLabel("1", "MB1"));
+        assertFalse(FloorIndicator.hasLongLabel("1", "B1"));
+    }
+
+    /** 3文字の階名があるエレベーターでは、どの表示器も3文字を表示器の中に収める。 */
+    @ParameterizedTest
+    @EnumSource(CarModel.class)
+    void threeCharacterLabelsFitInEveryIndicator(CarModel model) {
+        CarSpec spec = CarSpec.of(model);
+        FixtureConfig overButtons = FixtureConfig.DEFAULT.withHallIndicator(FixtureConfig.HallIndicator.OVER_BUTTONS);
+        Frame two = LandingLayout.of(spec, OVER_DOOR, InteriorConfig.Landing.DEFAULT, 0, true).indicator("12", TravelDirection.UP);
+        Frame three = LandingLayout.of(spec, OVER_DOOR, InteriorConfig.Landing.DEFAULT, 0, true).indicator("MB1", TravelDirection.UP);
+        assertEquals(FloorIndicator.overDoorWidthPx(true) * PX, three.face().sizeX(), EPS);
+        assertTrue(three.dots().size() > two.dots().size());
+        assertDotsInside(three);
+        assertDotsInside(LandingLayout.of(spec, overButtons, InteriorConfig.Landing.DEFAULT, 0, true).indicator("MB1", TravelDirection.UP), PX / 2);
+        FixtureConfig transom = FixtureConfig.DEFAULT.withCarIndicator(FixtureConfig.CarIndicator.OVER_DOOR);
+        Frame car = FloorIndicator.car(spec, 4, transom, "MB1", TravelDirection.UP, true).get(0);
+        assertTrue(car.face().minX() >= CarGeometry.entrance(spec).minX() && car.face().maxX() <= CarGeometry.entrance(spec).maxX());
+        assertDotsInside(car);
+        assertDotsInside(FloorIndicator.car(spec, 4, FixtureConfig.DEFAULT, "MB1", TravelDirection.UP).get(0), PX / 2);
+        for (Frame wheelchair : FloorIndicator.wheelchair(spec, 4, "MB1", TravelDirection.UP)) {
+            assertDotsInside(wheelchair, PX / 2);
+        }
+    }
+
+    /** 表示窓の中の階名は、窓の幅の中央にちょうど置く（ドットの並びの端数で左に寄らない）。 */
+    @ParameterizedTest
+    @EnumSource(CarModel.class)
+    void labelsAreCenteredInTheWindows(CarModel model) {
+        FixtureConfig overButtons = FixtureConfig.DEFAULT.withHallIndicator(FixtureConfig.HallIndicator.OVER_BUTTONS);
+        // 字形の両端が埋まっている文字で確かめる（「1」は左の列が空いている）
+        for (String label : new String[] {"8", "M8", "88"}) {
+            assertCentered(hall(model, overButtons, label, TravelDirection.NONE));
+            assertCentered(FloorIndicator.car(model, 4, FixtureConfig.DEFAULT, label, TravelDirection.NONE).get(0));
+        }
+        assertCentered(LandingLayout.of(CarSpec.of(model), overButtons, InteriorConfig.Landing.DEFAULT, 0, true).indicator("MB1", TravelDirection.NONE));
+    }
+
+    /** 主操作盤の表示窓は、どの機種も同じ幅で、袖壁の幅の中央にある。 */
+    @Test
+    void carPanelWindowsHaveTheSameWidthForEveryModel() {
+        for (CarModel model : CarModel.values()) {
+            Box window = FloorIndicator.car(model, 4, FixtureConfig.DEFAULT, "1", TravelDirection.NONE).get(0).face();
+            assertEquals(CarPanelLayout.windowWidthPx() * PX, window.sizeX(), EPS);
+            CarSpec spec = CarSpec.of(model);
+            double jambCenter = (ButtonLayout.jambMinPx(spec, true) + ButtonLayout.jambWidthPx(spec, true) / 2.0) * PX;
+            assertEquals(jambCenter, (window.minX() + window.maxX()) / 2, EPS);
+        }
+        // 5×7 の2文字（0.5px のドットで11ドット）が入る
+        assertTrue(CarPanelLayout.windowWidthPx() >= 6);
+    }
+
+    private static void assertCentered(Frame frame) {
+        double minX = frame.dots().stream().mapToDouble(Box::minX).min().orElseThrow();
+        double maxX = frame.dots().stream().mapToDouble(Box::maxX).max().orElseThrow();
+        assertEquals((frame.face().minX() + frame.face().maxX()) / 2, (minX + maxX) / 2, EPS, frame.face().toString());
     }
 
     @ParameterizedTest

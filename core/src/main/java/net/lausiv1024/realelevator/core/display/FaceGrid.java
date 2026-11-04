@@ -18,13 +18,13 @@ public record FaceGrid(Normal normal, double plane, double left, double top, dou
     /** ドットが面から浮く量。 */
     public static final double LIFT = 0.002;
 
-    /** 見る人から見て column 列目・row 行目のドット。 */
-    public Box dot(int column, int row) {
+    /** 見る人から見て column 列目・row 行目のドット。中央に寄せるため、半端な位置（0.5 ずれ）も指せる。 */
+    public Box dot(double column, double row) {
         return cell(column, row, 1, 1);
     }
 
     /** 見る人から見て (column, row) から columns × rows 個分の長方形。 */
-    public Box cell(int column, int row, int columns, int rows) {
+    public Box cell(double column, double row, int columns, int rows) {
         double y1 = top - row * dotSize;
         double y0 = y1 - rows * dotSize;
         double h0 = left + column * dotSize * sign();

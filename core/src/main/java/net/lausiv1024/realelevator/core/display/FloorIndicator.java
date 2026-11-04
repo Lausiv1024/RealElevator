@@ -18,7 +18,10 @@ import net.lausiv1024.realelevator.core.panel.WheelchairPanelLayout;
 /**
  * 階床表示器。表示する階の決め方と、ドットの配置。
  *
- * <p>表示は階名（2文字まで）と進行方向の矢印で、どちらも {@link DotFont} と同じ 1ドット＝1px のドットで描く。
+ * <p>表示は階名（{@value #MAX_LABEL_LENGTH}文字まで）と進行方向の矢印で、どちらも {@link DotFont} と同じ 1ドット＝1px のドットで描く。
+ * 3文字の階名（「MB1」など）があるエレベーターでは、1px のドットの表示器と乗場の操作盤の表示窓を3文字分に広げる（{@code longLabels}）。
+ * 0.5px のドットで 5×7 の文字を使う表示器は、3文字の階名だけ 3×5 の文字にして収める。
+ * 表示窓の中の矢印と階名は、ドットの並びの端数を含めてちょうど中央に置く。
  * 座標はかごのローカル座標（{@link CarGeometry} と同じ）で、乗場の表示器はかごがその階に着床したときの位置で表す。
  *
  * <p>1px のドットの表示器は、矢印、階名の順に横に並べる（14×5px）。
@@ -35,7 +38,9 @@ import net.lausiv1024.realelevator.core.panel.WheelchairPanelLayout;
  */
 public final class FloorIndicator {
     /** 階名として表示する文字数。 */
-    public static final int MAX_LABEL_LENGTH = 2;
+    public static final int MAX_LABEL_LENGTH = 3;
+    /** ふつうの表示器の幅に収まる階名の文字数。 */
+    public static final int SHORT_LABEL_LENGTH = 2;
     /** ドットが表示面から浮く量。表示面と同じ面に描くとちらつくので、わずかに手前に出す。 */
     private static final double DOT_LIFT = 0.002;
     /** トランサムに埋め込む表示面の厚み。トランサムの面とちらつかないよう、わずかに手前に出す。 */
@@ -44,13 +49,17 @@ public final class FloorIndicator {
 
     /** 階名の欄の幅（2文字と、その間の1px）。 */
     private static final int LABEL_WIDTH = DotFont.WIDTH * 2 + 1;
+    /** 3文字の階名の欄の幅。 */
+    private static final int LONG_LABEL_WIDTH = DotFont.WIDTH * 3 + 2;
     private static final int ARROW_SIZE = 5;
     /** 主操作盤・車椅子用操作盤の表示窓のドットの大きさ（0.5px）。 */
     private static final double LARGE_DOT = 0.5 / PX;
     /** 0.5px のドットの表示での、階名の欄の幅（2文字と、その間の1ドット）。 */
     private static final int LARGE_LABEL_WIDTH = LargeDotFont.WIDTH * 2 + 1;
-    /** 乗場の扉の上の表示器の幅と高さ（ふちを含む）[px]。 */
+    /** 乗場の扉の上の表示器の幅と高さ（ふちを含む）[px]。3文字の階名があるときは幅を {@link #LONG_LABEL_EXTRA_PX} 広げる。 */
     public static final int OVER_DOOR_WIDTH_PX = 16;
+    /** 3文字の階名のために、1px のドットの表示器を広げる幅 [px]。 */
+    public static final int LONG_LABEL_EXTRA_PX = LONG_LABEL_WIDTH - LABEL_WIDTH;
     public static final int OVER_DOOR_HEIGHT_PX = 7;
 
     private static final String[] UP_ARROW = {"..#..", ".###.", "#####", "..#..", "..#.."};
@@ -61,6 +70,8 @@ public final class FloorIndicator {
 
     /** 1px のドットの表示器の、ふちを除いた幅と高さ（矢印、階名の順に横に並べる）。 */
     private static final int WIDTH = ARROW_SIZE + 2 + LABEL_WIDTH;
+    /** 3文字の階名があるときの、1px のドットの表示器の、ふちを除いた幅。 */
+    private static final int LONG_WIDTH = ARROW_SIZE + 2 + LONG_LABEL_WIDTH;
     private static final int HEIGHT = DotFont.HEIGHT;
 
     /** 表示器を見る側。かごの中からは +Z 向きに見るので左が +X、乗場からは −Z 向きに見るので左が −X。 */
@@ -107,6 +118,21 @@ public final class FloorIndicator {
         return labels.apply(displayedFloor(y, floors));
     }
 
+    /** 表示器に出す階名（{@value #MAX_LABEL_LENGTH}文字まで）。 */
+    public static String shown(String label) {
+        return label.length() > MAX_LABEL_LENGTH ? label.substring(0, MAX_LABEL_LENGTH) : label;
+    }
+
+    /** 階名 labels のどれかが、ふつうの表示器の幅（{@value #SHORT_LABEL_LENGTH}文字）に収まらないか。 */
+    public static boolean hasLongLabel(String... labels) {
+        for (String label : labels) {
+            if (shown(label).length() > SHORT_LABEL_LENGTH) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** 階名の初期値。階名を設定する仕組みができるまでは、下から 1、2、3…。 */
     public static String defaultLabel(int floor) {
         return String.valueOf(floor + 1);
@@ -117,14 +143,24 @@ public final class FloorIndicator {
         return car(CarSpec.of(model), floorCount, config, label, direction);
     }
 
-    /** かごの表示器。操作盤の上なら、操作盤ごとに（2つ目は設定による）。片開き（2S）では操作盤が1つなので1つ。 */
     public static List<Frame> car(CarSpec model, int floorCount, FixtureConfig config, String label, TravelDirection direction) {
+        return car(model, floorCount, config, label, direction, false);
+    }
+
+    /**
+     * かごの表示器。操作盤の上なら、操作盤ごとに（2つ目は設定による）。片開き（2S）では操作盤が1つなので1つ。
+     *
+     * @param longLabels 3文字の階名があるか（扉の上の表示器を広げる）
+     */
+    public static List<Frame> car(CarSpec model, int floorCount, FixtureConfig config, String label, TravelDirection direction,
+                                  boolean longLabels) {
         int face = px(CarGeometry.interior(model).maxZ());
         if (config.carIndicator() == FixtureConfig.CarIndicator.OVER_DOOR) {
             Box entrance = CarGeometry.entrance(model);
+            int width = longLabels ? LONG_WIDTH : WIDTH;
             // かごの中から見て左（+X）の端
-            int left = (px(entrance.minX()) + px(entrance.maxX()) + WIDTH) / 2;
-            return List.of(build(Viewer.INSIDE_CAR, left, px(entrance.maxY()), 0, face, EMBEDDED_DEPTH, label, direction));
+            int left = (px(entrance.minX()) + px(entrance.maxX()) + width) / 2;
+            return List.of(build(Viewer.INSIDE_CAR, left, px(entrance.maxY()), 0, face, EMBEDDED_DEPTH, label, direction, longLabels));
         }
         List<Boolean> jambs = ButtonLayout.panelJambs(model, config.panelSides());
         List<Frame> frames = new ArrayList<>(2);
@@ -174,26 +210,52 @@ public final class FloorIndicator {
         FaceGrid face = new FaceGrid(normal, plane, left, window.maxY(), LARGE_DOT);
         DotGrid grid = face::dot;
         List<Box> dots = new ArrayList<>();
+        String text = shown(label);
+        // 3文字は 5×7 では収まらないので 3×5 の文字にする
+        Font font = text.length() > SHORT_LABEL_LENGTH ? Font.SMALL : Font.LARGE;
         if (vertical) {
-            addArrow(dots, grid, direction, (columns - ARROW_SIZE) / 2, 1);
-            addLargeLabel(dots, grid, label, (columns - LARGE_LABEL_WIDTH) / 2, rows - 1 - LargeDotFont.HEIGHT);
+            addArrow(dots, grid, direction, (columns - ARROW_SIZE) / 2.0, 1);
+            addText(dots, grid, font, text, (columns - font.width(text)) / 2.0, rows - 1 - font.height);
         } else {
-            int start = (columns - (ARROW_SIZE + 1 + LARGE_LABEL_WIDTH)) / 2;
-            addArrow(dots, grid, direction, start, (rows - ARROW_SIZE) / 2);
-            addLargeLabel(dots, grid, label, start + ARROW_SIZE + 1, (rows - LargeDotFont.HEIGHT) / 2);
+            double start = (columns - (ARROW_SIZE + 1 + LARGE_LABEL_WIDTH)) / 2.0;
+            addArrow(dots, grid, direction, start, (rows - ARROW_SIZE) / 2.0);
+            addText(dots, grid, font, text, start + ARROW_SIZE + 1 + (LARGE_LABEL_WIDTH - font.width(text)) / 2.0, (rows - font.height) / 2.0);
         }
         return new Frame(window, dots);
     }
 
-    /** 階名を 5×7 ドットの文字で欄に描く。1文字なら欄の中央に置く。 */
-    private static void addLargeLabel(List<Box> dots, DotGrid grid, String label, int column, int row) {
-        String text = label.length() > MAX_LABEL_LENGTH ? label.substring(0, MAX_LABEL_LENGTH) : label;
-        int start = column + (LARGE_LABEL_WIDTH - (text.length() * (LargeDotFont.WIDTH + 1) - 1)) / 2;
+    /** 階名の文字の大きさ。 */
+    private enum Font {
+        /** 3×5（{@link DotFont}）。 */
+        SMALL(DotFont.WIDTH, DotFont.HEIGHT),
+        /** 5×7（{@link LargeDotFont}）。 */
+        LARGE(LargeDotFont.WIDTH, LargeDotFont.HEIGHT);
+
+        final int width;
+        final int height;
+
+        Font(int width, int height) {
+            this.width = width;
+            this.height = height;
+        }
+
+        /** text を1ドットずつ空けて並べた幅。 */
+        int width(String text) {
+            return Math.max(0, text.length() * (width + 1) - 1);
+        }
+
+        boolean isLit(char c, int x, int y) {
+            return this == SMALL ? DotFont.isLit(c, x, y) : LargeDotFont.isLit(c, x, y);
+        }
+    }
+
+    /** text を、左端の列 column・上端の行 row から1ドットずつ空けて描く。 */
+    private static void addText(List<Box> dots, DotGrid grid, Font font, String text, double column, double row) {
         for (int i = 0; i < text.length(); i++) {
-            int charColumn = start + i * (LargeDotFont.WIDTH + 1);
-            for (int y = 0; y < LargeDotFont.HEIGHT; y++) {
-                for (int x = 0; x < LargeDotFont.WIDTH; x++) {
-                    if (LargeDotFont.isLit(text.charAt(i), x, y)) {
+            double charColumn = column + i * (font.width + 1);
+            for (int y = 0; y < font.height; y++) {
+                for (int x = 0; x < font.width; x++) {
+                    if (font.isLit(text.charAt(i), x, y)) {
                         dots.add(grid.dot(charColumn + x, row + y));
                     }
                 }
@@ -208,9 +270,19 @@ public final class FloorIndicator {
      * @param face   取り付け面の Z [px]。表示面はそこから乗場の側へ1px出る
      */
     public static Frame hallOverDoor(CarSpec model, int bottom, int face, String label, TravelDirection direction) {
+        return hallOverDoor(model, bottom, face, label, direction, false);
+    }
+
+    /** {@link #hallOverDoor(CarSpec, int, int, String, TravelDirection)} の、longLabels なら3文字の階名の分だけ広げたもの。 */
+    public static Frame hallOverDoor(CarSpec model, int bottom, int face, String label, TravelDirection direction, boolean longLabels) {
         Box entrance = CarGeometry.entrance(model);
-        int left = (px(entrance.minX()) + px(entrance.maxX()) - OVER_DOOR_WIDTH_PX) / 2;
-        return build(Viewer.LANDING, left, bottom, 1, face, 1.0 / PX, label, direction);
+        int left = (px(entrance.minX()) + px(entrance.maxX()) - overDoorWidthPx(longLabels)) / 2;
+        return build(Viewer.LANDING, left, bottom, 1, face, 1.0 / PX, label, direction, longLabels);
+    }
+
+    /** 乗場の扉の上の表示器の幅（ふちを含む）[px]。 */
+    public static int overDoorWidthPx(boolean longLabels) {
+        return OVER_DOOR_WIDTH_PX + (longLabels ? LONG_LABEL_EXTRA_PX : 0);
     }
 
     /** 乗場の操作盤の表示窓 window（乗場の側の面）に、0.5px のドットで、上に矢印、下に 3×5 ドットの階名を描く。 */
@@ -219,8 +291,9 @@ public final class FloorIndicator {
         int rows = (int) Math.round(window.sizeY() / LARGE_DOT);
         FaceGrid face = new FaceGrid(Normal.POS_Z, window.maxZ(), window.minX(), window.maxY(), LARGE_DOT);
         List<Box> dots = new ArrayList<>();
-        addArrow(dots, face::dot, direction, (columns - ARROW_SIZE) / 2, 1);
-        addLabel(dots, face::dot, label, (columns - LABEL_WIDTH) / 2, rows - 1 - DotFont.HEIGHT);
+        String text = shown(label);
+        addArrow(dots, face::dot, direction, (columns - ARROW_SIZE) / 2.0, 1);
+        addText(dots, face::dot, Font.SMALL, text, (columns - Font.SMALL.width(text)) / 2.0, rows - 1 - DotFont.HEIGHT);
         return new Frame(window, dots);
     }
 
@@ -233,8 +306,8 @@ public final class FloorIndicator {
      * @param face   取り付け面の Z [px]。表示面はそこから見る人の側へ depth だけ出る
      */
     private static Frame build(Viewer viewer, int left, int bottom, int border, int face, double depth,
-                               String label, TravelDirection direction) {
-        int width = WIDTH + border * 2;
+                               String label, TravelDirection direction, boolean longLabels) {
+        int width = (longLabels ? LONG_WIDTH : WIDTH) + border * 2;
         int height = HEIGHT + border * 2;
         boolean fromInside = viewer == Viewer.INSIDE_CAR;
         double faceZ = face / (double) PX;
@@ -248,24 +321,29 @@ public final class FloorIndicator {
         int contentTop = bottom + height - border;
 
         // 見る人から見た (列, 行) → ボックス。列は左から、行は上から
+        // 1px のドットは px の格子からずらさない
         DotGrid grid = (column, row) -> {
-            int x0 = fromInside ? contentLeft - column - 1 : contentLeft + column;
-            int y0 = contentTop - row - 1;
+            int x0 = fromInside ? contentLeft - (int) column - 1 : contentLeft + (int) column;
+            int y0 = contentTop - (int) row - 1;
             return new Box(x0 / (double) PX, y0 / (double) PX, Math.min(dotNear, dotFar),
                     (x0 + 1) / (double) PX, (y0 + 1) / (double) PX, Math.max(dotNear, dotFar));
         };
 
         List<Box> dots = new ArrayList<>();
         addArrow(dots, grid, direction, 0, 0);
-        addLabel(dots, grid, label, ARROW_SIZE + 2, 0);
+        String text = shown(label);
+        int labelWidth = longLabels ? LONG_LABEL_WIDTH : LABEL_WIDTH;
+        // 欄に収まらない文字は描かない（3文字の階名がないエレベーターに、3文字目が出ないように）
+        String fitted = Font.SMALL.width(text) > labelWidth ? text.substring(0, SHORT_LABEL_LENGTH) : text;
+        addText(dots, grid, Font.SMALL, fitted, ARROW_SIZE + 2 + (labelWidth - Font.SMALL.width(fitted)) / 2, 0);
         return new Frame(background, dots);
     }
 
     private interface DotGrid {
-        Box dot(int column, int row);
+        Box dot(double column, double row);
     }
 
-    private static void addArrow(List<Box> dots, DotGrid grid, TravelDirection direction, int column, int row) {
+    private static void addArrow(List<Box> dots, DotGrid grid, TravelDirection direction, double column, double row) {
         if (direction == TravelDirection.NONE) {
             return;
         }
@@ -274,22 +352,6 @@ public final class FloorIndicator {
             for (int x = 0; x < ARROW_SIZE; x++) {
                 if (line.charAt(x) == '#') {
                     dots.add(grid.dot(column + x, row + y));
-                }
-            }
-        }
-    }
-
-    /** 階名を欄に描く。1文字なら欄の中央に置く。 */
-    private static void addLabel(List<Box> dots, DotGrid grid, String label, int column, int row) {
-        String text = label.length() > MAX_LABEL_LENGTH ? label.substring(0, MAX_LABEL_LENGTH) : label;
-        int start = column + (LABEL_WIDTH - (text.length() * (DotFont.WIDTH + 1) - 1)) / 2;
-        for (int i = 0; i < text.length(); i++) {
-            int charColumn = start + i * (DotFont.WIDTH + 1);
-            for (int y = 0; y < DotFont.HEIGHT; y++) {
-                for (int x = 0; x < DotFont.WIDTH; x++) {
-                    if (DotFont.isLit(text.charAt(i), x, y)) {
-                        dots.add(grid.dot(charColumn + x, row + y));
-                    }
                 }
             }
         }

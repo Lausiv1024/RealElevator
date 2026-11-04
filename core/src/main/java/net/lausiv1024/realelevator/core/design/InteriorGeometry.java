@@ -71,6 +71,15 @@ public final class InteriorGeometry {
 
     /** 内装の細部。observation なら展望仕様（奥壁が腰壁とガラス。through とは組み合わせない）。 */
     public static List<Part> parts(CarSpec spec, boolean through, boolean observation, InteriorConfig config) {
+        return parts(spec, through, observation, config, false);
+    }
+
+    /**
+     * 内装の細部。
+     *
+     * @param indicatorOverDoor かごの表示器を出入口の上（トランサム）に付けるか。間接照明の天井の縁取りの前の辺を下げず、表示器を隠さない
+     */
+    public static List<Part> parts(CarSpec spec, boolean through, boolean observation, InteriorConfig config, boolean indicatorOverDoor) {
         boolean glass = observation && !through;
         Box in = CarGeometry.interior(spec);
         List<Part> parts = new ArrayList<>();
@@ -96,7 +105,7 @@ public final class InteriorGeometry {
             }
             parts.add(new Part(Type.BASEBOARD, box(face, face + LIFT * 2, 0, BASEBOARD_PX * PX, in.minX(), in.maxX(), false)));
         }
-        addCeiling(parts, in, config.ceiling());
+        addCeiling(parts, in, config.ceiling(), indicatorOverDoor);
         if (config.carpet() != InteriorConfig.Carpet.NONE) {
             parts.add(new Part(Type.CARPET, carpet(spec)));
         }
@@ -127,7 +136,7 @@ public final class InteriorGeometry {
         return positions;
     }
 
-    private static void addCeiling(List<Part> parts, Box in, InteriorConfig.CeilingType type) {
+    private static void addCeiling(List<Part> parts, Box in, InteriorConfig.CeilingType type, boolean flushFront) {
         double top = in.maxY();
         double below = top - LIFT;
         switch (type) {
@@ -146,7 +155,8 @@ public final class InteriorGeometry {
                 double drop = top - PX;
                 // 縁取り：まわりを1px下げる
                 parts.add(new Part(Type.CEILING_PANEL, new Box(in.minX(), drop, in.minZ(), in.maxX(), top, in.minZ() + frame)));
-                parts.add(new Part(Type.CEILING_PANEL, new Box(in.minX(), drop, in.maxZ() - frame, in.maxX(), top, in.maxZ())));
+                // 前の辺（出入口の側）は、トランサムの表示器を隠さないよう、表示器があれば下げない
+                parts.add(new Part(Type.CEILING_PANEL, new Box(in.minX(), flushFront ? below : drop, in.maxZ() - frame, in.maxX(), top, in.maxZ())));
                 parts.add(new Part(Type.CEILING_PANEL, new Box(in.minX(), drop, in.minZ() + frame, in.minX() + frame, top, in.maxZ() - frame)));
                 parts.add(new Part(Type.CEILING_PANEL, new Box(in.maxX() - frame, drop, in.minZ() + frame, in.maxX(), top, in.maxZ() - frame)));
                 parts.add(new Part(Type.CEILING_GLOW,
