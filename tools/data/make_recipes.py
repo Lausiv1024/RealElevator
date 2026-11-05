@@ -55,6 +55,7 @@ for name, outer, center, unlock in [
     ('woodgrain_dark', 'dark_oak_planks', 'paper', 'dark_oak_planks'),
     ('stainless_hairline', 'iron_ingot', 'quartz', 'quartz'),
     ('bronze_hairline', 'copper_ingot', 'iron_ingot', 'copper_ingot'),
+    ('black_hairline', 'iron_ingot', 'black_dye', 'black_dye'),
     ('vinyl_gray', 'stone', 'gray_dye', 'gray_dye'),
     ('vinyl_beige', 'stone', 'white_dye', 'white_dye'),
 ]:

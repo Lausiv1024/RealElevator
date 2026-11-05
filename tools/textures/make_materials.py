@@ -100,6 +100,8 @@ TEXTURES = {
     'stainless_mirror': mirror(0xC6CBD0),
     'stainless_etched': etched(0xB0B5BA, 5),
     'bronze_hairline': hairline(0x6A5A48, 6, 5),
+    # 黒コンクリートより少し明るい、黒いステンレスのヘアライン
+    'black_hairline': hairline(0x33363B, 9, 5),
     'vinyl_gray': vinyl(0x8E9094, 7),
     'vinyl_beige': vinyl(0xB9AE98, 8),
 }

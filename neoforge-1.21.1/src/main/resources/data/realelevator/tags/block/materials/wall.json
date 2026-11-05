@@ -8,6 +8,7 @@
     "realelevator:stainless_mirror",
     "realelevator:stainless_etched",
     "realelevator:bronze_hairline",
+    "realelevator:black_hairline",
     "minecraft:oak_planks",
     "minecraft:spruce_planks",
     "minecraft:birch_planks",
@@ -17,7 +18,6 @@
     "minecraft:white_concrete",
     "minecraft:light_gray_concrete",
     "minecraft:gray_concrete",
-    "minecraft:black_concrete",
     "minecraft:white_terracotta",
     "minecraft:smooth_quartz"
   ]

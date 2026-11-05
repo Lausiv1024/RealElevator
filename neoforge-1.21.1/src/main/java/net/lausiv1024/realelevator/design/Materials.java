@@ -77,12 +77,18 @@ public final class Materials {
      * 部位ごとの素材のうち、選べないもの（不正な設定や、データパックから外された素材）を初期値に戻す。
      * 自由設定はサーバーのコンフィグに従う。
      */
+    /** 候補から外した素材と、その代わりの素材。 */
+    private static final java.util.Map<String, String> REPLACED = java.util.Map.of("minecraft:black_concrete", "realelevator:black_hairline");
+
     public static InteriorConfig sanitize(InteriorConfig config) {
         boolean free = RealElevatorConfig.freeMaterials();
         InteriorConfig result = config;
         for (InteriorConfig.Part part : InteriorConfig.Part.values()) {
-            if (!isAllowed(part, config.material(part), free)) {
-                result = result.withMaterial(part, InteriorConfig.DEFAULT.material(part));
+            String id = config.material(part);
+            if (!isAllowed(part, id, free)) {
+                // 候補から外した黒コンクリートは、入れ替えた黒のヘアラインにする
+                String replacement = REPLACED.getOrDefault(id, InteriorConfig.DEFAULT.material(part));
+                result = result.withMaterial(part, isAllowed(part, replacement, free) ? replacement : InteriorConfig.DEFAULT.material(part));
             }
         }
         return result;

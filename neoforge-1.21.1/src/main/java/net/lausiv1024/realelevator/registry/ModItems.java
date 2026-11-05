@@ -26,12 +26,13 @@ public final class ModItems {
     public static final DeferredItem<BlockItem> STAINLESS_MIRROR = ITEMS.registerSimpleBlockItem(ModBlocks.STAINLESS_MIRROR);
     public static final DeferredItem<BlockItem> STAINLESS_ETCHED = ITEMS.registerSimpleBlockItem(ModBlocks.STAINLESS_ETCHED);
     public static final DeferredItem<BlockItem> BRONZE_HAIRLINE = ITEMS.registerSimpleBlockItem(ModBlocks.BRONZE_HAIRLINE);
+    public static final DeferredItem<BlockItem> BLACK_HAIRLINE = ITEMS.registerSimpleBlockItem(ModBlocks.BLACK_HAIRLINE);
     public static final DeferredItem<BlockItem> VINYL_GRAY = ITEMS.registerSimpleBlockItem(ModBlocks.VINYL_GRAY);
     public static final DeferredItem<BlockItem> VINYL_BEIGE = ITEMS.registerSimpleBlockItem(ModBlocks.VINYL_BEIGE);
 
     /** 内装の素材のアイテム（クリエイティブタブの並び）。 */
     public static final List<DeferredItem<BlockItem>> MATERIALS = List.of(
-            WOODGRAIN_LIGHT, WOODGRAIN_MEDIUM, WOODGRAIN_DARK, STAINLESS_HAIRLINE, STAINLESS_MIRROR, STAINLESS_ETCHED, BRONZE_HAIRLINE, VINYL_GRAY, VINYL_BEIGE);
+            WOODGRAIN_LIGHT, WOODGRAIN_MEDIUM, WOODGRAIN_DARK, STAINLESS_HAIRLINE, STAINLESS_MIRROR, STAINLESS_ETCHED, BRONZE_HAIRLINE, BLACK_HAIRLINE, VINYL_GRAY, VINYL_BEIGE);
 
     /** 階床登録ツール。制御盤を右クリックしてつなぎ、各階に立って右クリックすると停止階を登録・解除する。 */
     public static final DeferredItem<FloorMarkerItem> FLOOR_MARKER = ITEMS.register("floor_marker",

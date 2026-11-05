@@ -45,6 +45,7 @@ public final class ModBlocks {
     public static final DeferredBlock<Block> STAINLESS_MIRROR = material("stainless_mirror", MapColor.METAL, SoundType.METAL);
     public static final DeferredBlock<Block> STAINLESS_ETCHED = material("stainless_etched", MapColor.METAL, SoundType.METAL);
     public static final DeferredBlock<Block> BRONZE_HAIRLINE = material("bronze_hairline", MapColor.METAL, SoundType.METAL);
+    public static final DeferredBlock<Block> BLACK_HAIRLINE = material("black_hairline", MapColor.COLOR_BLACK, SoundType.METAL);
     public static final DeferredBlock<Block> VINYL_GRAY = material("vinyl_gray", MapColor.STONE, SoundType.STONE);
     public static final DeferredBlock<Block> VINYL_BEIGE = material("vinyl_beige", MapColor.STONE, SoundType.STONE);
 
