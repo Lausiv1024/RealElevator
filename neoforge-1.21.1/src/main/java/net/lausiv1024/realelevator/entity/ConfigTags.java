@@ -21,6 +21,7 @@ public final class ConfigTags {
         tag.putString("HallLantern", fixtures.hallLantern().name());
         tag.putBoolean("WheelchairPanel", fixtures.wheelchairPanel());
         tag.putBoolean("OpenExtension", fixtures.openExtension());
+        tag.putString("IndicatorStyle", fixtures.indicatorStyle().name());
         tag.putString("IndicatorColor", fixtures.indicatorColor().name());
         tag.putBoolean("GroupControl", fixtures.groupControl());
         return tag;
@@ -37,7 +38,8 @@ public final class ConfigTags {
                 tag.getBoolean("WheelchairPanel"),
                 parseEnum(FixtureConfig.IndicatorColor.class, tag.getString("IndicatorColor"), defaults.indicatorColor()),
                 tag.getBoolean("GroupControl"),
-                tag.getBoolean("OpenExtension"));
+                tag.getBoolean("OpenExtension"),
+                parseEnum(FixtureConfig.IndicatorStyle.class, tag.getString("IndicatorStyle"), FixtureConfig.IndicatorStyle.DOT));
     }
 
     public static CompoundTag writeInterior(InteriorConfig interior) {

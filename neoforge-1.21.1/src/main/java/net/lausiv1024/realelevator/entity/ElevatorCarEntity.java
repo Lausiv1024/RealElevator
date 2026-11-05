@@ -1572,8 +1572,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     // ---- 階床表示 ----
 
-    /** 停止階に3文字の階名があるか（表示器を3文字分に広げる）。 */
+    /** 停止階に3文字の階名があるか（ドットで描くとき、表示器を3文字分に広げる。フォントで描くときは縮めるので広げない）。 */
     public boolean hasLongLabels() {
+        if (fixtures.indicatorStyle() == FixtureConfig.IndicatorStyle.FONT) {
+            return false;
+        }
         for (int i = 0; i < floors.length; i++) {
             if (FloorIndicator.hasLongLabel(floorLabel(i))) {
                 return true;

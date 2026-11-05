@@ -233,5 +233,9 @@
   "message.realelevator.access.not_listed": "%s は許可されていません",
   "message.realelevator.access.not_online": "%s はオンラインではありません",
   "message.realelevator.access.cannot_add": "%s は追加できません（設置者、許可済み、または上限です）",
-  "gui.realelevator.panel.open_extension": "開延長ボタン"
+  "gui.realelevator.panel.open_extension": "開延長ボタン",
+  "gui.realelevator.panel.indicator_style": "表示の文字",
+  "gui.realelevator.indicator_style.dot": "ドット",
+  "gui.realelevator.indicator_style.font": "フォント",
+  "gui.realelevator.panel.dot_unsupported": "ドットでは出せない階名があります（ドットにない文字は出ず、3文字まで）。漢字などは「表示の文字」をフォントにしてください"
 }

@@ -60,6 +60,13 @@ public final class ButtonGlyphs {
         return new Glyph(symbol);
     }
 
+    /** ボタンの面のうち、文字を描く場所（まわりに1/8ずつ残す。面から浮かせた薄い箱）。フォントで階名を描くときに使う。 */
+    public static Box textArea(Button button) {
+        int size = (int) Math.round(button.box().sizeY() * CarModel.PIXELS_PER_BLOCK) * DOTS_PER_PX;
+        int margin = Math.max(1, size / 8);
+        return grid(button).cell(margin, margin, size - margin * 2, size - margin * 2);
+    }
+
     /** ボタンの手前の面の格子。左上が (0, 0)。 */
     private static FaceGrid grid(Button button) {
         Box box = button.box();

@@ -15,6 +15,7 @@ import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.CarSpec;
+import net.lausiv1024.realelevator.core.car.Normal;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.design.LandingLayout;
@@ -179,6 +180,44 @@ class FloorIndicatorTest {
         }
         // 5×7 の2文字（0.5px のドットで11ドット）が入る
         assertTrue(CarPanelLayout.windowWidthPx() >= 6);
+    }
+
+    /** ドットで出すのは、ドットにある文字だけを先頭から3文字まで。 */
+    @Test
+    void dotsShowOnlySupportedCharactersUpToThree() {
+        assertEquals("1", FloorIndicator.shown("改札1"));
+        assertEquals("MB1", FloorIndicator.shown("MB12"));
+        assertTrue(FloorIndicator.fitsDots("MB1"));
+        assertFalse(FloorIndicator.fitsDots("MB12"));
+        assertFalse(FloorIndicator.fitsDots("改札"));
+    }
+
+    /** フォントで階名を描く場所は、どの表示器でも表示面の中にあり、表示面と同じ向き。 */
+    @ParameterizedTest
+    @EnumSource(CarModel.class)
+    void fontLabelAreasSitOnTheFaces(CarModel model) {
+        CarSpec spec = CarSpec.of(model);
+        FixtureConfig overButtons = FixtureConfig.DEFAULT.withHallIndicator(FixtureConfig.HallIndicator.OVER_BUTTONS);
+        FixtureConfig transom = FixtureConfig.DEFAULT.withCarIndicator(FixtureConfig.CarIndicator.OVER_DOOR);
+        List<Frame> frames = new java.util.ArrayList<>();
+        frames.add(hall(model, OVER_DOOR, "", TravelDirection.UP));
+        frames.add(hall(model, overButtons, "", TravelDirection.UP));
+        frames.addAll(FloorIndicator.car(spec, 4, FixtureConfig.DEFAULT, "", TravelDirection.UP));
+        frames.addAll(FloorIndicator.car(spec, 4, transom, "", TravelDirection.UP));
+        frames.addAll(FloorIndicator.wheelchair(spec, 4, "", TravelDirection.UP));
+        for (Frame frame : frames) {
+            Box face = frame.face();
+            Box label = frame.label();
+            assertTrue(label.minY() >= face.minY() - EPS && label.maxY() <= face.maxY() + EPS, face + " / " + label);
+            assertTrue(label.sizeY() > 0);
+            if (frame.normal().x() == 0) {
+                assertTrue(label.minX() >= face.minX() - EPS && label.maxX() <= face.maxX() + EPS, face + " / " + label);
+            } else {
+                assertTrue(label.minZ() >= face.minZ() - EPS && label.maxZ() <= face.maxZ() + EPS, face + " / " + label);
+            }
+        }
+        assertEquals(Normal.POS_Z, hall(model, OVER_DOOR, "", TravelDirection.UP).normal());
+        assertEquals(Normal.NEG_Z, FloorIndicator.car(spec, 4, FixtureConfig.DEFAULT, "", TravelDirection.UP).get(0).normal());
     }
 
     private static void assertCentered(Frame frame) {

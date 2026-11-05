@@ -22,6 +22,9 @@ import net.lausiv1024.realelevator.core.panel.WheelchairPanelLayout;
  * 3文字の階名（「MB1」など）があるエレベーターでは、1px のドットの表示器と乗場の操作盤の表示窓を3文字分に広げる（{@code longLabels}）。
  * 0.5px のドットで 5×7 の文字を使う表示器は、3文字の階名だけ 3×5 の文字にして収める。
  * 表示窓の中の矢印と階名は、ドットの並びの端数を含めてちょうど中央に置く。
+ *
+ * <p>ドットで出すのは {@link DotFont} にある文字だけ（先頭から{@value #MAX_LABEL_LENGTH}文字まで）。ゲームのフォントで描くとき
+ * （{@link FixtureConfig.IndicatorStyle#FONT}）は、階名を空にして矢印だけドットで描き、{@link Frame#label} の場所にフォントで描く。
  * 座標はかごのローカル座標（{@link CarGeometry} と同じ）で、乗場の表示器はかごがその階に着床したときの位置で表す。
  *
  * <p>1px のドットの表示器は、矢印、階名の順に横に並べる（14×5px）。
@@ -64,8 +67,13 @@ public final class FloorIndicator {
 
     private static final String[] UP_ARROW = {"..#..", ".###.", "#####", "..#..", "..#.."};
 
-    /** 表示器の背面と、点灯しているドット。 */
-    public record Frame(Box face, List<Box> dots) {
+    /**
+     * 表示器の背面と、点灯しているドット。
+     *
+     * @param label  階名を描く場所（表示面から浮かせた薄い箱）。フォントで描くときに使う
+     * @param normal 表示面の向き（見る人のいる側）
+     */
+    public record Frame(Box face, List<Box> dots, Box label, Normal normal) {
     }
 
     /** 1px のドットの表示器の、ふちを除いた幅と高さ（矢印、階名の順に横に並べる）。 */
@@ -118,9 +126,20 @@ public final class FloorIndicator {
         return labels.apply(displayedFloor(y, floors));
     }
 
-    /** 表示器に出す階名（{@value #MAX_LABEL_LENGTH}文字まで）。 */
+    /** ドットの表示器に出す階名。ドットにある文字だけを、先頭から{@value #MAX_LABEL_LENGTH}文字まで。 */
     public static String shown(String label) {
-        return label.length() > MAX_LABEL_LENGTH ? label.substring(0, MAX_LABEL_LENGTH) : label;
+        StringBuilder shown = new StringBuilder();
+        for (char c : label.toCharArray()) {
+            if (DotFont.supports(c) && shown.length() < MAX_LABEL_LENGTH) {
+                shown.append(c);
+            }
+        }
+        return shown.toString();
+    }
+
+    /** 階名 label を、ドットの表示器にそのまま出せるか（ドットにない文字がなく、{@value #MAX_LABEL_LENGTH}文字以内）。 */
+    public static boolean fitsDots(String label) {
+        return shown(label).equals(label);
     }
 
     /** 階名 labels のどれかが、ふつうの表示器の幅（{@value #SHORT_LABEL_LENGTH}文字）に収まらないか。 */
@@ -213,15 +232,23 @@ public final class FloorIndicator {
         String text = shown(label);
         // 3文字は 5×7 では収まらないので 3×5 の文字にする
         Font font = text.length() > SHORT_LABEL_LENGTH ? Font.SMALL : Font.LARGE;
+        Box labelArea;
         if (vertical) {
             addArrow(dots, grid, direction, (columns - ARROW_SIZE) / 2.0, 1);
             addText(dots, grid, font, text, (columns - font.width(text)) / 2.0, rows - 1 - font.height);
+            labelArea = verticalLabelArea(face, columns, rows);
         } else {
             double start = (columns - (ARROW_SIZE + 1 + LARGE_LABEL_WIDTH)) / 2.0;
             addArrow(dots, grid, direction, start, (rows - ARROW_SIZE) / 2.0);
             addText(dots, grid, font, text, start + ARROW_SIZE + 1 + (LARGE_LABEL_WIDTH - font.width(text)) / 2.0, (rows - font.height) / 2.0);
+            labelArea = face.cell(start + ARROW_SIZE + 1, 1, LARGE_LABEL_WIDTH, rows - 2);
         }
-        return new Frame(window, dots);
+        return new Frame(window, dots, labelArea, normal);
+    }
+
+    /** 上に矢印、下に階名を並べる表示窓の、階名の場所（矢印の下から、まわりに1ドットずつ残す）。 */
+    private static Box verticalLabelArea(FaceGrid face, int columns, int rows) {
+        return face.cell(1, ARROW_SIZE + 2, columns - 2, rows - ARROW_SIZE - 3);
     }
 
     /** 階名の文字の大きさ。 */
@@ -294,7 +321,7 @@ public final class FloorIndicator {
         String text = shown(label);
         addArrow(dots, face::dot, direction, (columns - ARROW_SIZE) / 2.0, 1);
         addText(dots, face::dot, Font.SMALL, text, (columns - Font.SMALL.width(text)) / 2.0, rows - 1 - DotFont.HEIGHT);
-        return new Frame(window, dots);
+        return new Frame(window, dots, verticalLabelArea(face, columns, rows), Normal.POS_Z);
     }
 
     /**
@@ -336,7 +363,12 @@ public final class FloorIndicator {
         // 欄に収まらない文字は描かない（3文字の階名がないエレベーターに、3文字目が出ないように）
         String fitted = Font.SMALL.width(text) > labelWidth ? text.substring(0, SHORT_LABEL_LENGTH) : text;
         addText(dots, grid, Font.SMALL, fitted, ARROW_SIZE + 2 + (labelWidth - Font.SMALL.width(fitted)) / 2, 0);
-        return new Frame(background, dots);
+        // 階名の欄の左上と右下のドットを囲む箱
+        Box first = grid.dot(ARROW_SIZE + 2, 0);
+        Box last = grid.dot(ARROW_SIZE + 2 + labelWidth - 1, HEIGHT - 1);
+        Box labelArea = new Box(Math.min(first.minX(), last.minX()), Math.min(first.minY(), last.minY()), Math.min(first.minZ(), last.minZ()),
+                Math.max(first.maxX(), last.maxX()), Math.max(first.maxY(), last.maxY()), Math.max(first.maxZ(), last.maxZ()));
+        return new Frame(background, dots, labelArea, fromInside ? Normal.NEG_Z : Normal.POS_Z);
     }
 
     private interface DotGrid {

@@ -19,6 +19,17 @@ import net.lausiv1024.realelevator.core.panel.ButtonLayout.Button;
 
 /** ボタンの面の図柄。 */
 class ButtonGlyphsTest {
+    /** フォントで階名を描く場所は、ボタンの面の中。 */
+    @Test
+    void textAreaSitsInsideTheButtonFace() {
+        for (Button button : ButtonLayout.carPanel(CarSpec.of(CarModel.P11), 6, FixtureConfig.PanelSides.BOTH)) {
+            Box area = ButtonGlyphs.textArea(button);
+            Box box = button.box();
+            assertTrue(area.minX() >= box.minX() - 1e-9 && area.maxX() <= box.maxX() + 1e-9, area + " / " + box);
+            assertTrue(area.minY() > box.minY() && area.maxY() < box.maxY(), area + " / " + box);
+        }
+    }
+
     private static final double EPS = 1e-9;
 
     private static List<Button> allButtons() {

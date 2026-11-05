@@ -16,6 +16,7 @@ import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.design.LandingLayout;
+import net.lausiv1024.realelevator.core.display.FloorIndicator;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.ConfigTags;
 import net.minecraft.client.Minecraft;
@@ -174,6 +175,10 @@ final class SettingsForm {
                 fixtures.hallLantern(), v -> fixtures = fixtures.withHallLantern(v), send));
         widgets.add(enumButton("indicator_color", FixtureConfig.IndicatorColor.values(), fixtures.indicatorColor(),
                 v -> fixtures = fixtures.withIndicatorColor(v), send));
+        widgets.add(enumButton("indicator_style", FixtureConfig.IndicatorStyle.values(), fixtures.indicatorStyle(), v -> {
+            fixtures = fixtures.withIndicatorStyle(v);
+            rebuild.run();
+        }, send));
         widgets.add(onOff("wheelchair_panel", fixtures.wheelchairPanel(), v -> fixtures = fixtures.withWheelchairPanel(v), send));
         widgets.add(onOff("open_extension", fixtures.openExtension(), v -> fixtures = fixtures.withOpenExtension(v), send));
         widgets.add(onOff("arrival_announcement", announcements.arrival(), v -> announcements = announcements.withArrival(v), send));
@@ -294,7 +299,23 @@ final class SettingsForm {
         } else if (!allowsOverDoorHallFixtures() && shown < visibleFloors) {
             graphics.drawWordWrap(font, Component.translatable("gui.realelevator.panel.no_over_door"),
                     floorColumnX, TOP + 5 + shown * ROW, FLOOR_COLUMN_WIDTH, 0xA0A0A0);
+        } else if (hasLabelsBeyondDots() && shown < visibleFloors) {
+            graphics.drawWordWrap(font, Component.translatable("gui.realelevator.panel.dot_unsupported"),
+                    floorColumnX, TOP + 5 + shown * ROW, FLOOR_COLUMN_WIDTH, 0xFFC060);
         }
+    }
+
+    /** ドットで描く設定で、ドットでは出せない階名（ドットにない文字、4文字）があるか。 */
+    private boolean hasLabelsBeyondDots() {
+        if (fixtures.indicatorStyle() != FixtureConfig.IndicatorStyle.DOT) {
+            return false;
+        }
+        for (String label : labels.values()) {
+            if (!FloorIndicator.fitsDots(label)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** 配置・アナウンス・階名を tag に書く（{@code ElevatorPlan#applyRenewal} の形）。 */

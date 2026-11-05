@@ -33,8 +33,8 @@ import net.minecraft.world.phys.Vec3;
  * <p>設置用ブロックが持ち、設置すると頂部の制御盤へそのまま移す。
  */
 public final class ElevatorPlan {
-    /** 階名の文字数の上限。階床表示器には先頭の2文字が出る。 */
-    public static final int MAX_LABEL_LENGTH = 3;
+    /** 階名の文字数の上限。ドットの表示器にはドットにある文字が3文字まで出る（フォントで描くときは全部）。 */
+    public static final int MAX_LABEL_LENGTH = 4;
 
     private final BlockPos origin;
     private final Direction facing;

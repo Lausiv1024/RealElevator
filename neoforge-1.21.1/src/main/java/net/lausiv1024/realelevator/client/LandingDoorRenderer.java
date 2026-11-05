@@ -84,11 +84,14 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
         }
 
         BoxRenderer.renderButtons(pose, consumer, door, turns, light, rgb);
+        // フォントで描く設定なら、階名はドットで描かずに、あとでフォントで描く
+        List<WorldText.OnFace> fontTexts = fixtures.indicatorStyle() == FixtureConfig.IndicatorStyle.FONT ? new ArrayList<>() : null;
+        String label = car != null ? car.indicatorLabel(car.renderTick(partialTick)) : "";
         FloorIndicator.Frame indicator = car != null
-                ? layout.indicator(car.indicatorLabel(car.renderTick(partialTick)), car.indicatorDirection())
+                ? layout.indicator(fontTexts != null ? "" : label, car.indicatorDirection())
                 : layout.indicator("", TravelDirection.NONE);
         if (indicator != null) {
-            BoxRenderer.renderIndicator(pose, consumer, indicator, turns, light, rgb);
+            BoxRenderer.renderIndicator(pose, consumer, indicator, turns, light, rgb, fontTexts, label);
         }
         // 点灯する段は、点滅の消灯中は消す。群管理で割り当てた（まだ着いていない）呼びの段は、点滅せずに点ける
         Set<TravelDirection> blinking = door.litLanternSections();
@@ -107,6 +110,9 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
         if (!glass.isEmpty()) {
             BoxRenderer.renderGlass(pose, bufferSource.getBuffer(Sheets.translucentCullBlockSheet()), glass,
                     BoxRenderer.WIRED_GLASS, light);
+        }
+        if (fontTexts != null) {
+            WorldText.draw(poseStack, bufferSource, fontTexts);
         }
         super.render(door, entityYaw, partialTick, poseStack, bufferSource, packedLight);
     }

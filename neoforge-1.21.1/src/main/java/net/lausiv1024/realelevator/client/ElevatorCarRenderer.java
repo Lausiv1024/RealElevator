@@ -111,8 +111,11 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
         CarSpec spec = car.spec();
         int turns = car.facing().get2DDataValue();
         int rgb = fixtures.indicatorColor().rgb();
-        BoxRenderer.renderButtons(pose, consumer, car, turns, light, rgb);
+        // フォントで描く設定なら、階名はドットで描かずに、あとでまとめてフォントで描く
+        List<WorldText.OnFace> fontTexts = fixtures.indicatorStyle() == FixtureConfig.IndicatorStyle.FONT ? new ArrayList<>() : null;
+        BoxRenderer.renderButtons(pose, consumer, car, turns, light, rgb, fontTexts);
         String label = car.indicatorLabel(tick);
+        String dotLabel = fontTexts != null ? "" : label;
         // 二方向出入口では、奥の出入口にも同じ操作盤と表示器を180°回して付ける
         CarPanelLayout panel = CarPanelLayout.of(spec, car.floorCount());
         for (Entrance entrance : car.entrances()) {
@@ -120,8 +123,9 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
             for (boolean right : ButtonLayout.panelJambs(spec, fixtures.panelSides())) {
                 BoxRenderer.renderParts(pose, consumer, panel.parts(spec, right, false), entranceTurns, light);
             }
-            for (FloorIndicator.Frame indicator : FloorIndicator.car(spec, car.floorCount(), fixtures, label, car.indicatorDirection(), car.hasLongLabels())) {
-                BoxRenderer.renderIndicator(pose, consumer, indicator, entranceTurns, light, rgb);
+            for (FloorIndicator.Frame indicator : FloorIndicator.car(spec, car.floorCount(), fixtures, dotLabel, car.indicatorDirection(),
+                    car.hasLongLabels())) {
+                BoxRenderer.renderIndicator(pose, consumer, indicator, entranceTurns, light, rgb, fontTexts, label);
             }
         }
         if (fixtures.wheelchairPanel()) {
@@ -129,13 +133,17 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
             for (boolean right : new boolean[] {true, false}) {
                 BoxRenderer.renderParts(pose, consumer, wheelchair.parts(spec, right), turns, light);
             }
-            for (FloorIndicator.Frame indicator : FloorIndicator.wheelchair(spec, car.floorCount(), label, car.indicatorDirection())) {
-                BoxRenderer.renderIndicator(pose, consumer, indicator, turns, light, rgb);
+            for (FloorIndicator.Frame indicator : FloorIndicator.wheelchair(spec, car.floorCount(), dotLabel, car.indicatorDirection())) {
+                BoxRenderer.renderIndicator(pose, consumer, indicator, turns, light, rgb, fontTexts, label);
             }
         }
         VertexConsumer glass = bufferSource.getBuffer(Sheets.translucentCullBlockSheet());
         BoxRenderer.renderGlass(pose, glass, clearGlass, BoxRenderer.CLEAR_GLASS, light);
         BoxRenderer.renderGlass(pose, glass, wiredGlass, BoxRenderer.WIRED_GLASS, light);
+        if (fontTexts != null) {
+            WorldText.draw(poseStack, bufferSource, fontTexts);
+        }
+        ButtonTags.draw(poseStack, bufferSource, car, turns, entityRenderDispatcher.cameraOrientation());
         poseStack.popPose();
         // シーブの側面は向きを気にせず描けるよう、裏面も描く
         HoistRenderer.render(car, partialTick, poseStack, bufferSource.getBuffer(RenderType.entityCutoutNoCull(TextureAtlas.LOCATION_BLOCKS)));

@@ -233,5 +233,9 @@
   "message.realelevator.access.not_listed": "%s is not on the list",
   "message.realelevator.access.not_online": "%s is not online",
   "message.realelevator.access.cannot_add": "Can't add %s (owner, already allowed, or the list is full)",
-  "gui.realelevator.panel.open_extension": "Door hold button"
+  "gui.realelevator.panel.open_extension": "Door hold button",
+  "gui.realelevator.panel.indicator_style": "Display text",
+  "gui.realelevator.indicator_style.dot": "Dots",
+  "gui.realelevator.indicator_style.font": "Font",
+  "gui.realelevator.panel.dot_unsupported": "Some floor names can't be shown in dots (unsupported characters are skipped, up to 3). Set \"Display text\" to Font for other scripts"
 }

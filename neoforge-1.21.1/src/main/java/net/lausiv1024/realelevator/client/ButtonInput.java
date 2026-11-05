@@ -46,6 +46,9 @@ public final class ButtonInput {
      * 戸を開けたままにする（離してから開放待機の時間がたつと閉まる）。
      */
     private static boolean useHeld;
+    /** 視線の先のボタン（毎tick求める）。3文字以上の階名を浮かべるのに使う。 */
+    @Nullable
+    private static Target focused;
     /** 押したままのボタン。離したときに知らせる（クリック音を鳴らす）。 */
     @Nullable
     private static Target pressed;
@@ -53,8 +56,18 @@ public final class ButtonInput {
     private ButtonInput() {
     }
 
+    /** host のボタンのうち、視線の先にあるものの番号。なければ −1。 */
+    static int focusedIndex(Entity host) {
+        Target target = focused;
+        return target != null && target.host() == host ? target.index() : -1;
+    }
+
     @SubscribeEvent
     static void onClientTick(ClientTickEvent.Post event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        LocalPlayer player = minecraft.player;
+        focused = player != null && minecraft.level != null && minecraft.screen == null && !player.isSpectator()
+                ? visibleTarget(minecraft, player) : null;
         if (useHeld && !Minecraft.getInstance().options.keyUse.isDown()) {
             useHeld = false;
             if (pressed != null && Minecraft.getInstance().getConnection() != null) {
@@ -95,13 +108,8 @@ public final class ButtonInput {
             }
             return;
         }
-        Target target = findTarget(minecraft.level, player);
+        Target target = visibleTarget(minecraft, player);
         if (target == null) {
-            return;
-        }
-        HitResult hit = minecraft.hitResult;
-        if (hit != null && hit.getType() != HitResult.Type.MISS
-                && hit.getLocation().distanceToSqr(player.getEyePosition()) < target.distanceSqr()) {
             return;
         }
         event.setCanceled(true);
@@ -119,6 +127,21 @@ public final class ButtonInput {
         pressed = target;
         event.setSwingHand(true);
         PacketDistributor.sendToServer(new PressButtonPayload(target.host().getId(), target.index(), PressButtonPayload.Action.PRESS));
+    }
+
+    /** 視線の先にあり、ブロックにさえぎられていないボタン。 */
+    @Nullable
+    private static Target visibleTarget(Minecraft minecraft, LocalPlayer player) {
+        Target target = findTarget(minecraft.level, player);
+        if (target == null) {
+            return null;
+        }
+        HitResult hit = minecraft.hitResult;
+        if (hit != null && hit.getType() != HitResult.Type.MISS
+                && hit.getLocation().distanceToSqr(player.getEyePosition()) < target.distanceSqr()) {
+            return null;
+        }
+        return target;
     }
 
     /** 視線の先にある乗場の扉（三方枠を含む外形）。ブロックのほうが手前なら null。 */
