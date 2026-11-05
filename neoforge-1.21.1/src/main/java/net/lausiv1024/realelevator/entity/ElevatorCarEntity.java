@@ -801,7 +801,11 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         }
         if (result == PressResult.SERVED_HERE) {
             if (callType == CallType.HALL) {
-                lanternTick = level().getGameTime();
+                // ランタンは戸が閉まりきるまで点滅しているので、閉まっていたときだけ点滅を始め直す（開いている間に押しても乱さない）
+                if (door.isClosed()) {
+                    lanternTick = level().getGameTime();
+                }
+                // チャイムは鳴り終わっていれば鳴らす（重ねない）
                 playArrivalChime(currentFloor, control != null ? control.direction() : TravelDirection.NONE);
             }
             boolean alreadyOpen = door.state() == DoorState.OPEN;
@@ -809,8 +813,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
                 syncCalls();
                 return;
             }
-            // かごがいる階の乗場呼びでは、階の案内はせず、行先方向だけを流す（戸がもう開いていればすぐに）
-            if (callType == CallType.HALL && announcements.arrival()) {
+            // かごがいる階の乗場呼びでは、階の案内はせず、行先方向だけを流す（戸がもう開いていればすぐに）。
+            // 同じ方向をもう流していれば流さない（戸が閉まりきると、流したことを忘れる）
+            TravelDirection direction = control != null ? control.direction() : TravelDirection.NONE;
+            if (callType == CallType.HALL && announcements.arrival() && direction != spokenDirection) {
                 if (alreadyOpen) {
                     announceDirection();
                 } else {
@@ -822,6 +828,27 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             // その場で応えた乗場呼びでも進行方向が決まるので、階床表示器の矢印のために送る
             syncCalls();
         }
+    }
+
+    @Override
+    public void holdButton(int index) {
+        // 開ボタンを押したままのあいだは、押し直して戸を開けておく
+        if (buttons.get(index).kind() == ButtonLayout.Kind.OPEN) {
+            pressButton(index);
+        }
+    }
+
+    /**
+     * 停止階 floor の側 side の乗場ボタンを押したままにしている。このかごがその階に止まって、その側の扉を開けている（開きかけ・
+     * 閉まりかけを含む）あいだは、開ボタンを押したままのときと同じく戸を開けておき、離してから乗場呼びの開放待機がたつと閉める。
+     * 呼びを押し直さないので、チャイムやアナウンスは流さない。
+     */
+    public void holdHallButton(int floor, Entrance side, boolean wheelchair) {
+        if (level().isClientSide || !isStoppedForCalls() || floor != currentFloor || door.isClosed() || !openSides.contains(doorFor(side))) {
+            return;
+        }
+        door.open(level().getGameTime(), door.timing().dwellTicks(CallType.HALL, wheelchair), wheelchair);
+        syncDoor();
     }
 
     /** 側 side の操作盤の開ボタン。その側の扉を開く（反対側が開いていれば、閉まってから）。走行中は効かない。 */
@@ -879,6 +906,16 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     /** 到着チャイムが鳴り終わるゲーム時刻（動作確認のテスト用）。 */
     public long chimeEndTick() {
         return chimeEndTick;
+    }
+
+    /** ホールランタンの点滅を始めたゲーム時刻（動作確認のテスト用）。 */
+    public long lanternStartTick() {
+        return lanternTick;
+    }
+
+    /** 最後に行先方向のアナウンスを流し始めたゲーム時刻。流していなければ {@link Long#MIN_VALUE}（動作確認のテスト用）。 */
+    public long directionAnnouncedTick() {
+        return directionSpeakingUntil == Long.MIN_VALUE ? Long.MIN_VALUE : directionSpeakingUntil - AnnouncementScript.DIRECTION_TICKS;
     }
 
     public boolean isDoorExtended() {
@@ -1088,6 +1125,10 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             announce(Announcement.doorClose());
         }
         boolean doorChanged = doorEvent == DoorController.Event.STATE_CHANGED || doorEvent == DoorController.Event.NUDGING_STARTED;
+        if (doorChanged && door.isClosed()) {
+            // 戸が閉まりきったら、流した行先方向を忘れる（呼び直して開いたら、また1回流す）
+            spokenDirection = TravelDirection.NONE;
+        }
         if (doorChanged && directionAnnouncementPending) {
             if (door.state() == DoorState.OPEN) {
                 // 戸が開ききったら行先方向を流す

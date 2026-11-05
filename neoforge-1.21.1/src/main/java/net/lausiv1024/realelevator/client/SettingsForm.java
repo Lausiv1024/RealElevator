@@ -351,10 +351,6 @@ final class SettingsForm {
     }
 
     /** 停止階の名前と、停止階についての注意を描く。 */
-    void renderFloors(GuiGraphics graphics, Font font) {
-        renderFloors(graphics, font, 0);
-    }
-
     /** 停止階の欄を描く。プレビューに切り替えていれば、プレビューを描く。 */
     void renderFloors(GuiGraphics graphics, Font font, float partialTick) {
         if (preview != null && tab.view != null) {

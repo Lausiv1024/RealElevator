@@ -21,6 +21,18 @@ public interface ButtonHost {
     /** index 番のボタンを押す。サーバーで呼ぶ。 */
     void pressButton(int index);
 
+    /** index 番のボタンを押したままにしている（使用キーを押したままのあいだの繰り返し）。サーバーで呼ぶ。既定では何もしない。 */
+    default void holdButton(int index) {
+    }
+
+    /** index 番のボタンが、押したままのあいだ繰り返し知らせるものか（開ボタンと乗場のボタン）。 */
+    static boolean isHoldable(Button button) {
+        return switch (button.kind()) {
+            case OPEN, HALL_UP, HALL_DOWN -> true;
+            default -> false;
+        };
+    }
+
     /** index 番のボタンの面に描く階名（行先ボタンだけ）。 */
     default String buttonLabel(int index) {
         return "";

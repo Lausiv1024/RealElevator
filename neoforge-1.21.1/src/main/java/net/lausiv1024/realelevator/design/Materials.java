@@ -2,6 +2,7 @@ package net.lausiv1024.realelevator.design;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import net.lausiv1024.realelevator.RealElevatorConfig;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
@@ -78,7 +79,7 @@ public final class Materials {
      * 自由設定はサーバーのコンフィグに従う。
      */
     /** 候補から外した素材と、その代わりの素材。 */
-    private static final java.util.Map<String, String> REPLACED = java.util.Map.of("minecraft:black_concrete", "realelevator:black_hairline");
+    private static final Map<String, String> REPLACED = Map.of("minecraft:black_concrete", "realelevator:black_hairline");
 
     public static InteriorConfig sanitize(InteriorConfig config) {
         boolean free = RealElevatorConfig.freeMaterials();

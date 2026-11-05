@@ -240,6 +240,16 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         }
     }
 
+    @Override
+    public void holdButton(int index) {
+        ElevatorCarEntity car = car();
+        int floor = floorIndex();
+        if (car != null && floor >= 0) {
+            // 押したままのあいだは、この階に止まっているかごの戸を開けておく
+            car.holdHallButton(floor, entrance(), buttons().get(index).wheelchair());
+        }
+    }
+
     private static TravelDirection direction(Button button) {
         return button.kind() == ButtonLayout.Kind.HALL_UP ? TravelDirection.UP : TravelDirection.DOWN;
     }

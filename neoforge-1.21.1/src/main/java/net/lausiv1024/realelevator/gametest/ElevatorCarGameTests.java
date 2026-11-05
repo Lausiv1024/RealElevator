@@ -250,6 +250,57 @@ public class ElevatorCarGameTests {
         });
     }
 
+    /**
+     * かごのいる階の乗場ボタンを、戸が開いている間に連打しても、ランタンの点滅は始め直さず、行先方向のアナウンスも1回だけ。
+     * 戸が閉まりきったあとに押せば、また点滅を始め、アナウンスも流す。
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = 400)
+    public static void mashingTheHallButtonDoesNotRestartTheLanternOrRepeatTheAnnouncement(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE).car();
+        car.setAnnouncements(new AnnouncementConfig(true, false, true));
+        car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT, false);
+        long lantern = car.lanternStartTick();
+        AtomicLong announced = new AtomicLong(Long.MIN_VALUE);
+        helper.runAfterDelay(50, () -> {
+            helper.assertTrue(car.doorState() == DoorState.OPEN, "the door should be open: " + car.doorState());
+            announced.set(car.directionAnnouncedTick());
+            helper.assertTrue(announced.get() != Long.MIN_VALUE, "the direction should be announced once the door is open");
+            for (int i = 0; i < 3; i++) {
+                car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT, false);
+            }
+            helper.assertTrue(car.lanternStartTick() == lantern, "the lantern should keep blinking from the first press");
+            helper.assertTrue(car.directionAnnouncedTick() == announced.get(), "the direction should not be announced again");
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(helper.getTick() > 60 && car.doorState() == DoorState.CLOSED, "not closed yet");
+            car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT, false);
+            helper.assertTrue(car.lanternStartTick() > lantern, "pressing after the door closed should start the lantern again");
+        });
+    }
+
+    /** 乗場のボタンを押したままのあいだは戸を開けておき、離してから乗場呼びの開放待機がたつと閉める。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 400)
+    public static void holdingTheHallButtonKeepsTheDoorOpen(GameTestHelper helper) {
+        Elevator elevator = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE);
+        ElevatorCarEntity car = elevator.car();
+        LandingDoorEntity door = elevator.landingDoors().get(0);
+        int up = indexOf(door.buttons(), ButtonLayout.Kind.HALL_UP, 0);
+        door.pressButton(up);
+        // 開放待機（80tick）を大きく超えて押したままにする
+        helper.onEachTick(() -> {
+            if (helper.getTick() <= 200 && helper.getTick() % 4 == 0) {
+                door.holdButton(up);
+            }
+            if (helper.getTick() > 60 && helper.getTick() <= 200) {
+                helper.assertTrue(car.doorState() == DoorState.OPEN, "should stay open while held: " + car.doorState() + " at " + helper.getTick());
+            }
+        });
+        helper.runAtTickTime(200 + 80 + 30, () -> {
+            helper.assertTrue(car.doorState() != DoorState.OPEN, "should close after the dwell once released");
+            helper.succeed();
+        });
+    }
+
     /** 止まっているかごの床にごく浅く入り込んだものは、衝突判定をすり抜けないよう、床の上へ戻す（プレイヤーが乗ったボートと同じ状況）。 */
     @GameTest(template = TEMPLATE, timeoutTicks = 100)
     public static void entitySlightlyInsideARestingFloorIsLiftedBack(GameTestHelper helper) {

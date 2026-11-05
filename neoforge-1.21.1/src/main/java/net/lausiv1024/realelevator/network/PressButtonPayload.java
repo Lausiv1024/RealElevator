@@ -1,7 +1,6 @@
 package net.lausiv1024.realelevator.network;
 
 import net.lausiv1024.realelevator.RealElevator;
-import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.entity.ButtonHost;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -20,7 +19,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
  * クライアントでボタンを押したことをサーバーへ伝える。ボタンは、それを持つエンティティとボタンの番号で指す。
  *
  * <p>クリック音は押したとき（{@link Action#PRESS}）と離したとき（{@link Action#RELEASE}）に鳴らす。開ボタンを押したままのあいだの
- * 繰り返し（{@link Action#REPEAT}）では鳴らさない。
+ * 繰り返し（{@link Action#REPEAT}）では鳴らさない。繰り返しは、開ボタンと乗場のボタンだけ（{@link ButtonHost#holdButton}）。
  */
 public record PressButtonPayload(int entityId, int buttonIndex, Action action) implements CustomPacketPayload {
     public enum Action {
@@ -67,8 +66,8 @@ public record PressButtonPayload(int entityId, int buttonIndex, Action action) i
                 player.level().playSound(null, center.x, center.y, center.z, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.3F, 1.5F);
             }
             case REPEAT -> {
-                if (host.buttons().get(payload.buttonIndex()).kind() == ButtonLayout.Kind.OPEN) {
-                    host.pressButton(payload.buttonIndex());
+                if (ButtonHost.isHoldable(host.buttons().get(payload.buttonIndex()))) {
+                    host.holdButton(payload.buttonIndex());
                 }
             }
             case RELEASE -> player.level().playSound(null, center.x, center.y, center.z, SoundEvents.STONE_BUTTON_CLICK_OFF, SoundSource.BLOCKS, 0.3F, 1.5F);
