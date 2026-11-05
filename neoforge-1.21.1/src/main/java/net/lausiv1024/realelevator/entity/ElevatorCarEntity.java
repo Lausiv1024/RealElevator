@@ -209,6 +209,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private int targetFloor;
     /** 最後に位置を計算した時刻（{@link ElevatorClock}）。描画の補間に使う。 */
     private double lastTick;
+    /** 設定画面のプレビューで描くだけのかご（ワールドには加えない）か。表示器の矢印とホールランタンを上向きで点けて見せる。 */
+    private boolean preview;
     /** 最後に走っていたときの時刻。クライアントだけが使う。 */
     private double lastTravelClock = Double.NEGATIVE_INFINITY;
     /** 最後に到着チャイムを鳴らした階と、鳴り終わるゲーム時刻。 */
@@ -1374,7 +1376,8 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** ホールランタンが点滅を始めてからの経過時間 [tick]。点滅の位相に使う。 */
     public double lanternTicks(double tick) {
-        return tick - lanternTick;
+        // プレビューは点滅の点灯中のまま見せる
+        return preview ? 0 : tick - lanternTick;
     }
 
     /**
@@ -1389,6 +1392,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 側 side の乗場のホールランタン。二方向出入口では、開く（開いている）側の乗場だけ点ける。 */
     public Set<TravelDirection> lanternSections(int floor, Entrance side) {
+        if (preview) {
+            return HallLantern.litSections(floor, floors.length, TravelDirection.UP, true);
+        }
         if (resting) {
             return Set.of();
         }
@@ -1572,6 +1578,15 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     // ---- 階床表示 ----
 
+    /** 設定画面のプレビューで描くだけのかごにする。 */
+    public void setPreview(boolean preview) {
+        this.preview = preview;
+    }
+
+    public boolean isPreview() {
+        return preview;
+    }
+
     /** 停止階に3文字の階名があるか（ドットで描くとき、表示器を3文字分に広げる。フォントで描くときは縮めるので広げない）。 */
     public boolean hasLongLabels() {
         if (fixtures.indicatorStyle() == FixtureConfig.IndicatorStyle.FONT) {
@@ -1663,6 +1678,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /** 階床表示器に出す矢印の向き。走行中はその向き、停止中は次に進む方向。 */
     public TravelDirection indicatorDirection() {
+        if (preview) {
+            return TravelDirection.UP;
+        }
         if (resting) {
             return TravelDirection.NONE;
         }

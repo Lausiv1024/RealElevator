@@ -237,5 +237,9 @@
   "gui.realelevator.panel.indicator_style": "表示の文字",
   "gui.realelevator.indicator_style.dot": "ドット",
   "gui.realelevator.indicator_style.font": "フォント",
-  "gui.realelevator.panel.dot_unsupported": "ドットでは出せない階名があります（ドットにない文字は出ず、3文字まで）。漢字などは「表示の文字」をフォントにしてください"
+  "gui.realelevator.panel.dot_unsupported": "ドットでは出せない階名があります（ドットにない文字は出ず、3文字まで）。漢字などは「表示の文字」をフォントにしてください",
+  "gui.realelevator.preview.tab.floors": "停止階",
+  "gui.realelevator.preview.tab.car": "かご内",
+  "gui.realelevator.preview.tab.landing": "乗場",
+  "gui.realelevator.preview.drag": "ドラッグで回す・ホイールで拡大"
 }

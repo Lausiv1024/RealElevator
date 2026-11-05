@@ -30,10 +30,12 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
@@ -110,6 +112,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
             preview = installer.isPreviewing();
             hadStar = installer.hasNetherStar();
             form = new SettingsForm(installer.settingsTag());
+            form.enablePreview(new ElevatorPreview(this::settingsTag, this::previewAnchor));
             // プリセットの「展望」を選んだら展望仕様にする（設置する前だけ）
             form.setObservationHandler(v -> {
                 observation = v;
@@ -297,6 +300,17 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
         }
     }
 
+    /** プレビューでかごを置く位置。今の設定で設置したときのかごの位置（最下階）。 */
+    private ElevatorPreview.Anchor previewAnchor() {
+        InstallerBlockEntity installer = installer();
+        if (installer == null) {
+            return new ElevatorPreview.Anchor(Vec3.ZERO, Direction.NORTH);
+        }
+        ElevatorPlan plan = new ElevatorPlan(installer.plan().origin(), installer.facing());
+        plan.applyInstallSettings(settingsTag(), true);
+        return new ElevatorPreview.Anchor(plan.carOrigin(), installer.facing());
+    }
+
     /** 今の設定。{@link InstallerBlockEntity#applySettings} と同じ形。 */
     private CompoundTag settingsTag() {
         CompoundTag tag = new CompoundTag();
@@ -361,7 +375,18 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
     }
 
     @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (!showPower && form != null && form.scrollPreview(mouseX, mouseY, scrollY)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (!showPower && form != null && form.dragPreview(mouseX, mouseY, dragX, dragY)) {
+            return true;
+        }
         // コンテナの画面はドラッグをスロットにしか渡さないので、スライダーを動かせるよう先に渡す
         if (button == 0 && isDragging() && getFocused() instanceof ValueSlider slider
                 && slider.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
@@ -414,7 +439,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
                     (width - noteWidth) / 2, Math.max(16, topPos - 22), noteWidth, 0xFFFF80);
         } else {
             graphics.drawCenteredString(font, title, width / 2, 10, 0xFFFFFF);
-            form.renderFloors(graphics, font);
+            form.renderFloors(graphics, font, partialTick);
             graphics.drawCenteredString(font, status(installer), width / 2, height - 38, 0xFFFF80);
         }
         renderTooltip(graphics, mouseX, mouseY);

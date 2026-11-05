@@ -71,6 +71,30 @@ final class SettingsForm {
     private final Map<Integer, FloorEntrances> entrances = new HashMap<>();
     /** 二方向出入口で、停止階ごとの出入口を選べるか（設置する前の設定画面だけ）。 */
     private boolean editableEntrances;
+    /** 停止階の欄と切り替えて出すプレビュー。なければ停止階の欄だけ。 */
+    @Nullable
+    private ElevatorPreview preview;
+    private Tab tab = Tab.FLOORS;
+    /** 停止階の欄の上端と、プレビューの範囲。 */
+    private int floorsTop = TOP;
+    private int previewBottom;
+
+    /** プレビューの高さの、幅に対する上限。 */
+    private static final double MAX_PREVIEW_ASPECT = 1.2;
+
+    /** 停止階の欄に出すもの。 */
+    enum Tab {
+        FLOORS(null),
+        CAR(ElevatorPreview.View.CAR),
+        LANDING(ElevatorPreview.View.LANDING);
+
+        @Nullable
+        final ElevatorPreview.View view;
+
+        Tab(@Nullable ElevatorPreview.View view) {
+            this.view = view;
+        }
+    }
     private final List<EditBox> labelBoxes = new ArrayList<>();
     private int scroll;
     private int visibleFloors;
@@ -106,6 +130,30 @@ final class SettingsForm {
     }
 
     /** 停止階を変える（設置用ブロックで登録し直されたとき）。 */
+    /** 停止階の欄と切り替えて、かご内と乗場のプレビューを出せるようにする。 */
+    void enablePreview(ElevatorPreview preview) {
+        this.preview = preview;
+    }
+
+    @Nullable
+    ElevatorPreview preview() {
+        return preview;
+    }
+
+    int[] floors() {
+        return floors.clone();
+    }
+
+    /** 停止階 floorY の階名（なければ空）。 */
+    String label(int floorY) {
+        return labels.getOrDefault(floorY, "");
+    }
+
+    /** 停止階 floorY で使う出入口。 */
+    FloorEntrances entrance(int floorY) {
+        return entrances.getOrDefault(floorY, FloorEntrances.FRONT);
+    }
+
     void setFloors(int[] floors) {
         this.floors = floors.clone();
     }
@@ -204,7 +252,10 @@ final class SettingsForm {
     void layout(Font font, int width, int bottom, List<AbstractWidget> settings, Consumer<AbstractWidget> add,
                 Runnable send, Runnable rebuild) {
         int rowsFit = Math.max(1, (bottom - 4 - TOP) / ROW);
-        visibleFloors = rowsFit;
+        // プレビューがあれば、停止階の欄の上に切り替えのボタンを並べ、その下を停止階の欄かプレビューにする
+        floorsTop = preview != null ? TOP + ROW : TOP;
+        previewBottom = bottom - 4;
+        visibleFloors = preview != null ? Math.max(1, rowsFit - 1) : rowsFit;
 
         // 収まらない行は次の列へ折り返す。列の幅は、停止階の欄を残した幅を列の数で分ける
         int columns = (settings.size() + rowsFit - 1) / rowsFit;
@@ -223,12 +274,26 @@ final class SettingsForm {
         // 停止階と階名（上の階から順に並べる）
         floorColumnX = left + settingsWidth + MARGIN;
         labelBoxes.clear();
+        if (preview != null) {
+            int tabWidth = (FLOOR_COLUMN_WIDTH - GAP * 2) / 3;
+            for (Tab value : Tab.values()) {
+                Button button = Button.builder(Component.translatable("gui.realelevator.preview.tab." + value.name().toLowerCase(Locale.ROOT)), b -> {
+                    tab = value;
+                    rebuild.run();
+                }).bounds(floorColumnX + value.ordinal() * (tabWidth + GAP), TOP, tabWidth, 20).build();
+                button.active = value != tab;
+                add.accept(button);
+            }
+            if (tab != Tab.FLOORS) {
+                return;
+            }
+        }
         int shown = Math.min(visibleFloors, floors.length);
         scroll = Math.clamp(scroll, 0, Math.max(0, floors.length - visibleFloors));
         for (int row = 0; row < shown; row++) {
             int index = floors.length - 1 - (row + scroll);
             int floorY = floors[index];
-            EditBox box = new EditBox(font, floorColumnX + LABEL_BOX_X, TOP + row * ROW, LABEL_BOX_WIDTH, 18,
+            EditBox box = new EditBox(font, floorColumnX + LABEL_BOX_X, floorsTop + row * ROW, LABEL_BOX_WIDTH, 18,
                     Component.translatable("gui.realelevator.panel.label"));
             box.setMaxLength(ElevatorPlan.MAX_LABEL_LENGTH);
             box.setHint(Component.literal(String.valueOf(index + 1)));
@@ -240,7 +305,7 @@ final class SettingsForm {
             labelBoxes.add(box);
             add.accept(box);
             // 読み上げ名（音声合成で「（読み上げ名）です。」と読む。同梱音声では読めない）
-            EditBox speech = new EditBox(font, floorColumnX + SPEECH_BOX_X, TOP + row * ROW, SPEECH_BOX_WIDTH, 18,
+            EditBox speech = new EditBox(font, floorColumnX + SPEECH_BOX_X, floorsTop + row * ROW, SPEECH_BOX_WIDTH, 18,
                     Component.translatable("gui.realelevator.panel.speech_name"));
             speech.setMaxLength(Announcement.MAX_SPEECH_NAME_LENGTH);
             speech.setHint(Component.translatable("gui.realelevator.panel.speech_name_hint"));
@@ -287,22 +352,61 @@ final class SettingsForm {
 
     /** 停止階の名前と、停止階についての注意を描く。 */
     void renderFloors(GuiGraphics graphics, Font font) {
+        renderFloors(graphics, font, 0);
+    }
+
+    /** 停止階の欄を描く。プレビューに切り替えていれば、プレビューを描く。 */
+    void renderFloors(GuiGraphics graphics, Font font, float partialTick) {
+        if (preview != null && tab.view != null) {
+            int height = previewHeight();
+            preview.render(graphics, floorColumnX, floorsTop, FLOOR_COLUMN_WIDTH, height, this, tab.view, partialTick);
+            graphics.drawString(font, Component.translatable("gui.realelevator.preview.drag"), floorColumnX + 4, floorsTop + height - 12, 0xA0A0A0);
+            return;
+        }
         int shown = Math.min(visibleFloors, floors.length);
         for (int row = 0; row < shown; row++) {
             int index = floors.length - 1 - (row + scroll);
             graphics.drawString(font, Component.translatable("gui.realelevator.panel.floor", index + 1, floors[index]),
-                    floorColumnX, TOP + 5 + row * ROW, 0xE0E0E0);
+                    floorColumnX, floorsTop + 5 + row * ROW, 0xE0E0E0);
         }
         if (floors.length <= 1) {
             graphics.drawWordWrap(font, Component.translatable("gui.realelevator.panel.no_floors"),
-                    floorColumnX, TOP + 5 + ROW, FLOOR_COLUMN_WIDTH, 0xA0A0A0);
+                    floorColumnX, floorsTop + 5 + ROW, FLOOR_COLUMN_WIDTH, 0xA0A0A0);
         } else if (!allowsOverDoorHallFixtures() && shown < visibleFloors) {
             graphics.drawWordWrap(font, Component.translatable("gui.realelevator.panel.no_over_door"),
-                    floorColumnX, TOP + 5 + shown * ROW, FLOOR_COLUMN_WIDTH, 0xA0A0A0);
+                    floorColumnX, floorsTop + 5 + shown * ROW, FLOOR_COLUMN_WIDTH, 0xA0A0A0);
         } else if (hasLabelsBeyondDots() && shown < visibleFloors) {
             graphics.drawWordWrap(font, Component.translatable("gui.realelevator.panel.dot_unsupported"),
-                    floorColumnX, TOP + 5 + shown * ROW, FLOOR_COLUMN_WIDTH, 0xFFC060);
+                    floorColumnX, floorsTop + 5 + shown * ROW, FLOOR_COLUMN_WIDTH, 0xFFC060);
         }
+    }
+
+    /** プレビューの高さ。縦に長すぎて見づらくならないよう、幅の{@value #MAX_PREVIEW_ASPECT}倍までにする。 */
+    private int previewHeight() {
+        return Math.min(previewBottom - floorsTop, (int) (FLOOR_COLUMN_WIDTH * MAX_PREVIEW_ASPECT));
+    }
+
+    /** プレビューの上でドラッグしたら、プレビューを回す。 */
+    boolean dragPreview(double mouseX, double mouseY, double dragX, double dragY) {
+        if (!overPreview(mouseX, mouseY)) {
+            return false;
+        }
+        preview.drag(dragX, dragY);
+        return true;
+    }
+
+    /** プレビューの上でホイールを回したら、拡大・縮小する。 */
+    boolean scrollPreview(double mouseX, double mouseY, double scrollY) {
+        if (!overPreview(mouseX, mouseY) || scrollY == 0) {
+            return false;
+        }
+        preview.zoom(scrollY);
+        return true;
+    }
+
+    private boolean overPreview(double mouseX, double mouseY) {
+        return preview != null && tab.view != null && mouseX >= floorColumnX && mouseX <= floorColumnX + FLOOR_COLUMN_WIDTH
+                && mouseY >= floorsTop && mouseY <= floorsTop + previewHeight();
     }
 
     /** ドットで描く設定で、ドットでは出せない階名（ドットにない文字、4文字）があるか。 */

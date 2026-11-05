@@ -23,7 +23,7 @@ import net.minecraft.world.level.block.Block;
  *
  * <p>左の列にプリセットと、天井・手すり・防犯窓・乗場の意匠の設定。中の列に素材を選ぶ部位。右に、選んだ部位の候補のブロックを
  * アイテムのアイコンで並べ、クリックで選ぶ（多ければホイールでスクロール）。トランサムの「前壁と同じ／ドアと同じ」、乗場の壁の
- * 「まわりに合わせる」、カーペットの「なし」は、候補の上のボタンで選ぶ。サーバーで自由設定がオンなら、手に持っているブロックも使える。
+ * 「まわりに合わせる」、カーペットの「なし」は、候補の上のボタンで選ぶ。候補の下に、かご内と乗場を切り替えて見られるプレビューを出す。サーバーで自由設定がオンなら、手に持っているブロックも使える。
  * 値を変えるたびに設定を送る。
  */
 final class DesignScreen extends Screen {
@@ -37,6 +37,11 @@ final class DesignScreen extends Screen {
     private static final int SELECTED = 0xFFFFD040;
     private static final int SLOT_BORDER = 0xFF555555;
     private static final int SLOT_FILL = 0xFF202020;
+    /** プレビューに残す高さの下限 [px]。候補が多くても、これだけはプレビューに残す。 */
+    private static final int MIN_PREVIEW_HEIGHT = 80;
+    /** プレビューの幅の、高さに対する上限（広い画面で横長になりすぎないように）。 */
+    private static final double MAX_PREVIEW_ASPECT = 1.8;
+    private ElevatorPreview.View previewView = ElevatorPreview.View.CAR;
 
     /** 素材を選ぶ部位（カーペットは素材ではなく色）。 */
     private enum Choice {
@@ -139,8 +144,58 @@ final class DesignScreen extends Screen {
             addRenderableWidget(Button.builder(Component.translatable("gui.realelevator.design.use_held"), b -> useHeldBlock())
                     .bounds(gridX, height - 52, Math.min(200, width - MARGIN - gridX), 20).build());
         }
+        if (form.preview() != null) {
+            int tabWidth = Math.min(100, (width - MARGIN - gridX - GAP) / 2);
+            for (ElevatorPreview.View view : ElevatorPreview.View.values()) {
+                Button button = Button.builder(Component.translatable("gui.realelevator.preview.tab." + view.name().toLowerCase(Locale.ROOT)), b -> {
+                    previewView = view;
+                    rebuildWidgets();
+                }).bounds(previewLeft() + view.ordinal() * (tabWidth + GAP), previewTop() - ROW, tabWidth, 20).build();
+                button.active = view != previewView;
+                addRenderableWidget(button);
+            }
+        }
         addRenderableWidget(Button.builder(Component.translatable("gui.done"), b -> onClose())
                 .bounds(width / 2 - 75, height - 26, 150, 20).build());
+    }
+
+    /** 候補の欄の下端（候補とプレビューを合わせた範囲）。 */
+    private int rightBottom() {
+        return ClientPresets.freeMaterials() && choice.part != null ? height - 56 : height - 32;
+    }
+
+    private int previewHeight() {
+        return form.preview() == null ? 0 : rightBottom() - previewTop();
+    }
+
+    /**
+     * プレビューの上端。切り替えのボタンはその上に置く。素材の候補には、どの部位の候補も収まる段数を先に取り（2段より少なくはしない）、
+     * 残りの高さをプレビューにする。候補が多くても、プレビューには {@value #MIN_PREVIEW_HEIGHT}px は残す。
+     */
+    private int previewTop() {
+        int area = rightBottom() - gridTop();
+        int gridHeight = Math.min(candidateRowsNeeded() * SLOT, Math.max(SLOT * 2, area - ROW - 4 - MIN_PREVIEW_HEIGHT));
+        return gridTop() + gridHeight + 4 + ROW;
+    }
+
+    /** どの部位の候補も収まる段数。 */
+    private int candidateRowsNeeded() {
+        int most = InteriorConfig.Carpet.values().length;
+        for (Choice c : Choice.values()) {
+            if (c.part != null) {
+                most = Math.max(most, Materials.candidates(c.part).size() + 1);
+            }
+        }
+        return (most + gridColumns() - 1) / gridColumns();
+    }
+
+    /** プレビューの幅。広い画面では、高さの {@value #MAX_PREVIEW_ASPECT} 倍までにして、候補の欄の中央に置く。 */
+    private int previewWidth() {
+        return Math.min(width - MARGIN - gridLeft(), (int) (previewHeight() * MAX_PREVIEW_ASPECT));
+    }
+
+    private int previewLeft() {
+        return gridLeft() + (width - MARGIN - gridLeft() - previewWidth()) / 2;
     }
 
     private static CycleButton<?> left(int y, CycleButton<?> button) {
@@ -163,7 +218,7 @@ final class DesignScreen extends Screen {
     }
 
     private int gridRows() {
-        int bottom = ClientPresets.freeMaterials() && choice.part != null ? height - 56 : height - 32;
+        int bottom = form.preview() != null ? previewTop() - ROW - 4 : rightBottom();
         return Math.max(1, (bottom - gridTop()) / SLOT);
     }
 
@@ -293,6 +348,9 @@ final class DesignScreen extends Screen {
                 hovered = value;
             }
         }
+        if (form.preview() != null) {
+            form.preview().render(graphics, previewLeft(), previewTop(), previewWidth(), previewHeight(), form, previewView, partialTick);
+        }
         if (message != null) {
             graphics.drawCenteredString(font, message, width / 2, height - 40, 0xFFA0A0);
         }
@@ -317,8 +375,26 @@ final class DesignScreen extends Screen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
+    private boolean overPreview(double mouseX, double mouseY) {
+        return form.preview() != null && mouseX >= previewLeft() && mouseX <= previewLeft() + previewWidth()
+                && mouseY >= previewTop() && mouseY <= previewTop() + previewHeight();
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (overPreview(mouseX, mouseY)) {
+            form.preview().drag(dragX, dragY);
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (overPreview(mouseX, mouseY)) {
+            form.preview().zoom(scrollY);
+            return true;
+        }
         if (mouseX >= gridLeft()) {
             scroll -= (int) Math.signum(scrollY);
             return true;

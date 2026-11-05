@@ -237,5 +237,9 @@
   "gui.realelevator.panel.indicator_style": "Display text",
   "gui.realelevator.indicator_style.dot": "Dots",
   "gui.realelevator.indicator_style.font": "Font",
-  "gui.realelevator.panel.dot_unsupported": "Some floor names can't be shown in dots (unsupported characters are skipped, up to 3). Set \"Display text\" to Font for other scripts"
+  "gui.realelevator.panel.dot_unsupported": "Some floor names can't be shown in dots (unsupported characters are skipped, up to 3). Set \"Display text\" to Font for other scripts",
+  "gui.realelevator.preview.tab.floors": "Floors",
+  "gui.realelevator.preview.tab.car": "Car",
+  "gui.realelevator.preview.tab.landing": "Landing",
+  "gui.realelevator.preview.drag": "Drag to turn, scroll to zoom"
 }

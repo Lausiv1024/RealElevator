@@ -2,6 +2,8 @@ package net.lausiv1024.realelevator.client;
 
 import java.util.List;
 
+import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
+import net.lausiv1024.realelevator.entity.LandingDoorEntity;
 import net.lausiv1024.realelevator.network.RenewalPayloads;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -9,8 +11,10 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
@@ -31,6 +35,7 @@ public class RenewalScreen extends Screen {
         this.doorId = doorId;
         this.form = new SettingsForm(settings);
         this.settings = settings;
+        this.form.enablePreview(new ElevatorPreview(() -> settings, this::previewAnchor));
         this.groupSize = settings.getInt("GroupSize");
     }
 
@@ -93,6 +98,27 @@ public class RenewalScreen extends Screen {
                 Component.translatable("gui.realelevator.renewal.confirm.message")));
     }
 
+    /** プレビューでかごを置く位置。メニューを開いた乗場の階の、そのかごの位置。 */
+    private ElevatorPreview.Anchor previewAnchor() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null && mc.level.getEntity(doorId) instanceof LandingDoorEntity door && door.car() != null) {
+            ElevatorCarEntity car = door.car();
+            return new ElevatorPreview.Anchor(new Vec3(car.getX(), door.getY(), car.getZ()), car.facing());
+        }
+        return mc.player != null ? new ElevatorPreview.Anchor(mc.player.position(), mc.player.getDirection())
+                : new ElevatorPreview.Anchor(Vec3.ZERO, Direction.NORTH);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        return form.dragPreview(mouseX, mouseY, dragX, dragY) || super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        return form.scrollPreview(mouseX, mouseY, scrollY) || super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
     /** 今の設定（機種・速度などは届いたまま）。 */
     private CompoundTag currentSettings() {
         CompoundTag tag = settings.copy();
@@ -112,7 +138,7 @@ public class RenewalScreen extends Screen {
         super.render(graphics, mouseX, mouseY, partialTick);
         Component heading = groupSize > 0 ? title.copy().append(Component.translatable("gui.realelevator.renewal.group_size", groupSize)) : title;
         graphics.drawCenteredString(font, heading, width / 2, 10, 0xFFFFFF);
-        form.renderFloors(graphics, font);
+        form.renderFloors(graphics, font, partialTick);
         graphics.drawCenteredString(font, Component.translatable("gui.realelevator.renewal.hint"), width / 2, height - 38, 0xFFFF80);
     }
 

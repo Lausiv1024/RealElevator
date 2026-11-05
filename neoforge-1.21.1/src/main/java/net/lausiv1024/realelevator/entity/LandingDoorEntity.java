@@ -116,6 +116,11 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
 
     /** つながっているかご。読み込まれていなければ null。 */
     @Nullable
+    /** 設定画面のプレビューで、ワールドにないかご car につなぐ。 */
+    public void setPreviewCar(ElevatorCarEntity car) {
+        cachedCar = car;
+    }
+
     public ElevatorCarEntity car() {
         if (cachedCar != null && !cachedCar.isRemoved()) {
             return cachedCar;
@@ -216,6 +221,10 @@ public class LandingDoorEntity extends Entity implements ButtonHost {
         Button button = buttons().get(index);
         if (car == null) {
             return false;
+        }
+        if (car.isPreview()) {
+            // プレビューでは▲だけ点けて見せる
+            return button.kind() == ButtonLayout.Kind.HALL_UP && !button.wheelchair();
         }
         // 群管理では、群のどれかのかごに呼びがあれば点く
         return ElevatorGroups.isHallCallLit(car, button.floor(), direction(button), entrance(), button.wheelchair());
