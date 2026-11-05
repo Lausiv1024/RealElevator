@@ -8,6 +8,10 @@ import java.util.BitSet;
  * <p>かごは進行方向にある呼びを近い順に処理する。上昇中は、かご呼びと上り方向の乗場呼びがある階に止まり、
  * それより上に止まる階がなければ、最も上にある下り方向の乗場呼びまで行って反転する。下降中も同様。
  *
+ * <p>止まった階の先に呼びがなくても、着いたときは進行方向を保つ（この階に逆向きの乗場呼びがあれば、反転して応える）。
+ * 最下階と最上階に着いたときは、呼びの有無にかかわらず反転する（最下階は上り、最上階は下り）。
+ * 戸が閉じたときに {@link #nextStop} が、呼びがなければ進行方向をなくし、逆向きの呼びだけなら反転する。
+ *
  * <p>階は0始まりの番号（下から）で表す。かごの位置や走行は呼び出し側が管理し、
  * 停止中で戸が閉じたときに {@link #nextStop}、停止階に着いたときに {@link #arrive} を呼ぶ。
  *
@@ -74,19 +78,16 @@ public final class CollectiveControl {
     }
 
     /**
-     * 行先ボタンの2度押しキャンセル。floor のかご呼びを取り消す。停止中に呼びがなくなったら、進行方向も消す。
-     * 走行中は進行方向を残す（着いたときに {@link #arrive} が決め直す）。
+     * 行先ボタンの2度押しキャンセル。floor のかご呼びを取り消す。進行方向はそのまま残す（停止中なら戸が閉じたときに
+     * {@link #nextStop} が、走行中なら着いたときに {@link #arrive} が決め直す）。
      *
      * @return 取り消したか（登録されていなければ false）
      */
-    public boolean cancelCar(int floor, boolean stopped) {
+    public boolean cancelCar(int floor) {
         if (floor < 0 || floor >= floorCount || !carCalls.get(floor)) {
             return false;
         }
         carCalls.clear(floor);
-        if (stopped && !hasAnyCall()) {
-            direction = TravelDirection.NONE;
-        }
         return true;
     }
 
@@ -145,6 +146,16 @@ public final class CollectiveControl {
     public CallType arrive(int floor) {
         boolean hall = false;
         carCalls.clear(floor);
+        TravelDirection terminal = terminalDirection(floor);
+        if (terminal != TravelDirection.NONE) {
+            // 最下階・最上階では、呼びの有無にかかわらず反転する。戸が閉じて呼びがなければ nextStop で NONE に戻る
+            direction = terminal;
+            if (hallCall(floor, terminal)) {
+                hallCalls(terminal).clear(floor);
+                hall = true;
+            }
+            return hall ? CallType.HALL : CallType.CAR;
+        }
         if (direction == TravelDirection.NONE) {
             // 方向が決まっていなければ、この階の乗場呼びの方向に進む
             if (upCalls.get(floor) || downCalls.get(floor)) {
@@ -152,20 +163,16 @@ public final class CollectiveControl {
             }
         }
         if (direction != TravelDirection.NONE) {
-            if (!hallCall(floor, direction) && !hasCallsBeyond(floor, direction)) {
-                // この先に呼びがなければ、ここで反転する
-                direction = hallCall(floor, opposite(direction)) || hasCallsBeyond(floor, opposite(direction))
-                        ? opposite(direction) : TravelDirection.NONE;
+            if (!hallCall(floor, direction) && !hasCallsBeyond(floor, direction) && hallCall(floor, opposite(direction))) {
+                // この先に呼びがなく、この階に逆向きの乗場呼びがあれば、ここで反転して応える
+                direction = opposite(direction);
             }
-            if (direction != TravelDirection.NONE && hallCall(floor, direction)) {
+            if (hallCall(floor, direction)) {
                 hallCalls(direction).clear(floor);
                 hall = true;
             }
         }
-        // 乗場呼びに応えたときは、乗る人の行く方向を保つ。戸が閉じて呼びがなければ nextStop で NONE に戻る
-        if (!hall && !hasAnyCall()) {
-            direction = TravelDirection.NONE;
-        }
+        // この先に呼びがなくても進行方向は保つ。戸が閉じたときに nextStop が、呼びがなければ NONE に、逆向きの呼びだけなら反転する
         return hall ? CallType.HALL : CallType.CAR;
     }
 
@@ -239,6 +246,11 @@ public final class CollectiveControl {
             }
         }
         return -1;
+    }
+
+    /** 最下階なら上り、最上階なら下り（そこから進める唯一の方向）。それ以外の階は NONE。 */
+    private TravelDirection terminalDirection(int floor) {
+        return floor == 0 ? TravelDirection.UP : floor == floorCount - 1 ? TravelDirection.DOWN : TravelDirection.NONE;
     }
 
     private boolean hasCallsBeyond(int floor, TravelDirection dir) {

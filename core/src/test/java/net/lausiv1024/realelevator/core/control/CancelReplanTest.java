@@ -38,7 +38,7 @@ class CancelReplanTest {
     void anotherCallAtTheTargetKeepsTheStop() {
         CollectiveControl control = control(8);
         control.pressHall(8, TravelDirection.UP, 0, false);
-        control.cancelCar(8, false);
+        control.cancelCar(8);
         Trip trip = tripTo8();
         CancelReplan.Outcome outcome = CancelReplan.replan(control, trip, 100, FLOORS, 0, 8);
         assertEquals(8, outcome.targetFloor());
@@ -49,7 +49,7 @@ class CancelReplanTest {
     @Test
     void beforeBrakingTheTripExtendsToTheNextCall() {
         CollectiveControl control = control(8, 10);
-        control.cancelCar(8, false);
+        control.cancelCar(8);
         CancelReplan.Outcome outcome = CancelReplan.replan(control, tripTo8(), 100, FLOORS, 0, 8);
         assertEquals(10, outcome.targetFloor());
         assertEquals(50, outcome.trip().to());
@@ -59,7 +59,7 @@ class CancelReplanTest {
     @Test
     void whileBrakingTheCarStopsThereWithoutOpening() {
         CollectiveControl control = control(8, 10);
-        control.cancelCar(8, false);
+        control.cancelCar(8);
         Trip trip = tripTo8();
         CancelReplan.Outcome outcome = CancelReplan.replan(control, trip, tickAt(trip, 39), FLOORS, 0, 8);
         assertEquals(8, outcome.targetFloor());
@@ -70,7 +70,7 @@ class CancelReplanTest {
     @Test
     void withNoCallsLeftTheCarStopsAtTheNearestFloorItCanWithoutOpening() {
         CollectiveControl control = control(8);
-        control.cancelCar(8, false);
+        control.cancelCar(8);
         Trip trip = tripTo8();
         long tick = tickAt(trip, 12);
         CancelReplan.Outcome outcome = CancelReplan.replan(control, trip, tick, FLOORS, 0, 8);
@@ -94,12 +94,16 @@ class CancelReplanTest {
     }
 
     @Test
-    void cancellingWhileStoppedClearsTheDirectionOnlyWhenNothingIsLeft() {
-        CollectiveControl control = control(3, 5);
-        assertTrue(control.cancelCar(3, true));
+    void cancellingWhileStoppedKeepsTheDirectionUntilTheDoorCloses() {
+        CollectiveControl control = new CollectiveControl(FLOORS.length);
+        control.pressCar(3, 1, true);
+        control.pressCar(5, 1, true);
+        assertTrue(control.cancelCar(3));
+        assertFalse(control.cancelCar(3), "already cancelled");
+        assertTrue(control.cancelCar(5));
         assertEquals(TravelDirection.UP, control.direction());
-        assertFalse(control.cancelCar(3, true), "already cancelled");
-        assertTrue(control.cancelCar(5, true));
+        // 戸が閉じて呼びがなければ消える
+        assertEquals(-1, control.nextStop(1));
         assertEquals(TravelDirection.NONE, control.direction());
     }
 }

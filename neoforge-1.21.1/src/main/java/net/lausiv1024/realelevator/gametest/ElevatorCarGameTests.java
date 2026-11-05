@@ -278,6 +278,24 @@ public class ElevatorCarGameTests {
         });
     }
 
+    /** 最上階に着いたら、呼びがなくても下りに反転し（方向灯とランタン）、戸が閉まって呼びがなければ消える。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 400)
+    public static void theTopFloorTurnsDownUntilTheDoorCloses(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE).car();
+        helper.runAtTickTime(5, () -> car.pressCarCall(1));
+        AtomicBoolean opened = new AtomicBoolean();
+        helper.onEachTick(() -> {
+            if (!opened.get() && !car.isMoving() && car.doorState() == DoorState.OPEN && car.getY() > car.floors()[0] + 1) {
+                opened.set(true);
+                helper.assertTrue(car.indicatorDirection() == TravelDirection.DOWN, "should turn down at the top: " + car.indicatorDirection());
+            }
+        });
+        helper.succeedWhen(() -> {
+            helper.assertTrue(opened.get() && car.doorState() == DoorState.CLOSED, "not closed yet");
+            helper.assertTrue(car.indicatorDirection() == TravelDirection.NONE, "should go dark without calls: " + car.indicatorDirection());
+        });
+    }
+
     /** 乗場のボタンを押したままのあいだは戸を開けておき、離してから乗場呼びの開放待機がたつと閉める。 */
     @GameTest(template = TEMPLATE, timeoutTicks = 400)
     public static void holdingTheHallButtonKeepsTheDoorOpen(GameTestHelper helper) {

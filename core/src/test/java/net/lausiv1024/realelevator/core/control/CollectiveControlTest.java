@@ -165,6 +165,81 @@ class CollectiveControlTest {
     }
 
     @Test
+    void terminalFloorsTurnTheDirectionEvenWithoutCalls() {
+        CollectiveControl control = new CollectiveControl(5);
+        control.pressCar(4, 1, true);
+        assertEquals(4, control.nextStop(1));
+        assertEquals(CallType.CAR, control.arrive(4));
+        // 最上階では、呼びがなくても下りに反転する
+        assertEquals(DOWN, control.direction());
+        // 戸が閉じて呼びがなければ、方向なしに戻る
+        assertEquals(-1, control.nextStop(4));
+        assertEquals(NONE, control.direction());
+
+        control.pressCar(0, 4, true);
+        assertEquals(0, control.nextStop(4));
+        assertEquals(CallType.CAR, control.arrive(0));
+        assertEquals(UP, control.direction(), "the bottom floor turns up");
+        // 戸が閉じたときに呼びがあれば、それに応える
+        control.pressHall(3, DOWN, 0, true);
+        assertEquals(3, control.nextStop(0));
+        assertEquals(UP, control.direction());
+    }
+
+    @Test
+    void middleFloorsKeepTheDirectionUntilTheDoorCloses() {
+        CollectiveControl control = new CollectiveControl(5);
+        control.pressCar(2, 0, true);
+        control.nextStop(0);
+        assertEquals(CallType.CAR, control.arrive(2));
+        // 先に呼びがなくても、着いたときは方向を保つ
+        assertEquals(UP, control.direction());
+        // 戸が閉じて呼びがなければ消える
+        assertEquals(-1, control.nextStop(2));
+        assertEquals(NONE, control.direction());
+    }
+
+    @Test
+    void onlyOppositeCallsTurnWhenTheDoorCloses() {
+        CollectiveControl control = new CollectiveControl(5);
+        control.pressCar(3, 0, true);
+        control.pressHall(1, UP, 0, false);
+        assertEquals(1, control.nextStop(0));
+        control.arrive(1);
+        assertEquals(3, control.nextStop(1));
+        control.arrive(3);
+        // 逆向きの呼び（1階の上り）しかなくても、戸が閉じるまでは上りのまま
+        control.pressHall(1, UP, 3, true);
+        assertEquals(UP, control.direction());
+        // 戸が閉じたら反転して応える
+        assertEquals(1, control.nextStop(3));
+        assertEquals(DOWN, control.direction());
+    }
+
+    @Test
+    void anOppositeHallCallOnTheFloorTurnsOnArrival() {
+        CollectiveControl control = new CollectiveControl(5);
+        control.pressHall(3, DOWN, 0, true);
+        assertEquals(3, control.nextStop(0));
+        assertEquals(CallType.HALL, control.arrive(3));
+        assertEquals(DOWN, control.direction());
+        assertFalse(control.hasHallCall(3, DOWN));
+    }
+
+    @Test
+    void terminalHallCallIsServedWhenTurning() {
+        CollectiveControl control = new CollectiveControl(5);
+        control.pressHall(4, DOWN, 1, true);
+        control.pressCar(2, 1, true);
+        assertEquals(2, control.nextStop(1));
+        control.arrive(2);
+        assertEquals(4, control.nextStop(2));
+        assertEquals(CallType.HALL, control.arrive(4));
+        assertFalse(control.hasHallCall(4, DOWN));
+        assertEquals(DOWN, control.direction());
+    }
+
+    @Test
     void twoFloorRoundTrip() {
         CollectiveControl control = new CollectiveControl(2);
         assertEquals(REGISTERED, control.pressHall(1, DOWN, 0, true));

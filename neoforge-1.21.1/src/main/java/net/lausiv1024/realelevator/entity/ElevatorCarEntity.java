@@ -676,7 +676,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             }
         }
         wheelchairCalls.cancelCar(floor);
-        control.cancelCar(floor, isStoppedForCalls());
+        control.cancelCar(floor);
         if (!isStoppedForCalls() && floor == targetFloor) {
             replanAfterCancel(level().getGameTime());
         }
