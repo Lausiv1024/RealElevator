@@ -91,7 +91,9 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
         for (Entrance entrance : car.entrances()) {
             double fraction = car.doorFractionAt(tick, entrance);
             for (Box panel : CarShapes.doorPanels(car.spec(), car.facing(), DoorGeometry.Side.CAR, fraction, entrance)) {
-                BoxRenderer.renderDoorPanel(pose, consumer, panel, door, light, packedLight, doorOuter, interior.securityWindow(), wiredGlass);
+                // 乗場の側を向く面は、かごの外側と同じ亜鉛メッキ調
+                BoxRenderer.renderDoorPanel(pose, consumer, panel, door, light, outside.sprite(), packedLight, doorOuter,
+                        interior.securityWindow(), wiredGlass);
             }
             // 戸の上の、トランサムの張り出し
             for (Box soffit : DoorGeometry.soffits(car.spec(), DoorGeometry.Side.CAR)) {

@@ -124,18 +124,35 @@ final class BoxRenderer {
      * かごの外を向く面は outside で描く。かごの中の照明の明るさが、外から見た面に効かないようにするため。
      */
     static void renderCarBox(PoseStack.Pose pose, VertexConsumer consumer, Box b, Box outer, Look inside, Look outside) {
+        renderCarBox(pose, consumer, b, outer, inside, outside, outside, null);
+    }
+
+    /**
+     * {@link #renderCarBox(PoseStack.Pose, VertexConsumer, Box, Box, Look, Look)} の、戸板の乗場の側の面を outsideFace で描くもの。
+     * 戸板の表と裏の法線は faceAlongX（true なら X、false なら Z の向き）で、そのうちかごの原点から遠い方の面を乗場の側とする。
+     * 内側のレールの戸板（2枚片開き・4枚中央開き）の乗場の側の面は、外のレールの戸板の裏に隠れる位置でも outsideFace で描く。
+     * faceAlongX が null なら、外を向く面はすべて outside。
+     */
+    static void renderCarBox(PoseStack.Pose pose, VertexConsumer consumer, Box b, Box outer, Look inside, Look outside, Look outsideFace,
+                             @Nullable Boolean faceAlongX) {
         float x0 = (float) b.minX(), y0 = (float) b.minY(), z0 = (float) b.minZ();
         float x1 = (float) b.maxX(), y1 = (float) b.maxY(), z1 = (float) b.maxZ();
         double cx = (b.minX() + b.maxX()) / 2;
         double cy = (b.minY() + b.maxY()) / 2;
         double cz = (b.minZ() + b.maxZ()) / 2;
         double e = 0.01;
+        boolean alongX = Boolean.TRUE.equals(faceAlongX);
+        boolean alongZ = Boolean.FALSE.equals(faceAlongX);
         face(pose, consumer, inside(outer, cx, b.minY() - e, cz) ? inside : outside).draw(0, -1, 0, x0, x1, z0, z1, (u, v) -> new float[] {u, y0, v});
         face(pose, consumer, inside(outer, cx, b.maxY() + e, cz) ? inside : outside).draw(0, 1, 0, x0, x1, z1, z0, (u, v) -> new float[] {u, y1, v});
-        face(pose, consumer, inside(outer, cx, cy, b.minZ() - e) ? inside : outside).draw(0, 0, -1, x1, x0, y0, y1, (u, v) -> new float[] {u, v, z0});
-        face(pose, consumer, inside(outer, cx, cy, b.maxZ() + e) ? inside : outside).draw(0, 0, 1, x0, x1, y0, y1, (u, v) -> new float[] {u, v, z1});
-        face(pose, consumer, inside(outer, b.minX() - e, cy, cz) ? inside : outside).draw(-1, 0, 0, z0, z1, y0, y1, (u, v) -> new float[] {x0, v, u});
-        face(pose, consumer, inside(outer, b.maxX() + e, cy, cz) ? inside : outside).draw(1, 0, 0, z1, z0, y0, y1, (u, v) -> new float[] {x1, v, u});
+        face(pose, consumer, alongZ && cz < 0 ? outsideFace : inside(outer, cx, cy, b.minZ() - e) ? inside : outside)
+                .draw(0, 0, -1, x1, x0, y0, y1, (u, v) -> new float[] {u, v, z0});
+        face(pose, consumer, alongZ && cz > 0 ? outsideFace : inside(outer, cx, cy, b.maxZ() + e) ? inside : outside)
+                .draw(0, 0, 1, x0, x1, y0, y1, (u, v) -> new float[] {u, v, z1});
+        face(pose, consumer, alongX && cx < 0 ? outsideFace : inside(outer, b.minX() - e, cy, cz) ? inside : outside)
+                .draw(-1, 0, 0, z0, z1, y0, y1, (u, v) -> new float[] {x0, v, u});
+        face(pose, consumer, alongX && cx > 0 ? outsideFace : inside(outer, b.maxX() + e, cy, cz) ? inside : outside)
+                .draw(1, 0, 0, z1, z0, y0, y1, (u, v) -> new float[] {x1, v, u});
     }
 
     private static Face face(PoseStack.Pose pose, VertexConsumer consumer, Look look) {
@@ -194,20 +211,25 @@ final class BoxRenderer {
      */
     static void renderDoorPanel(PoseStack.Pose pose, VertexConsumer consumer, Box panel, TextureAtlasSprite sprite, int light,
                                 InteriorConfig.SecurityWindow window, List<Box> glass) {
-        renderDoorPanel(pose, consumer, panel, sprite, light, light, null, window, glass);
+        renderDoorPanel(pose, consumer, panel, sprite, light, sprite, light, null, window, glass);
     }
 
     /**
-     * かごの戸板を描く。かごの外形 outer の中を向く面は insideLight、外を向く面は outsideLight の明るさで描く（outer が null ならすべて insideLight）。
+     * かごの戸板を描く。かごの外形 outer の中を向く面は sprite と insideLight で、外を向く面は outsideLight で描く（outer が null なら
+     * すべて中を向く面と同じ）。外を向く面のうち、戸板の表と裏（乗場の側）は outsideSprite、端（開いてかごの横へはみ出した戸の端など）は sprite。
      */
     static void renderDoorPanel(PoseStack.Pose pose, VertexConsumer consumer, Box panel, TextureAtlasSprite sprite, int insideLight,
-                                int outsideLight, Box outer, InteriorConfig.SecurityWindow window, List<Box> glass) {
+                                TextureAtlasSprite outsideSprite, int outsideLight, Box outer, InteriorConfig.SecurityWindow window,
+                                List<Box> glass) {
         DoorWindows.Pieces pieces = DoorWindows.split(panel, window);
+        // 戸板の表と裏の面の法線の向き（戸板の薄い向き）
+        boolean faceAlongX = panel.sizeX() < panel.sizeZ();
         for (Box piece : pieces.frame()) {
             if (outer == null) {
                 renderBox(pose, consumer, piece, sprite, insideLight);
             } else {
-                renderCarBox(pose, consumer, piece, outer, new Look(sprite, insideLight), new Look(sprite, outsideLight));
+                renderCarBox(pose, consumer, piece, outer, new Look(sprite, insideLight), new Look(sprite, outsideLight),
+                        new Look(outsideSprite, outsideLight), faceAlongX);
             }
         }
         if (pieces.glass() != null) {

@@ -18,6 +18,7 @@ import net.lausiv1024.realelevator.core.motion.SpeedSetting;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.design.ElevatorProfile;
+import net.lausiv1024.realelevator.design.Materials;
 import net.lausiv1024.realelevator.entity.ConfigTags;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
@@ -30,6 +31,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -40,11 +42,13 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.FallingBlock;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -332,7 +336,54 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
         int floorCount = floorYs().length;
         // 設置用ブロックは消す（中身はもう制御盤に移したので、何も落とさない）
         level.setBlock(worldPosition, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
-        return Component.translatable("message.realelevator.install.done", floorCount);
+        MutableComponent result = Component.translatable("message.realelevator.install.done", floorCount);
+        Component walls = player != null ? buildWalls(player, layout) : null;
+        return walls != null ? result.append(" ").append(walls) : result;
+    }
+
+    /**
+     * オフハンドに立方体のブロックを持っていれば、そのブロックで昇降路を囲う壁（{@link ShaftLayout#enclosureCells}）を作る。
+     * 置くのは空いているマス（草や水など置き換えられるものを含む）だけで、ほかのブロックは置き換えない。
+     * オフハンドの分で足りなければ、持ち物の同じブロックも使う。持ち物全体で足りなければ壁は作らない。クリエイティブでは使わない。
+     * 結果を伝える文を返す。オフハンドにブロックを持っていなければ null。
+     */
+    @Nullable
+    private Component buildWalls(Player player, ShaftLayout layout) {
+        ItemStack held = player.getOffhandItem();
+        if (!(held.getItem() instanceof BlockItem blockItem)) {
+            return null;
+        }
+        Block block = blockItem.getBlock();
+        if (!isWallBlock(block)) {
+            return Component.translatable("message.realelevator.install.walls.not_a_block");
+        }
+        List<BlockPos> targets = new ArrayList<>();
+        for (Cell cell : layout.enclosureCells()) {
+            BlockPos pos = cellPos(cell);
+            if (level.getBlockState(pos).canBeReplaced()) {
+                targets.add(pos);
+            }
+        }
+        if (targets.isEmpty()) {
+            return null;
+        }
+        if (!player.getAbilities().instabuild) {
+            int have = MaterialStacks.countPreferringOffhand(player, held.getItem());
+            if (have < targets.size()) {
+                return Component.translatable("message.realelevator.install.walls.short", targets.size(), have);
+            }
+            MaterialStacks.takePreferringOffhand(player, held.getItem(), targets.size());
+        }
+        BlockState state = block.defaultBlockState();
+        for (BlockPos pos : targets) {
+            level.setBlock(pos, state, Block.UPDATE_ALL);
+        }
+        return Component.translatable("message.realelevator.install.walls.built", targets.size());
+    }
+
+    /** 壁にできるブロックか（立方体で、ブロックエンティティを持たず、重力で落ちないもの。ガラスも使える）。 */
+    public static boolean isWallBlock(Block block) {
+        return Materials.isCube(block) && !(block instanceof FallingBlock);
     }
 
     // ---- 保存と同期 ----

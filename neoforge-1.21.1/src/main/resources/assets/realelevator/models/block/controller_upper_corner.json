@@ -1,9 +1,9 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "particle": "minecraft:block/iron_block",
-    "body": "minecraft:block/iron_block",
-    "door": "minecraft:block/iron_door_top"
+    "particle": "realelevator:block/controller_side",
+    "body": "realelevator:block/controller_side",
+    "door": "realelevator:block/controller_front_upper"
   },
   "elements": [
     {
@@ -20,9 +20,9 @@
       "faces": {
         "north": {
           "uv": [
-            4,
+            2,
             0,
-            16,
+            14,
             16
           ],
           "texture": "#door"

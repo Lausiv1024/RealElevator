@@ -1386,7 +1386,7 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     /** 停止階 floor のホールランタンの中心（ワールド座標）。 */
     private Vec3 lanternCenter(int floor) {
         AABB bounds = null;
-        for (HallLantern.Section section : landingLayout(0).lantern(isTerminalFloor(floor))) {
+        for (HallLantern.Section section : landingLayout(floor, 0).lantern(isTerminalFloor(floor))) {
             AABB box = CarShapes.toAabb(section.box().rotateQuarterTurns(facing().get2DDataValue()), getX(), floors[floor], getZ());
             bounds = bounds == null ? box : bounds.minmax(box);
         }
@@ -1641,9 +1641,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         return false;
     }
 
-    /** 乗場の配置（乗場の面を faceOffset だけずらしたもの）。 */
-    public LandingLayout landingLayout(double faceOffset) {
-        return LandingLayout.of(spec(), fixtures, interior.landing(), faceOffset, hasLongLabels());
+    /** 停止階 floor の乗場の配置（乗場の面を faceOffset だけずらしたもの）。意匠は、その階の乗場の意匠（{@link InteriorConfig#landingAt}）。 */
+    public LandingLayout landingLayout(int floor, double faceOffset) {
+        return LandingLayout.of(spec(), fixtures, interior.landingAt(floor), faceOffset, hasLongLabels());
     }
 
     /** 停止階 floor の階名。 */

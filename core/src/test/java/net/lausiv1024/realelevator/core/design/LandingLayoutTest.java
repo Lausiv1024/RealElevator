@@ -336,6 +336,39 @@ class LandingLayoutTest {
         }
     }
 
+    /**
+     * 壁に付ける器具の裏の筐体：壁付けの操作盤の板と、壁に付けるランタン、細枠の扉の上の表示器の裏に、壁の厚みいっぱいの箱。
+     * 埋め込みの操作盤と、幕板に付ける器具には付けない。
+     */
+    @ParameterizedTest
+    @MethodSource("specs")
+    void housingsSitInsideTheWallBehindWallMountedFixtures(CarSpec spec) {
+        Box range = LandingLayout.bounds(spec, 0);
+        double face = DoorGeometry.landingFace(spec);
+        for (Landing landing : landings()) {
+            for (FixtureConfig config : fixtures()) {
+                LandingLayout layout = layout(spec, config, landing);
+                for (Box housing : layout.housings()) {
+                    assertTrue(housing.maxZ() < face && housing.minZ() > range.minZ(), "inside the wall: " + housing);
+                    assertTrue(housing.minX() >= range.minX() - EPS && housing.maxX() <= range.maxX() + EPS, "inside the frame range");
+                }
+                boolean embedded = landing.panel() == PanelStyle.EMBEDDED;
+                Box plate = layout.parts().stream().filter(p -> p.type() == Type.PLATE).map(Part::box).findFirst().orElse(null);
+                assertEquals(!embedded, plate != null);
+                if (plate != null) {
+                    assertTrue(layout.housings().stream().anyMatch(h -> Math.abs(h.minX() - plate.minX()) < EPS
+                            && Math.abs(h.maxY() - plate.maxY()) < EPS), "the plate should have a housing");
+                }
+            }
+        }
+        // 幕板付き・埋め込みで、ランタンが扉の上（幕板）・表示器も扉の上なら、壁に付く器具はない
+        FixtureConfig overDoor = FixtureConfig.DEFAULT.withHallIndicator(HallIndicator.OVER_DOOR).withHallLantern(HallLanternPlacement.OVER_DOOR);
+        Landing fascia = Landing.DEFAULT.withFrame(FrameStyle.FASCIA).withPanel(PanelStyle.EMBEDDED);
+        assertTrue(layout(spec, overDoor, fascia).housings().isEmpty());
+        // 細枠の扉の上の表示器と扉の横のランタンには付ける
+        assertEquals(2, layout(spec, overDoor, Landing.DEFAULT.withPanel(PanelStyle.EMBEDDED)).housings().size());
+    }
+
     private static Box only(List<Part> parts, Type type) {
         List<Box> boxes = parts.stream().filter(p -> p.type() == type).map(Part::box).toList();
         assertEquals(1, boxes.size(), type.toString());

@@ -25,6 +25,33 @@ import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 class ShaftLayoutTest {
     private static final double EPS = 1e-9;
 
+    /**
+     * 囲う壁は、昇降路のまわり1列（角を含む）をピットの底から頂部まで。昇降路と三方枠の場所にはかからず、設置用ブロックの場所は含む。
+     */
+    @ParameterizedTest
+    @EnumSource(CarModel.class)
+    void theEnclosureSurroundsTheShaft(CarModel model) {
+        for (ShaftLayout.CounterweightPosition counterweight : ShaftLayout.CounterweightPosition.values()) {
+            ShaftLayout layout = new ShaftLayout(net.lausiv1024.realelevator.core.car.CarSpec.of(model), PitMode.REAL, counterweight,
+                    new int[] {0, 5, 12});
+            Set<Cell> clear = new HashSet<>(layout.requiredClearCells());
+            List<Cell> walls = layout.enclosureCells();
+            assertEquals(walls.size(), new HashSet<>(walls).size(), "no duplicates");
+            for (Cell cell : walls) {
+                assertFalse(clear.contains(cell), "a wall in the shaft or a frame: " + cell);
+                assertTrue(cell.y() >= layout.bottom() && cell.y() < layout.top());
+            }
+            assertTrue(walls.contains(new Cell(0, 0, 0)), "the installer's place is walled");
+            // 昇降路の各マスは、横の4方のどれかが壁か昇降路か三方枠
+            for (Cell cell : clear) {
+                for (int[] d : new int[][] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                    Cell next = new Cell(cell.x() + d[0], cell.y(), cell.z() + d[1]);
+                    assertTrue(clear.contains(next) || walls.contains(next) || cell.z() == 0, "an open side: " + next);
+                }
+            }
+        }
+    }
+
     @Test
     void floorChecks() {
         assertEquals(FloorProblem.TOO_FEW, ShaftLayout.check(new int[] {0}));

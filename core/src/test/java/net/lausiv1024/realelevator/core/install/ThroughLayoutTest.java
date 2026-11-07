@@ -48,6 +48,23 @@ class ThroughLayoutTest {
         return specs.stream();
     }
 
+    /** 囲う壁は、昇降路と前後の三方枠の場所にかからず、昇降路のまわりを1列で囲む。 */
+    @ParameterizedTest
+    @MethodSource("specs")
+    void theEnclosureLeavesTheFramesOpen(CarSpec spec) {
+        ShaftLayout layout = through(spec, PitMode.REAL);
+        Set<ShaftLayout.Cell> clear = new HashSet<>(layout.requiredClearCells());
+        List<ShaftLayout.Cell> walls = layout.enclosureCells();
+        for (ShaftLayout.Cell cell : walls) {
+            assertFalse(clear.contains(cell), "a wall in the shaft or a frame: " + cell);
+        }
+        // 奥を使う階の奥の三方枠と、前を使う階の三方枠の場所は空く
+        assertFalse(walls.contains(new ShaftLayout.Cell(-1, FLOORS[1], layout.rearWallRow())));
+        assertFalse(walls.contains(new ShaftLayout.Cell(-1, FLOORS[0], 0)));
+        // 奥を使わない階の奥の壁の列はふさぐ
+        assertTrue(walls.contains(new ShaftLayout.Cell(-1, FLOORS[0], layout.rearWallRow())));
+    }
+
     private static ShaftLayout through(CarSpec spec, PitMode pit) {
         return new ShaftLayout(spec, pit, CounterweightPosition.REAR, FLOORS, ENTRANCES);
     }

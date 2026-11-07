@@ -1,9 +1,9 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "particle": "minecraft:block/iron_block",
-    "body": "minecraft:block/iron_block",
-    "door": "minecraft:block/iron_door_bottom"
+    "particle": "realelevator:block/controller_side",
+    "body": "realelevator:block/controller_side",
+    "door": "realelevator:block/controller_front_lower"
   },
   "elements": [
     {

@@ -2,7 +2,9 @@ package net.lausiv1024.realelevator.core.install;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
@@ -280,6 +282,43 @@ public final class ShaftLayout {
             for (int y = floor; y < floor + DoorGeometry.LANDING_FRAME_HEIGHT; y++) {
                 for (int x = leftColumn(); x <= rightColumn(); x++) {
                     cells.add(new Cell(x, y, 0));
+                }
+            }
+        }
+        return cells;
+    }
+
+    /**
+     * 昇降路を囲む壁のマス。昇降路のまわり1列（左右・奥と、乗場の壁の列。角も含む）を、ピットの底から頂部まで。
+     * 各階の三方枠の場所（二方向出入口では奥も）は空ける。ピットの床と頂部の天井は含めない。設置用ブロックの場所は含む。
+     */
+    public List<Cell> enclosureCells() {
+        Set<Cell> frames = new HashSet<>();
+        for (int i = 0; i < floors.length; i++) {
+            for (int y = floors[i]; y < floors[i] + DoorGeometry.LANDING_FRAME_HEIGHT; y++) {
+                for (int x = leftColumn(); x <= rightColumn(); x++) {
+                    if (entrances(i).has(Entrance.FRONT)) {
+                        frames.add(new Cell(x, y, 0));
+                    }
+                    if (entrances(i).has(Entrance.REAR)) {
+                        frames.add(new Cell(x, y, rearWallRow()));
+                    }
+                }
+            }
+        }
+        int minX = leftColumn() - 1;
+        int maxX = shaftRightColumn() + 1;
+        int minZ = backRow() - 1;
+        int maxZ = 0;
+        List<Cell> cells = new ArrayList<>();
+        for (int y = bottom(); y < top(); y++) {
+            for (int x = minX; x <= maxX; x++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    boolean ring = x == minX || x == maxX || z == minZ || z == maxZ;
+                    Cell cell = new Cell(x, y, z);
+                    if (ring && !frames.contains(cell)) {
+                        cells.add(cell);
+                    }
                 }
             }
         }

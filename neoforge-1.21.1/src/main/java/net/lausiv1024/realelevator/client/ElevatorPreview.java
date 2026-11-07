@@ -6,6 +6,8 @@ import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.lwjgl.opengl.GL11;
 
+import javax.annotation.Nullable;
+
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -91,6 +93,9 @@ final class ElevatorPreview {
     private float pitch;
     private double zoom = 1;
     private View lastView;
+    /** 乗場を見せる停止階。null なら置く位置の階。 */
+    @Nullable
+    private Integer shownFloor;
     private ElevatorCarEntity car;
     private LandingDoorEntity door;
     private CompoundTag builtFrom;
@@ -222,10 +227,19 @@ final class ElevatorPreview {
         return (float) Math.toDegrees(Math.atan2(-direction.x, direction.z));
     }
 
+    /**
+     * 乗場を見せる停止階（0始まり）を変える。null なら、置く位置の階（どの停止階でもなければ最下階）。
+     * デザインの画面で階ごとの乗場の意匠を選んでいるとき、その意匠の階を見せる。
+     */
+    void showFloor(@Nullable Integer floor) {
+        shownFloor = floor;
+    }
+
     /** 設定か置く位置が変わっていれば、かごと乗場の扉を作り直す。 */
     private void rebuildIfChanged(Level level, SettingsForm form, Anchor where) {
         CompoundTag key = installSettings.get().copy();
         form.writeTo(key);
+        key.putInt("ShownFloor", shownFloor != null ? shownFloor : -1);
         key.putDouble("AnchorX", where.carPos().x);
         key.putDouble("AnchorY", where.carPos().y);
         key.putDouble("AnchorZ", where.carPos().z);
@@ -269,6 +283,9 @@ final class ElevatorPreview {
         car.setPreview(true);
         // 見せる階がどの停止階でもなければ、最下階を見せる
         int shown = car.floorIndexAt(floorY) >= 0 ? floorY : car.floors()[0];
+        if (shownFloor != null && shownFloor >= 0 && shownFloor < car.floors().length) {
+            shown = car.floors()[shownFloor];
+        }
         car.moveTo(where.carPos().x, shown, where.carPos().z, 0, 0);
         door.setup(car, Entrance.FRONT);
         door.moveTo(where.carPos().x, shown, where.carPos().z, 0, 0);

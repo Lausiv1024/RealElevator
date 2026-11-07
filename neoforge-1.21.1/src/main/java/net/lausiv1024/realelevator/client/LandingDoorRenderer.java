@@ -56,13 +56,14 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
         FixtureConfig fixtures = layout.fixtures();
         int rgb = fixtures.indicatorColor().rgb();
 
-        TextureAtlasSprite doorSprite = MaterialSprites.side(interior.door());
+        // この階の乗場の意匠（階ごとの意匠があればそれ）
+        InteriorConfig.Landing landing = door.landingDesign();
+        TextureAtlasSprite doorSprite = MaterialSprites.side(interior.landingDoorMaterial(landing));
         double fraction = door.renderFraction(partialTick);
         List<Box> glass = new ArrayList<>();
         for (Box panel : CarShapes.doorPanels(door.spec(), door.facing(), DoorGeometry.Side.LANDING, fraction, door.entrance())) {
-            BoxRenderer.renderDoorPanel(pose, consumer, panel, doorSprite, light, interior.securityWindow(), glass);
+            BoxRenderer.renderDoorPanel(pose, consumer, panel, doorSprite, light, interior.landingWindow(landing), glass);
         }
-        InteriorConfig.Landing landing = interior.landing();
         // 戸の上の、三方枠の張り出し
         TextureAtlasSprite frameSprite = MaterialSprites.side(landing.frameMaterial());
         for (Box soffit : DoorGeometry.soffits(door.spec(), DoorGeometry.Side.LANDING)) {
@@ -76,11 +77,18 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
                 MaterialSprites.side(BoxRenderer.STAINLESS));
         Box range = LandingLayout.bounds(door.spec(), door.faceOffset());
         Box wallRange = new Box(range.minX(), 0, range.minZ(), range.maxX(), DoorGeometry.LANDING_FRAME_HEIGHT, range.maxZ());
-        if (InteriorConfig.AUTO.equals(landing.wallMaterial())) {
-            ChameleonWall.Look look = ChameleonWall.look(door);
-            BoxRenderer.renderWall(pose, consumer, layout.wall(), wallRange, turns, light, look.sprite(), look.rgb());
-        } else {
-            BoxRenderer.renderWall(pose, consumer, layout.wall(), wallRange, turns, light, MaterialSprites.side(landing.wallMaterial()), 0xFFFFFF);
+        ChameleonWall.Look wallLook = InteriorConfig.AUTO.equals(landing.wallMaterial()) ? ChameleonWall.look(door)
+                : ChameleonWall.Look.of(landing.wallMaterial());
+        // 半透明のブロック（色付きガラスなど）の壁は、ほかを描き終えてから半透明で描く
+        if (!wallLook.translucent()) {
+            BoxRenderer.renderWall(pose, consumer, layout.wall(), wallRange, turns, light, wallLook.sprite(), wallLook.rgb());
+        }
+        if (wallLook.seeThrough()) {
+            // 透明な壁では、壁に付けた器具の裏の筐体が見える
+            TextureAtlasSprite galvanized = BoxRenderer.blockSprite(BoxRenderer.GALVANIZED);
+            for (Box housing : layout.housings()) {
+                BoxRenderer.renderBox(pose, consumer, housing.rotateQuarterTurns(turns), galvanized, light);
+            }
         }
 
         BoxRenderer.renderButtons(pose, consumer, door, turns, light, rgb);
@@ -106,6 +114,10 @@ public class LandingDoorRenderer extends EntityRenderer<LandingDoorEntity> {
         }
         boolean terminal = car != null && door.floorIndex() >= 0 && car.isTerminalFloor(door.floorIndex());
         BoxRenderer.renderLantern(pose, consumer, layout.lantern(terminal), lit, turns, light, rgb);
+        if (wallLook.translucent()) {
+            BoxRenderer.renderWall(pose, bufferSource.getBuffer(Sheets.translucentCullBlockSheet()), layout.wall(), wallRange, turns, light,
+                    wallLook.sprite(), wallLook.rgb());
+        }
         // 防犯窓のガラスは半透明なので、最後に描く
         if (!glass.isEmpty()) {
             BoxRenderer.renderGlass(pose, bufferSource.getBuffer(Sheets.translucentCullBlockSheet()), glass,

@@ -4,11 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.lausiv1024.realelevator.RealElevator;
+import net.lausiv1024.realelevator.RealElevatorConfig;
 import net.lausiv1024.realelevator.block.GuideRailBlock;
 import net.lausiv1024.realelevator.block.ControllerBlock;
 import net.lausiv1024.realelevator.block.ControllerBlockEntity;
 import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.block.InstallerBlockEntity;
+import net.lausiv1024.realelevator.block.MaterialStacks;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.panel.ButtonLayout;
@@ -25,6 +27,7 @@ import net.lausiv1024.realelevator.core.car.CarSpec;
 import net.lausiv1024.realelevator.core.car.DoorType;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
+import net.lausiv1024.realelevator.core.design.LandingLayout;
 import net.lausiv1024.realelevator.core.hoist.HoistMechanism;
 import net.lausiv1024.realelevator.core.install.InstallMaterials;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
@@ -44,6 +47,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -257,7 +261,9 @@ public class InstallGameTests {
         helper.assertTrue(car.landingOpen() && controller.renewalTag().getBoolean("LandingOpen"), "landing open should be turned on");
         helper.assertTrue(car.interior().wall().equals("realelevator:woodgrain_dark") && car.interior().ceiling() == InteriorConfig.CeilingType.INDIRECT,
                 "the interior should change: " + car.interior());
-        helper.assertTrue(car.interior().floor().equals(InteriorConfig.DEFAULT.floor()), "a material outside the tag should be rejected");
+        // タグにない素材は、自由設定がオフなら初期値に戻す（オンなら不透明な立方体のブロックとして使える）
+        helper.assertTrue(car.interior().floor().equals(RealElevatorConfig.freeMaterials() ? "minecraft:iron_block" : InteriorConfig.DEFAULT.floor()),
+                "a material outside the tag should be rejected unless free materials are on: " + car.interior().floor());
         // 乗場の意匠と群管理向け。乗場の壁は「まわりに合わせる」のまま
         InteriorConfig.Landing landing = car.interior().landing();
         helper.assertTrue(landing.frame() == InteriorConfig.FrameStyle.FASCIA && landing.panel() == InteriorConfig.PanelStyle.EMBEDDED
@@ -265,6 +271,82 @@ public class InstallGameTests {
                 && landing.frameMaterial().equals("minecraft:smooth_quartz"), "the landing should change: " + landing);
         helper.assertTrue(car.fixtures().groupControl() && car.fixtures().hallLantern() == FixtureConfig.HallLanternPlacement.RIGHT_OF_DOOR,
                 "group control should be on: " + car.fixtures());
+        helper.succeed();
+    }
+
+    /** 設置するときにオフハンドに持っているブロックで、昇降路を囲う壁を作る。足りない分は持ち物の同じブロックを使う。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void offhandBlocksWallTheShaft(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        ElevatorPlan plan = panel.plan();
+        BlockPos panelPos = helper.absolutePos(PANEL);
+        List<BlockPos> walls = plan.layout().enclosureCells().stream().map(panel::cellPos)
+                .filter(pos -> pos.equals(panelPos) || helper.getLevel().getBlockState(pos).canBeReplaced()).toList();
+        // 置き換えないブロック：壁の1マスを先にふさいでおく
+        BlockPos taken = walls.stream().filter(pos -> !pos.equals(panelPos)).findFirst().orElseThrow();
+        helper.getLevel().setBlockAndUpdate(taken, Blocks.GOLD_BLOCK.defaultBlockState());
+        int needed = walls.size() - 1;
+        Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        for (ItemStack stack : MaterialStacks.stacks(panel.requiredMaterials())) {
+            player.getInventory().add(stack);
+        }
+        player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.STONE_BRICKS, 64));
+        for (int left = needed - 64; left > 0; left -= 64) {
+            player.getInventory().add(new ItemStack(Items.STONE_BRICKS, Math.min(64, left)));
+        }
+        player.getInventory().add(new ItemStack(Items.STONE_BRICKS, 3));
+        panel.install(player);
+        for (BlockPos pos : walls) {
+            helper.assertTrue(pos.equals(taken) ? helper.getLevel().getBlockState(pos).is(Blocks.GOLD_BLOCK)
+                    : helper.getLevel().getBlockState(pos).is(Blocks.STONE_BRICKS), "a wall should be built: " + pos);
+        }
+        // オフハンドから先に使い、余りは持ち物に残る
+        helper.assertTrue(player.getOffhandItem().isEmpty(), "the off-hand should be used first");
+        helper.assertTrue(player.getInventory().countItem(Items.STONE_BRICKS) == 3, "left: " + player.getInventory().countItem(Items.STONE_BRICKS));
+        helper.succeed();
+    }
+
+    /** 壁のブロックが足りなければ、壁は作らずに設置だけする（ブロックは使わない）。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void tooFewWallBlocksInstallWithoutWalls(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        ElevatorPlan plan = panel.plan();
+        Player player = helper.makeMockPlayer(GameType.SURVIVAL);
+        for (ItemStack stack : MaterialStacks.stacks(panel.requiredMaterials())) {
+            player.getInventory().add(stack);
+        }
+        player.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.GLASS, 10));
+        panel.install(player);
+        helper.assertTrue(ElevatorTracker.cars(helper.getLevel()).stream().anyMatch(c -> c.position().distanceToSqr(plan.carOrigin()) < 1e-6),
+                "the elevator should be installed");
+        helper.assertTrue(player.getOffhandItem().getCount() == 10, "the blocks should not be used");
+        helper.assertTrue(plan.layout().enclosureCells().stream().map(panel::cellPos)
+                .noneMatch(pos -> helper.getLevel().getBlockState(pos).is(Blocks.GLASS)), "no walls should be built");
+        helper.succeed();
+    }
+
+    /** 階ごとの乗場の意匠：その階の乗場だけ、枠・操作盤・防犯窓が変わる。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void aLandingVariantChangesOnlyItsFloors(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        InteriorConfig.Landing embedded = InteriorConfig.Landing.DEFAULT.withPanel(InteriorConfig.PanelStyle.EMBEDDED)
+                .withSecurityWindow(InteriorConfig.LandingWindow.LARGE);
+        CompoundTag settings = panel.settingsTag();
+        settings.put("Interior", ConfigTags.writeInterior(InteriorConfig.DEFAULT.withLandingVariants(
+                List.of(new InteriorConfig.LandingVariant(List.of(1), embedded)))));
+        panel.applySettings(settings);
+        ElevatorPlan plan = panel.plan();
+        panel.install();
+        ElevatorCarEntity car = carAt(helper, plan.carOrigin());
+        helper.assertTrue(car.interior().landingAt(1).equals(embedded) && car.interior().landingAt(0).equals(InteriorConfig.Landing.DEFAULT),
+                "the variant should be kept: " + car.interior().landingVariants());
+        for (LandingDoorEntity door : ElevatorTracker.landingDoors(helper.getLevel())) {
+            if (door.car() != car) {
+                continue;
+            }
+            boolean plate = door.layout().parts().stream().anyMatch(p -> p.type() == LandingLayout.Type.PLATE);
+            helper.assertTrue(plate == (door.floorIndex() == 0), "only the upper landing should be embedded: " + door.floorIndex());
+        }
         helper.succeed();
     }
 

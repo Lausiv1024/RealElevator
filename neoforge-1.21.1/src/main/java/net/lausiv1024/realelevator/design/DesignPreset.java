@@ -21,8 +21,10 @@ import net.minecraft.util.GsonHelper;
  *   "name": "preset.realelevator.standard",   // 表示名（翻訳キーか、そのままの文字）
  *   "order": 0,                               // 並び順（小さいほど先）
  *   "interior": {"wall": "...", "front": "...", "transom": "#front", "door": "...", "floor": "...", "baseboard": "...",
- *                "carpet": "none", "ceiling": "downlight", "handrail": "sides", "security_window": "none"},
- *   "landing": {"frame": "thin", "panel": "wall_mounted", "frame_material": "...", "wall_material": "", "lantern_plate": true},
+ *                "carpet": "none", "ceiling": "downlight", "handrail": "sides", "security_window": "none"},  // 防犯窓はかごの戸
+ *   "landing": {"frame": "thin", "panel": "wall_mounted", "frame_material": "...", "wall_material": "", "lantern_plate": true,
+ *               "door_material": "#door",              // 乗場の戸。"#door" ならかごの戸と同じ
+ *               "security_window": "same_as_car"},     // 乗場の戸の防犯窓。省略するとかごに合わせる
  *   "car_indicator": "over_door",             // 省略可。かごの表示器の位置
  *   "observation": true                       // 省略可。展望仕様（設置する前だけ効く）
  * }
@@ -38,6 +40,7 @@ public record DesignPreset(ResourceLocation id, String name, int order, Interior
         JsonObject in = GsonHelper.getAsJsonObject(json, "interior", new JsonObject());
         JsonObject landing = GsonHelper.getAsJsonObject(json, "landing", new JsonObject());
         InteriorConfig.Landing l = d.landing();
+        InteriorConfig.SecurityWindow carWindow = parse(InteriorConfig.SecurityWindow.class, in, "security_window", d.securityWindow());
         InteriorConfig interior = new InteriorConfig(
                 GsonHelper.getAsString(in, "wall", d.wall()),
                 GsonHelper.getAsString(in, "front", d.front()),
@@ -48,13 +51,16 @@ public record DesignPreset(ResourceLocation id, String name, int order, Interior
                 parse(InteriorConfig.Carpet.class, in, "carpet", d.carpet()),
                 parse(InteriorConfig.CeilingType.class, in, "ceiling", d.ceiling()),
                 parse(InteriorConfig.HandrailPlacement.class, in, "handrail", d.handrail()),
-                parse(InteriorConfig.SecurityWindow.class, in, "security_window", d.securityWindow()),
+                carWindow,
                 new InteriorConfig.Landing(
                         parse(InteriorConfig.FrameStyle.class, landing, "frame", l.frame()),
                         parse(InteriorConfig.PanelStyle.class, landing, "panel", l.panel()),
                         GsonHelper.getAsString(landing, "frame_material", l.frameMaterial()),
                         GsonHelper.getAsString(landing, "wall_material", l.wallMaterial()),
-                        GsonHelper.getAsBoolean(landing, "lantern_plate", l.lanternPlate())));
+                        GsonHelper.getAsBoolean(landing, "lantern_plate", l.lanternPlate()),
+                        GsonHelper.getAsString(landing, "door_material", l.doorMaterial()),
+                        // 乗場の防犯窓を書いていなければ、かごに合わせる
+                        parse(InteriorConfig.LandingWindow.class, landing, "security_window", l.securityWindow())));
         FixtureConfig.CarIndicator carIndicator = json.has("car_indicator")
                 ? parse(FixtureConfig.CarIndicator.class, json, "car_indicator", null) : null;
         return new DesignPreset(id, GsonHelper.getAsString(json, "name", id.toString()), GsonHelper.getAsInt(json, "order", 1000),

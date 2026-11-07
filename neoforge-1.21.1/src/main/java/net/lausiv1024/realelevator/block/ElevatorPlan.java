@@ -184,10 +184,13 @@ public final class ElevatorPlan {
         if (y < origin.getY()) {
             return new FloorChange(false, Component.translatable("message.realelevator.floor.below"));
         }
+        int[] before = floorYs();
         if (floors.remove(y)) {
             labels.remove(y);
             speechNames.remove(y);
             entrances.remove(y);
+            // 階ごとの乗場の意匠の階の番号を、停止階を変えたあとの番号に直す
+            interior = interior.remapLandingFloors(before, floorYs());
             return new FloorChange(true, Component.translatable("message.realelevator.floor.removed", y, floors.size()));
         }
         if (floors.size() >= ShaftLayout.MAX_FLOORS) {
@@ -199,6 +202,7 @@ public final class ElevatorPlan {
             }
         }
         floors.add(y);
+        interior = interior.remapLandingFloors(before, floorYs());
         // 間隔が狭くなって付けられなくなった配置は直す
         fixtures = ShaftLayout.fitFixtures(fixtures, floorYs());
         return new FloorChange(true, Component.translatable("message.realelevator.floor.added", y, floors.size()));

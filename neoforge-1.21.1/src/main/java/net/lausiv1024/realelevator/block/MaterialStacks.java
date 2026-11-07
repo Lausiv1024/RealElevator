@@ -42,6 +42,23 @@ public final class MaterialStacks {
         return Component.translatable("message.realelevator.install.materials", materials.iron(), materials.redstone());
     }
 
+    /** 持ち物（オフハンドを含む）にある item の数。 */
+    public static int countPreferringOffhand(Player player, Item item) {
+        return count(player.getInventory(), item);
+    }
+
+    /** 持ち物から item を amount 個取る。オフハンドから先に使う（足りることを確かめてから呼ぶ）。 */
+    public static void takePreferringOffhand(Player player, Item item, int amount) {
+        ItemStack offhand = player.getOffhandItem();
+        if (offhand.is(item)) {
+            int taken = Math.min(amount, offhand.getCount());
+            offhand.shrink(taken);
+            amount -= taken;
+        }
+        take(player.getInventory(), item, amount);
+        player.getInventory().setChanged();
+    }
+
     private static int count(Inventory inventory, Item item) {
         int count = 0;
         for (int i = 0; i < inventory.getContainerSize(); i++) {

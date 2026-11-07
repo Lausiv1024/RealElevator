@@ -76,6 +76,8 @@ public final class LandingLayout {
     private static final double SURFACE = PX / 8;
     /** 鍵スイッチの出っ張り。 */
     private static final double KEY_DEPTH = PX / 4;
+    /** 筐体を、壁の面と重ならないよう内側へずらす量。 */
+    private static final double HOUSING_INSET = 0.002;
 
     public enum Type {
         /** 枠（三方枠・幕板）。枠の素材で描く。 */
@@ -284,6 +286,35 @@ public final class LandingLayout {
         return parts;
     }
 
+    /**
+     * 壁に付ける器具の裏の筐体。壁付けの操作盤の板、壁に付けるホールランタン（背面プレートがあればその大きさ）、細枠の扉の上の
+     * 階床表示器のそれぞれの裏に、壁の厚み（昇降路の側の面から乗場の側の面まで）いっぱいの箱を置く。枠や幕板に埋め込んだ器具には
+     * 付けない。壁が透明（ガラスなど）のときだけ描く。
+     */
+    public List<Box> housings() {
+        List<Box> housings = new ArrayList<>();
+        double z0 = back + HOUSING_INSET;
+        double z1 = face - HOUSING_INSET;
+        if (!embedded) {
+            housings.add(box(column - panelWidth / 2.0, plateBottom(), column + panelWidth / 2.0, plateTop(), z0, z1));
+        }
+        Lamp lamp = lamp();
+        if (lamp != null && isLampOnWall()) {
+            // 背面プレートがあればその大きさ、なければランプの大きさ
+            Box plate = parts().stream().filter(p -> p.type() == Type.LANTERN_PLATE).map(Part::box).findFirst()
+                    .orElse(box(lamp.minX(), lamp.minY(), lamp.maxX(), lamp.maxY(), 0, 0));
+            housings.add(new Box(plate.minX(), plate.minY(), z0, plate.maxX(), plate.maxY(), z1));
+        }
+        if (fixtures.hasHallIndicator() && fixtures.hallIndicator() == HallIndicator.OVER_DOOR && landing.frame() == FrameStyle.THIN) {
+            FloorIndicator.Frame indicator = indicator("", TravelDirection.NONE);
+            if (indicator != null) {
+                Box f = indicator.face();
+                housings.add(new Box(f.minX(), f.minY(), z0, f.maxX(), f.maxY(), z1));
+            }
+        }
+        return housings;
+    }
+
     /** 枠の外の壁を、ブロックの格子で分けたもの。 */
     public List<WallCell> wall() {
         List<WallCell> cells = new ArrayList<>();
@@ -379,6 +410,16 @@ public final class LandingLayout {
         return List.of(
                 new HallLantern.Section(HallLantern.UP_ONLY, box(lamp.minX(), middle, lamp.maxX(), lamp.maxY(), z0, z1)),
                 new HallLantern.Section(HallLantern.DOWN_ONLY, box(lamp.minX(), lamp.minY(), lamp.maxX(), middle, z0, z1)));
+    }
+
+    /** ホールランタンが壁に付くか（幕板の扉の上と、埋め込みの操作盤の扉の右は枠に付く）。 */
+    private boolean isLampOnWall() {
+        return switch (fixtures.hallLantern()) {
+            case NONE -> false;
+            case BESIDE_DOOR -> true;
+            case RIGHT_OF_DOOR -> !embedded;
+            case OVER_DOOR -> landing.frame() != FrameStyle.FASCIA;
+        };
     }
 
     /** ランプ全体の長方形 [px] と、ランプの裏の面の Z、背面プレートを付けるか。 */

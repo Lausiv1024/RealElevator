@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/handheld",
   "textures": {
-    "layer0": "minecraft:item/brush"
+    "layer0": "realelevator:item/floor_marker"
   }
 }
