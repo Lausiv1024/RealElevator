@@ -1,25 +1,110 @@
+# Real Elevator
 
-Installation information
-=======
+日本式エレベーターを Minecraft で再現する NeoForge 用の MOD です。
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+乗場の ▲▼ ボタン、かご内の行先ボタン、開・閉ボタン、2度押しでの行先のキャンセルなど、実際の日本のエレベーターと同じ操作で動きます。見た目は Minecraft のドット絵の雰囲気のまま、日本のエレベーターのデザインに寄せています。
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+- 寸法：実機の寸法の 1.5 倍（プレイヤーの体格に合わせるため）
+- 動き：S字の加減速をする運転曲線に沿ってかごが走ります。乗っているプレイヤーやモブも一緒に運びます
+- 方針：基本はリアル志向で、動力や設置まわりはマイクラらしく手軽にしています
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+> 実在するエレベーターメーカーとは関係ありません。メーカーのロゴや音声は使っていません。
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+## 対応環境
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+| 項目 | バージョン |
+| --- | --- |
+| Minecraft | 1.21.1 |
+| ローダー | NeoForge 21.1 系 |
+| Java | 21 |
+
+いまは開発中のベータ版（`1.0.0-beta`）です。配布ファイルはまだ用意していないので、遊ぶときは下の「ビルド」の手順で jar を作ってください。
+
+## おもな機能
+
+**運行**
+
+- 乗合全自動：乗場呼びとかご呼びを、進行方向に沿って順に回ります
+- 2度押しで行先のキャンセル、運転と休止の切り替え（運転切替盤とレッドストーン）
+- 複数台の群管理
+- 走行中でも、減速が間に合えば途中の階で止まります
+
+**ドア**
+
+- 中央開き／2枚片開き／4枚中央開き、二方向出入口（前後・直角）
+- 多光軸ビームによる反転、強制戸閉、開延長ボタン、ランディングオープン
+- 車椅子用操作盤（開いている時間が長く、ゆっくり閉まります）
+
+**機種と設置**
+
+- P-6 〜 P-30 の機種、普通仕様と高速仕様（ネザースターで解放）、展望仕様
+- ウィザード式の設置：設置用ブロックを置き、階床登録ツールで停止階を登録して、設定画面で機種やデザインを選ぶだけで、昇降路・乗場の扉・ボタン・表示器をまとめて設置します
+- 設置前に昇降路の範囲をホログラムで確認でき、邪魔なブロックは赤く表示されます
+- オフハンドにブロックを持って設置すると、そのブロックで昇降路を囲う壁も作ります
+- 設置したあとも、保守用レンチでデザインのリニューアルや設定の変更、解体ができます
+
+**デザイン**
+
+- かご内（壁・床・天井・手すり・操作盤）と乗場（三方枠・操作盤・ランタン・壁）を、部位ごとに素材を選んで組み合わせられます
+- プリセット（データパックで追加可能）、防犯窓、階ごとに違う乗場の意匠
+- 木目パネル、ステンレス（ヘアライン・鏡面・エッチング）、ブロンズ調ステンレスなどの専用の素材ブロック（建築にも使えます）
+- 設定とデザインは「仕様書」のアイテムやファイルに保存して、ほかのエレベーターにも使えます
+
+**表示器とアナウンス**
+
+- 階床表示器、ホールランタン、到着チャイム
+- 「◯階です。」「上へ参ります。」「ドアが閉まります。」のアナウンス（同梱音声）
+- ローカルで動かした [VOICEVOX](https://voicevox.hiroshiba.jp/) エンジンと連携すると、好きな話者で読み上げたり、「ブランチマイニング場です。」のような自由な階名を読み上げたりできます（設定画面でオンにします。エンジンがなければ同梱音声で鳴らします）
+
+## 使い方
+
+1. 最下階の乗場の壁に**設置用ブロック**を置きます
+2. **階床登録ツール**で設置用ブロックを右クリックしてつなぎ、停止階にしたい階の床に立って右クリックで登録します（もう一度で解除。停止階の間隔は4ブロック以上、18階床まで）
+3. 設置用ブロックを右クリックして設定画面を開き、機種・扉・速度・階名・デザインなどを選びます
+4. プレビューで邪魔なブロックがないか確かめて「設置する」を押します
+
+設置には、ガイドレールと乗場の扉の分の鉄インゴットとレッドストーンが要ります（必要な数は設定画面に出ます。クリエイティブでは要りません）。設置後は、乗場の三方枠のあたりを**保守用レンチ**で右クリックすると、設定の変更やリニューアル、解体のメニューが開きます。
+
+レシピはすべてバニラの材料だけで作れます。材料を持つとレシピ本に出ます。
+
+## ビルド
+
+```bash
+./gradlew build
+```
+
+`neoforge-1.21.1/build/libs/` にできる `realelevator-neoforge-1.21.1-<バージョン>.jar` を、NeoForge を入れた Minecraft の `mods` フォルダに入れてください。
+
+開発用のコマンド：
+
+```bash
+./gradlew :neoforge-1.21.1:runClient
+```
+
+```bash
+./gradlew :core:test
+```
+
+```bash
+./gradlew :neoforge-1.21.1:runGameTestServer
+```
+
+## 構成
+
+| モジュール | 内容 |
+| --- | --- |
+| `core` | Minecraft に依存しない純粋な Java。運転曲線、運行制御、ドアの状態遷移、アナウンスのテンプレート、レイアウトの計算など。JUnit でテストします |
+| `neoforge-1.21.1` | Minecraft に依存する層。エンティティ、ブロック、描画、ネットワーク、サウンドの再生など |
+| `tools` | テクスチャ・音声・レシピを書き出すスクリプト |
+| `docs/SPEC.md` | 仕様書 |
+
+`core` を分けているのは、1.21.1 以降のバージョンにも展開するためです。
+
+## クレジット
+
+- 同梱の音声：VOICEVOX:冥鳴ひまり
+- VOICEVOX 連携で使う話者は、それぞれのキャラクターの利用規約に従ってください
+
+## ライセンス
+
+[MIT License](LICENSE)
