@@ -26,6 +26,7 @@ import net.minecraft.network.chat.Component;
  * <li>アナウンスの設定（到着・戸閉のアナウンスとチャイムの種類）は群でそろえる。1台を変えると群のほかのかごも変わり
  * （{@link #shareAnnouncements}）、群に入れたかごは群の側の設定になる。</li>
  * <li>乗場のボタンの応答灯は、群のどれかのかごにその階・その向きの呼びがあれば、群のすべての乗場で点く。</li>
+ * <li>車椅子用のボタンの呼びは、車椅子用操作盤のあるかごだけに割り当てる（応えられるかごがなければ登録しない）。</li>
  * </ul>
  */
 public final class ElevatorGroups {
@@ -55,14 +56,22 @@ public final class ElevatorGroups {
 
     /**
      * かご origin の停止階 floor の乗場（側 side）で押された乗場呼び。群に入っていればいちばん早く着くかごに割り当てる。
+     * 車椅子用のボタン（wheelchair）の呼びは、車椅子用操作盤のあるかごだけに割り当てる。応えられるかごがなければ登録しない。
      */
     public static PressResult pressHallCall(ElevatorCarEntity origin, int floor, TravelDirection direction, Entrance side, boolean wheelchair) {
         List<ElevatorCarEntity> members = members(origin);
         if (members.size() <= 1) {
             return origin.pressHallCall(floor, direction, side, wheelchair);
         }
+        if (wheelchair) {
+            members = members.stream().filter(member -> member.fixtures().wheelchairPanel()).toList();
+            if (members.isEmpty()) {
+                return PressResult.INVALID;
+            }
+        }
         double y = origin.floors()[floor];
-        // すでに群のどれかのかごに割り当ててあれば、そのかごの呼びとして押す（車椅子用の印や、その場で開くときのため）
+        // すでに群のどれかのかご（車椅子用なら車椅子対応のかご）に割り当ててあれば、そのかごの呼びとして押す
+        // （車椅子用の印や、その場で開くときのため）
         for (ElevatorCarEntity member : members) {
             int index = member.floorIndexAt(y);
             if (index >= 0 && member.isHallCallLit(index, direction)) {

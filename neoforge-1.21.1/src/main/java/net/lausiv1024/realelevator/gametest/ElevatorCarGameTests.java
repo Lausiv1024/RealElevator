@@ -945,6 +945,31 @@ public class ElevatorCarGameTests {
         helper.succeed();
     }
 
+    /** 群管理：車椅子用のボタンの呼びは、遠くても車椅子対応のかごに割り当てる。応えられる車椅子対応のかごがなければ登録しない。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 40)
+    public static void aWheelchairCallGoesToAWheelchairCar(GameTestHelper helper) {
+        double x = helper.absolutePos(LOWER).getX() + 0.5;
+        ElevatorCarEntity wheelchairCar = spawnGroupCar(helper, x - 4, 0, 0, 8, 16);
+        ElevatorCarEntity plain = spawnGroupCar(helper, x + 4, 2, 0, 8, 12);
+        wheelchairCar.setFixtures(wheelchairCar.fixtures().withWheelchairPanel(true));
+        ElevatorGroups.join(wheelchairCar, plain);
+        // 8 の上りは、普通のかご（上、4ブロック先）のほうが早いが、車椅子用のボタンなので下の車椅子対応のかごに割り当てる
+        ElevatorGroups.pressHallCall(wheelchairCar, 1, TravelDirection.UP, Entrance.FRONT, true);
+        helper.assertTrue(wheelchairCar.isHallCallLit(1, TravelDirection.UP) && !plain.isHallCallLit(1, TravelDirection.UP),
+                "the wheelchair call should go to the wheelchair car");
+        // 普通のボタンの呼びは、今までどおりいちばん早いかごに
+        ElevatorGroups.pressHallCall(wheelchairCar, 1, TravelDirection.DOWN, Entrance.FRONT, false);
+        helper.assertTrue(plain.isHallCallLit(1, TravelDirection.DOWN), "a normal call should go to the nearest car");
+        // 普通のかごに呼びがあっても、車椅子用のボタンの呼びはそのかごには付けない
+        ElevatorGroups.pressHallCall(wheelchairCar, 1, TravelDirection.DOWN, Entrance.FRONT, true);
+        helper.assertTrue(wheelchairCar.isWheelchairHallCallLit(1, TravelDirection.DOWN, Entrance.FRONT),
+                "the wheelchair call should be added to the wheelchair car");
+        // 12 には車椅子対応のかごが止まらないので、車椅子用のボタンの呼びは登録しない
+        helper.assertTrue(ElevatorGroups.pressHallCall(plain, 2, TravelDirection.DOWN, Entrance.FRONT, true) == PressResult.INVALID
+                && !plain.isHallCallLit(2, TravelDirection.DOWN), "no wheelchair car can answer, so the call is not registered");
+        helper.succeed();
+    }
+
     /** 群管理：休止中のかごや、その階に止まらないかごには割り当てない。 */
     @GameTest(template = TEMPLATE, timeoutTicks = 40)
     public static void aGroupSkipsCarsThatCannotAnswer(GameTestHelper helper) {
