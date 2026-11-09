@@ -25,16 +25,12 @@ import net.minecraft.util.GsonHelper;
  *   "landing": {"frame": "thin", "panel": "wall_mounted", "frame_material": "...", "wall_material": "", "lantern_plate": true,
  *               "door_material": "#door",              // 乗場の戸。"#door" ならかごの戸と同じ
  *               "security_window": "same_as_car"},     // 乗場の戸の防犯窓。省略するとかごに合わせる
- *   "car_indicator": "over_door",             // 省略可。かごの表示器の位置
  *   "observation": true                       // 省略可。展望仕様（設置する前だけ効く）
  * }
  * }</pre>
  * 書かれていない項目は、標準の内装（{@link InteriorConfig#DEFAULT}）の値にする。
- *
- * @param carIndicator かごの表示器の位置。null なら変えない
  */
-public record DesignPreset(ResourceLocation id, String name, int order, InteriorConfig interior, @Nullable FixtureConfig.CarIndicator carIndicator,
-                           boolean observation) {
+public record DesignPreset(ResourceLocation id, String name, int order, InteriorConfig interior, boolean observation) {
     public static DesignPreset parse(ResourceLocation id, JsonObject json) {
         InteriorConfig d = InteriorConfig.DEFAULT;
         JsonObject in = GsonHelper.getAsJsonObject(json, "interior", new JsonObject());
@@ -61,10 +57,8 @@ public record DesignPreset(ResourceLocation id, String name, int order, Interior
                         GsonHelper.getAsString(landing, "door_material", l.doorMaterial()),
                         // 乗場の防犯窓を書いていなければ、かごに合わせる
                         parse(InteriorConfig.LandingWindow.class, landing, "security_window", l.securityWindow())));
-        FixtureConfig.CarIndicator carIndicator = json.has("car_indicator")
-                ? parse(FixtureConfig.CarIndicator.class, json, "car_indicator", null) : null;
         return new DesignPreset(id, GsonHelper.getAsString(json, "name", id.toString()), GsonHelper.getAsInt(json, "order", 1000),
-                interior, carIndicator, GsonHelper.getAsBoolean(json, "observation", false));
+                interior, GsonHelper.getAsBoolean(json, "observation", false));
     }
 
     private static <E extends Enum<E>> E parse(Class<E> type, JsonObject json, String key, E fallback) {
@@ -81,18 +75,13 @@ public record DesignPreset(ResourceLocation id, String name, int order, Interior
         tag.putString("Name", name);
         tag.putInt("Order", order);
         tag.put("Interior", ConfigTags.writeInterior(interior));
-        if (carIndicator != null) {
-            tag.putString("CarIndicator", carIndicator.name());
-        }
         tag.putBoolean("Observation", observation);
         return tag;
     }
 
     public static DesignPreset fromTag(CompoundTag tag) {
         ResourceLocation id = ResourceLocation.tryParse(tag.getString("Id"));
-        FixtureConfig.CarIndicator carIndicator = tag.contains("CarIndicator")
-                ? ConfigTags.parseEnum(FixtureConfig.CarIndicator.class, tag.getString("CarIndicator"), null) : null;
         return new DesignPreset(id != null ? id : ResourceLocation.withDefaultNamespace("unknown"), tag.getString("Name"), tag.getInt("Order"),
-                ConfigTags.readInterior(tag.getCompound("Interior")), carIndicator, tag.getBoolean("Observation"));
+                ConfigTags.readInterior(tag.getCompound("Interior")), tag.getBoolean("Observation"));
     }
 }

@@ -1,6 +1,7 @@
 package net.lausiv1024.realelevator.registry;
 
 import net.lausiv1024.realelevator.RealElevator;
+import net.lausiv1024.realelevator.core.announce.ChimeType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
@@ -10,12 +11,18 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class ModSounds {
     public static final DeferredRegister<SoundEvent> SOUND_EVENTS = DeferredRegister.create(Registries.SOUND_EVENT, RealElevator.MODID);
 
-    /** 到着チャイム（上り、1回）。音は tools/sounds/make_chime.py で合成したもの。 */
+    /** チャイム1の到着チャイム（上り）。音は tools/sounds/make_chime.py で合成したもの。音の並びは {@link ChimeType}。 */
     public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_UP = register("chime_up");
-    /** 到着チャイム（下り、2回）。 */
+    /** チャイム1の到着チャイム（下り）。 */
     public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_DOWN = register("chime_down");
-    /** 群管理の即時予報（G#5 の単音。上りも下りも同じ）。 */
+    /** チャイム1の群管理の即時予報（上りも下りも同じ）。 */
     public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_FORECAST = register("chime_forecast");
+    public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_2_UP = register("chime_2_up");
+    public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_2_DOWN = register("chime_2_down");
+    public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_2_FORECAST = register("chime_2_forecast");
+    public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_3_UP = register("chime_3_up");
+    public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_3_DOWN = register("chime_3_down");
+    public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_3_FORECAST = register("chime_3_forecast");
     /** ナッジング（強制戸閉）のブザー（0.5秒の1回分）。音は tools/sounds/make_buzzer.py で合成したもの。 */
     public static final DeferredHolder<SoundEvent, SoundEvent> NUDGE_BUZZER = register("nudge_buzzer");
 
@@ -23,6 +30,33 @@ public final class ModSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> EMERGENCY_BEEP = register("emergency_beep");
 
     private ModSounds() {
+    }
+
+    /** チャイムの種類 type の到着チャイム（上り。方向が決まっていないときも）。 */
+    public static SoundEvent chimeUp(ChimeType type) {
+        return (switch (type) {
+            case CHIME_2 -> CHIME_2_UP;
+            case CHIME_3 -> CHIME_3_UP;
+            default -> CHIME_UP;
+        }).get();
+    }
+
+    /** チャイムの種類 type の到着チャイム（下り）。 */
+    public static SoundEvent chimeDown(ChimeType type) {
+        return (switch (type) {
+            case CHIME_2 -> CHIME_2_DOWN;
+            case CHIME_3 -> CHIME_3_DOWN;
+            default -> CHIME_DOWN;
+        }).get();
+    }
+
+    /** チャイムの種類 type の、群管理の即時予報。 */
+    public static SoundEvent chimeForecast(ChimeType type) {
+        return (switch (type) {
+            case CHIME_2 -> CHIME_2_FORECAST;
+            case CHIME_3 -> CHIME_3_FORECAST;
+            default -> CHIME_FORECAST;
+        }).get();
     }
 
     private static DeferredHolder<SoundEvent, SoundEvent> register(String name) {

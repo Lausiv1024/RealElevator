@@ -16,6 +16,7 @@ import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
+import net.lausiv1024.realelevator.core.announce.ChimeType;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.control.CallType;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
@@ -23,6 +24,7 @@ import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.lausiv1024.realelevator.core.motion.SpeedSpec;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
+import net.lausiv1024.realelevator.entity.ElevatorGroups;
 import net.lausiv1024.realelevator.entity.ElevatorTracker;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
 import net.lausiv1024.realelevator.registry.ModEntities;
@@ -47,7 +49,6 @@ import net.minecraft.world.phys.Vec3;
  * /realelevator open | close   開・閉ボタン
  * /realelevator remove         かごと乗場の扉を撤去
  * /realelevator config panel right|both                    操作盤を右側だけ／両側に置く
- * /realelevator config car_indicator over_door|over_panel  かごの階床表示器を扉の上／操作盤の上に置く
  * /realelevator config left_indicator true|false           両側の操作盤のとき、左側にも表示器を付けるか
  * /realelevator config wheelchair_panel true|false         車椅子用操作盤と乗場の車椅子用ボタンを付けるか
  * /realelevator config hall_indicator over_door|over_buttons  乗場の階床表示器を扉の上／ボタンの上に置く
@@ -113,8 +114,6 @@ public final class DebugCommands {
                 .then(Commands.literal("config")
                         .then(Commands.literal("panel")
                                 .then(enumValue(FixtureConfig.PanelSides.class, FixtureConfig::withPanelSides)))
-                        .then(Commands.literal("car_indicator")
-                                .then(enumValue(FixtureConfig.CarIndicator.class, FixtureConfig::withCarIndicator)))
                         .then(Commands.literal("left_indicator")
                                 .then(Commands.argument("value", BoolArgumentType.bool())
                                         .executes(c -> withNearestCar(c, (ctx, car) -> configure(ctx, car,
@@ -132,9 +131,10 @@ public final class DebugCommands {
                                         .executes(c -> withNearestCar(c, (ctx, car) -> configureAnnouncements(ctx, car,
                                                 car.announcements().withArrival(BoolArgumentType.getBool(ctx, "value")))))))
                         .then(Commands.literal("chime")
-                                .then(Commands.argument("value", BoolArgumentType.bool())
+                                .then(Commands.argument("value", StringArgumentType.word())
+                                        .suggests((c, b) -> SharedSuggestionProvider.suggest(names(ChimeType.values()), b))
                                         .executes(c -> withNearestCar(c, (ctx, car) -> configureAnnouncements(ctx, car,
-                                                car.announcements().withChime(BoolArgumentType.getBool(ctx, "value")))))))
+                                                car.announcements().withChime(parse(ChimeType.class, StringArgumentType.getString(ctx, "value"))))))))
                         .then(Commands.literal("close_announcement")
                                 .then(Commands.argument("value", BoolArgumentType.bool())
                                         .executes(c -> withNearestCar(c, (ctx, car) -> configureAnnouncements(ctx, car,
@@ -257,7 +257,6 @@ public final class DebugCommands {
         car.setFixtures(fixtures);
         context.getSource().sendSuccess(() -> Component.literal("配置を変更しました：操作盤 "
                 + fixtures.panelSides().name().toLowerCase(Locale.ROOT)
-                + "、かごの表示器 " + fixtures.carIndicator().name().toLowerCase(Locale.ROOT)
                 + "、左の表示器 " + fixtures.leftPanelIndicator()
                 + "、乗場の表示器 " + fixtures.hallIndicator().name().toLowerCase(Locale.ROOT)
                 + "、ホールランタン " + fixtures.hallLantern().name().toLowerCase(Locale.ROOT)
@@ -268,8 +267,9 @@ public final class DebugCommands {
     private static int configureAnnouncements(CommandContext<CommandSourceStack> context, ElevatorCarEntity car,
                                               AnnouncementConfig announcements) {
         car.setAnnouncements(announcements);
+        ElevatorGroups.shareAnnouncements(car);
         context.getSource().sendSuccess(() -> Component.literal("アナウンスの設定を変更しました：到着 " + announcements.arrival()
-                + "、戸閉 " + announcements.doorClose() + "、チャイム " + announcements.chime()), false);
+                + "、戸閉 " + announcements.doorClose() + "、チャイム " + announcements.chime().name().toLowerCase(Locale.ROOT)), false);
         return 1;
     }
 

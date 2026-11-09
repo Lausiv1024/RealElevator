@@ -159,6 +159,10 @@ public final class ElevatorPlan {
         return announcements;
     }
 
+    public void setAnnouncements(AnnouncementConfig announcements) {
+        this.announcements = announcements;
+    }
+
     public boolean landingOpen() {
         return landingOpen;
     }

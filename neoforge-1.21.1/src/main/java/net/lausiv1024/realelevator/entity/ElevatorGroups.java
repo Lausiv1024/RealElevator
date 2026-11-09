@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import net.lausiv1024.realelevator.block.ControllerBlockEntity;
+import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.car.Entrance;
 import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.control.GroupDispatcher;
@@ -19,8 +21,10 @@ import net.minecraft.network.chat.Component;
  * {@value #MAX_DISTANCE}ブロック以内のかご。停止階はかごごとに違ってよい。</li>
  * <li>群のどの乗場で押した乗場呼びも、その階（同じY）に止まるかごのうち、着くまでの時間の見積もりがいちばん短いかご
  * （{@link GroupDispatcher}）に割り当て、そのかごの呼びとして登録する。割り当てたら変えない。</li>
- * <li>割り当てたらすぐ、そのかごのその階のホールランタンを点け（点滅せずに点灯）、G#5 の単音で知らせる（即時予報）。
- * 到着すると今までどおり点滅に変わる。</li>
+ * <li>割り当てたらすぐ、そのかごのその階のホールランタンを点け（点滅せずに点灯）、チャイムの種類ごとの予報の音で知らせる
+ * （即時予報）。到着すると今までどおり点滅に変わる。</li>
+ * <li>アナウンスの設定（到着・戸閉のアナウンスとチャイムの種類）は群でそろえる。1台を変えると群のほかのかごも変わり
+ * （{@link #shareAnnouncements}）、群に入れたかごは群の側の設定になる。</li>
  * <li>乗場のボタンの応答灯は、群のどれかのかごにその階・その向きの呼びがあれば、群のすべての乗場で点く。</li>
  * </ul>
  */
@@ -135,7 +139,27 @@ public final class ElevatorGroups {
         leave(target);
         selected.setGroupId(group);
         target.setGroupId(group);
+        // 入れたかごのアナウンスの設定は、群の側（選んだかご）に合わせる
+        shareAnnouncements(selected);
         return Component.translatable("message.realelevator.group.joined", members(target).size());
+    }
+
+    /**
+     * かご source のアナウンスの設定を、同じ群の読み込まれているほかのかごと、その頂部の制御盤の計画にもそろえる。
+     * 群に入っていなければ何もしない。
+     */
+    public static void shareAnnouncements(ElevatorCarEntity source) {
+        AnnouncementConfig announcements = source.announcements();
+        for (ElevatorCarEntity other : members(source)) {
+            if (other == source || other.announcements().equals(announcements)) {
+                continue;
+            }
+            other.setAnnouncements(announcements);
+            ControllerBlockEntity controller = ControllerBlockEntity.of(other);
+            if (controller != null) {
+                controller.setAnnouncements(announcements);
+            }
+        }
     }
 
     /**

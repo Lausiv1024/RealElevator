@@ -531,7 +531,6 @@ public class InstallGameTests {
                         .equals(List.of("standard", "mansion", "office", "luxury", "observation")),
                 "the five presets in order: " + presets.stream().map(DesignPreset::id).toList());
         helper.assertTrue(presets.get(0).interior().equals(InteriorConfig.DEFAULT), "the standard preset is the default interior");
-        helper.assertTrue(presets.get(2).carIndicator() == FixtureConfig.CarIndicator.OVER_DOOR, "the office has the indicator in the transom");
         helper.assertTrue(presets.get(3).interior().landing().frameMaterial().equals("minecraft:smooth_quartz"), "the luxury frame is quartz");
         helper.assertTrue(presets.get(4).observation() && !presets.get(3).observation(), "only the observation preset is an observation car");
         // どのプリセットの素材も、タグの候補に入っている

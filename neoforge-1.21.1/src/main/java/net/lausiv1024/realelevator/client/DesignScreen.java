@@ -543,9 +543,6 @@ final class DesignScreen extends Screen {
             return;
         }
         form.setInterior(preset.interior().withLandingVariants(form.interior().landingVariants()));
-        if (preset.carIndicator() != null) {
-            form.setFixtures(form.fixtures().withCarIndicator(preset.carIndicator()));
-        }
         if (form.observationHandler() != null) {
             form.observationHandler().accept(preset.observation());
             message = null;

@@ -16,6 +16,7 @@ import javax.annotation.Nullable;
 
 import net.lausiv1024.realelevator.core.announce.Announcement;
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
+import net.lausiv1024.realelevator.core.announce.ChimeType;
 import net.lausiv1024.realelevator.core.control.GroupDispatcher;
 import net.lausiv1024.realelevator.core.announce.AnnouncementScript;
 import net.lausiv1024.realelevator.core.car.Box;
@@ -120,8 +121,6 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     private static final double RESTING_SINK_TOLERANCE = 1e-7;
     /** 止まっているかごで、床に入り込んだものを押し上げる深さの上限。かごの下にいるものを持ち上げないよう、浅くする。 */
     private static final double RESTING_MAX_SINK = 0.05;
-    /** 到着チャイムの長さ [tick]（2音の間隔0.45秒＋余韻1.6秒）。 */
-    private static final int CHIME_TICKS = 41;
     /** かご内でしゃがんでいるあいだ、開ボタンを押したものとして扱う間隔 [tick]（使用キーの押したままの繰り返しと同じ）。 */
     private static final int SNEAK_OPEN_INTERVAL_TICKS = 4;
     /** クライアントで、ほかのエンティティをかごの床に合わせるときに見込む、位置の遅れ [tick]。 */
@@ -376,14 +375,15 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
 
     /**
      * 群管理で、停止階 floor の乗場呼びをこのかごに割り当てたことを、その階の乗場で、ホールランタンの位置から知らせる（即時予報）。
-     * 音は上りも下りも同じ G#5 の単音。到着チャイムの設定がオンのときだけ鳴らす。
+     * 音は上りも下りも同じで、チャイムの種類ごとの予報の音（{@link ChimeType}）。チャイムが「なし」なら鳴らさない。
      */
     public void announceAssignment(int floor) {
-        if (!announcements.chime() || resting) {
+        if (!announcements.chime().rings() || resting) {
             return;
         }
         Vec3 position = lanternCenter(floor);
-        level().playSound(null, position.x, position.y, position.z, ModSounds.CHIME_FORECAST.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
+        level().playSound(null, position.x, position.y, position.z, ModSounds.chimeForecast(announcements.chime()), SoundSource.BLOCKS,
+                1.0F, 1.0F);
     }
 
     public SpeedSetting speed() {
@@ -1365,11 +1365,12 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
     }
 
     /**
-     * 設定で有効なら、停止階 floor の乗場で、ホールランタンの位置から到着チャイムを鳴らす。下りは C6→G#5、それ以外は G#5→C6。
-     * 同じ階のチャイムが鳴っているあいだは、重ねて鳴らさない。
+     * 設定で有効なら、停止階 floor の乗場で、ホールランタンの位置から到着チャイムを鳴らす。下りなら下りの音、それ以外は上りの音
+     * （音はチャイムの種類ごと。{@link ChimeType}）。同じ階のチャイムが鳴っているあいだは、重ねて鳴らさない。
      */
     private void playArrivalChime(int floor, TravelDirection direction) {
-        if (!announcements.chime() || resting) {
+        ChimeType chime = announcements.chime();
+        if (!chime.rings() || resting) {
             return;
         }
         long now = level().getGameTime();
@@ -1377,9 +1378,9 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
             return;
         }
         chimeFloor = floor;
-        chimeEndTick = now + CHIME_TICKS;
+        chimeEndTick = now + chime.ringTicks();
         Vec3 position = lanternCenter(floor);
-        SoundEvent sound = (direction == TravelDirection.DOWN ? ModSounds.CHIME_DOWN : ModSounds.CHIME_UP).get();
+        SoundEvent sound = direction == TravelDirection.DOWN ? ModSounds.chimeDown(chime) : ModSounds.chimeUp(chime);
         level().playSound(null, position.x, position.y, position.z, sound, SoundSource.BLOCKS, 1.0F, 1.0F);
     }
 

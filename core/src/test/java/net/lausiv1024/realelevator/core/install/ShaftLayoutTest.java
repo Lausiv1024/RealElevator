@@ -155,7 +155,7 @@ class ShaftLayoutTest {
     void defaultsFollowTheJapaneseStandardSpecification() {
         assertEquals(FixtureConfig.HallIndicator.OVER_BUTTONS, FixtureConfig.DEFAULT.hallIndicator());
         assertEquals(FixtureConfig.HallLanternPlacement.NONE, FixtureConfig.DEFAULT.hallLantern());
-        assertFalse(AnnouncementConfig.DEFAULT.chime());
+        assertFalse(AnnouncementConfig.DEFAULT.chime().rings());
         assertTrue(AnnouncementConfig.DEFAULT.arrival());
     }
 

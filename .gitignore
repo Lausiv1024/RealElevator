@@ -42,3 +42,6 @@ repo/
 ### Other AI tools ###
 # 使っていないツールが置く指示ファイル（このプロジェクトの指示は CLAUDE.md）
 AGENTS.md
+
+### Python ###
+__pycache__/

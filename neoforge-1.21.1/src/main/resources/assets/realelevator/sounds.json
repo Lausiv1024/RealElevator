@@ -391,5 +391,41 @@
     "sounds": [
       "realelevator:chime_forecast"
     ]
+  },
+  "chime_2_up": {
+    "subtitle": "subtitles.realelevator.chime",
+    "sounds": [
+      "realelevator:chime_2_up"
+    ]
+  },
+  "chime_2_down": {
+    "subtitle": "subtitles.realelevator.chime",
+    "sounds": [
+      "realelevator:chime_2_down"
+    ]
+  },
+  "chime_2_forecast": {
+    "subtitle": "subtitles.realelevator.chime",
+    "sounds": [
+      "realelevator:chime_2_forecast"
+    ]
+  },
+  "chime_3_up": {
+    "subtitle": "subtitles.realelevator.chime",
+    "sounds": [
+      "realelevator:chime_3_up"
+    ]
+  },
+  "chime_3_down": {
+    "subtitle": "subtitles.realelevator.chime",
+    "sounds": [
+      "realelevator:chime_3_down"
+    ]
+  },
+  "chime_3_forecast": {
+    "subtitle": "subtitles.realelevator.chime",
+    "sounds": [
+      "realelevator:chime_2_forecast"
+    ]
   }
 }

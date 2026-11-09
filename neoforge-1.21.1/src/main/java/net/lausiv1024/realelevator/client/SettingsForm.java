@@ -13,6 +13,7 @@ import net.lausiv1024.realelevator.block.ElevatorPlan;
 import net.lausiv1024.realelevator.core.car.FloorEntrances;
 import net.lausiv1024.realelevator.core.announce.Announcement;
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
+import net.lausiv1024.realelevator.core.announce.ChimeType;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
 import net.lausiv1024.realelevator.core.design.InteriorConfig;
 import net.lausiv1024.realelevator.core.design.LandingLayout;
@@ -202,7 +203,6 @@ final class SettingsForm {
             rebuild.run();
         };
         widgets.add(enumButton("panel_sides", FixtureConfig.PanelSides.values(), fixtures.panelSides(), v -> fixtures = fixtures.withPanelSides(v), send));
-        widgets.add(enumButton("car_indicator", FixtureConfig.CarIndicator.values(), fixtures.carIndicator(), v -> fixtures = fixtures.withCarIndicator(v), send));
         widgets.add(onOff("left_indicator", fixtures.leftPanelIndicator(), v -> fixtures = fixtures.withLeftPanelIndicator(v), send));
         // 停止階の間隔が狭いと、出入口の上は上の階の床で隠れるので選べない
         boolean overDoor = allowsOverDoorHallFixtures();
@@ -231,7 +231,7 @@ final class SettingsForm {
         widgets.add(onOff("open_extension", fixtures.openExtension(), v -> fixtures = fixtures.withOpenExtension(v), send));
         widgets.add(onOff("arrival_announcement", announcements.arrival(), v -> announcements = announcements.withArrival(v), send));
         widgets.add(onOff("close_announcement", announcements.doorClose(), v -> announcements = announcements.withDoorClose(v), send));
-        widgets.add(onOff("chime", announcements.chime(), v -> announcements = announcements.withChime(v), send));
+        widgets.add(enumButton("chime", ChimeType.values(), announcements.chime(), v -> announcements = announcements.withChime(v), send));
         widgets.add(onOff("landing_open", landingOpen, v -> landingOpen = v, send));
         // 素材・天井・手すり・防犯窓・乗場の意匠は、デザインの画面で選ぶ
         widgets.add(Button.builder(Component.translatable("gui.realelevator.panel.design"), button -> {

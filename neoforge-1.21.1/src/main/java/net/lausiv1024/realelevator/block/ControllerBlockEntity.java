@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import javax.annotation.Nullable;
 
+import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
+import net.lausiv1024.realelevator.entity.ElevatorGroups;
 import net.lausiv1024.realelevator.core.install.ElevatorAccess;
 import net.lausiv1024.realelevator.core.install.InstallMaterials;
 import net.lausiv1024.realelevator.core.install.ShaftLayout;
@@ -112,6 +114,12 @@ public class ControllerBlockEntity extends BlockEntity {
         return plan;
     }
 
+    /** アナウンスの設定だけを変える（群のほかのかごにそろえるとき）。かごには呼ぶ側で反映する。 */
+    public void setAnnouncements(AnnouncementConfig announcements) {
+        plan.setAnnouncements(announcements);
+        setChanged();
+    }
+
     @Nullable
     public UUID carUuid() {
         return carUuid;
@@ -141,6 +149,8 @@ public class ControllerBlockEntity extends BlockEntity {
         if (car != null) {
             car.setFixtures(plan.fixtures());
             car.setAnnouncements(plan.announcements());
+            // アナウンスの設定は群でそろえる
+            ElevatorGroups.shareAnnouncements(car);
             car.setLandingOpen(plan.landingOpen());
             car.setInterior(plan.interior());
             car.setLabels(plan.labelArray());

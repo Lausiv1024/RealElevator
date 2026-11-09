@@ -145,10 +145,6 @@ class FloorIndicatorTest {
         assertTrue(three.dots().size() > two.dots().size());
         assertDotsInside(three);
         assertDotsInside(LandingLayout.of(spec, overButtons, InteriorConfig.Landing.DEFAULT, 0, true).indicator("MB1", TravelDirection.UP), PX / 2);
-        FixtureConfig transom = FixtureConfig.DEFAULT.withCarIndicator(FixtureConfig.CarIndicator.OVER_DOOR);
-        Frame car = FloorIndicator.car(spec, 4, transom, "MB1", TravelDirection.UP, true).get(0);
-        assertTrue(car.face().minX() >= CarGeometry.entrance(spec).minX() && car.face().maxX() <= CarGeometry.entrance(spec).maxX());
-        assertDotsInside(car);
         assertDotsInside(FloorIndicator.car(spec, 4, FixtureConfig.DEFAULT, "MB1", TravelDirection.UP).get(0), PX / 2);
         for (Frame wheelchair : FloorIndicator.wheelchair(spec, 4, "MB1", TravelDirection.UP)) {
             assertDotsInside(wheelchair, PX / 2);
@@ -198,12 +194,10 @@ class FloorIndicatorTest {
     void fontLabelAreasSitOnTheFaces(CarModel model) {
         CarSpec spec = CarSpec.of(model);
         FixtureConfig overButtons = FixtureConfig.DEFAULT.withHallIndicator(FixtureConfig.HallIndicator.OVER_BUTTONS);
-        FixtureConfig transom = FixtureConfig.DEFAULT.withCarIndicator(FixtureConfig.CarIndicator.OVER_DOOR);
         List<Frame> frames = new java.util.ArrayList<>();
         frames.add(hall(model, OVER_DOOR, "", TravelDirection.UP));
         frames.add(hall(model, overButtons, "", TravelDirection.UP));
         frames.addAll(FloorIndicator.car(spec, 4, FixtureConfig.DEFAULT, "", TravelDirection.UP));
-        frames.addAll(FloorIndicator.car(spec, 4, transom, "", TravelDirection.UP));
         frames.addAll(FloorIndicator.wheelchair(spec, 4, "", TravelDirection.UP));
         for (Frame frame : frames) {
             Box face = frame.face();
@@ -224,23 +218,6 @@ class FloorIndicatorTest {
         double minX = frame.dots().stream().mapToDouble(Box::minX).min().orElseThrow();
         double maxX = frame.dots().stream().mapToDouble(Box::maxX).max().orElseThrow();
         assertEquals((frame.face().minX() + frame.face().maxX()) / 2, (minX + maxX) / 2, EPS, frame.face().toString());
-    }
-
-    @ParameterizedTest
-    @EnumSource(CarModel.class)
-    void carIndicatorOverTheDoorFillsTheTransom(CarModel model) {
-        FixtureConfig config = FixtureConfig.DEFAULT.withCarIndicator(FixtureConfig.CarIndicator.OVER_DOOR);
-        List<Frame> frames = FloorIndicator.car(model, 4, config, "12", TravelDirection.UP);
-        assertEquals(1, frames.size());
-        Box face = frames.get(0).face();
-        Box entrance = CarGeometry.entrance(model);
-        // トランサム（出入口の上端から天井まで）の高さちょうど、出入口の幅の中
-        assertEquals(entrance.maxY(), face.minY(), EPS);
-        assertEquals(CarGeometry.interior(model).maxY(), face.maxY(), EPS);
-        assertEquals(-face.maxX(), face.minX(), EPS);
-        assertTrue(face.minX() >= entrance.minX() && face.maxX() <= entrance.maxX());
-        assertEquals(CarGeometry.interior(model).maxZ(), face.maxZ(), EPS);
-        assertDotsInside(frames.get(0));
     }
 
     @Test

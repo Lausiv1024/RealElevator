@@ -13,6 +13,7 @@ import net.lausiv1024.realelevator.block.PowerReceiverBlock;
 import net.lausiv1024.realelevator.block.PowerReceiverBlockEntity;
 import net.lausiv1024.realelevator.core.announce.Announcement;
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
+import net.lausiv1024.realelevator.core.announce.ChimeType;
 import net.lausiv1024.realelevator.core.announce.AnnouncementScript;
 import net.lausiv1024.realelevator.core.car.Box;
 import net.lausiv1024.realelevator.core.car.CarGeometry;
@@ -31,6 +32,7 @@ import net.lausiv1024.realelevator.core.panel.ButtonLayout;
 import net.lausiv1024.realelevator.core.panel.FixtureConfig;
 import net.lausiv1024.realelevator.entity.CarTransport;
 import net.lausiv1024.realelevator.entity.CarCollisions;
+import net.lausiv1024.realelevator.entity.ConfigTags;
 import net.lausiv1024.realelevator.entity.ElevatorCarEntity;
 import net.lausiv1024.realelevator.entity.ElevatorGroups;
 import net.lausiv1024.realelevator.entity.LandingDoorEntity;
@@ -235,7 +237,7 @@ public class ElevatorCarGameTests {
     @GameTest(template = TEMPLATE, timeoutTicks = 100)
     public static void chimeDoesNotOverlapWhenHallButtonIsMashed(GameTestHelper helper) {
         ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE).car();
-        car.setAnnouncements(new AnnouncementConfig(false, false, true));
+        car.setAnnouncements(new AnnouncementConfig(false, false, ChimeType.CHIME_1));
         car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT, false);
         long first = car.chimeEndTick();
         helper.assertTrue(first > helper.getLevel().getGameTime(), "the chime should ring");
@@ -250,6 +252,36 @@ public class ElevatorCarGameTests {
         });
     }
 
+    /** チャイム3は4つ目の音までの間隔と余韻の長さ（2.35秒）だけ、重ねて鳴らさない。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 100)
+    public static void chimeThreeRingsLongerBeforeItCanRingAgain(GameTestHelper helper) {
+        ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE).car();
+        car.setAnnouncements(new AnnouncementConfig(false, false, ChimeType.CHIME_3));
+        car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT, false);
+        long first = car.chimeEndTick();
+        helper.assertTrue(first == helper.getLevel().getGameTime() + ChimeType.CHIME_3.ringTicks(), "chime 3 rings for 2.35 s");
+        helper.runAfterDelay(42, () -> {
+            car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT, false);
+            helper.assertTrue(car.chimeEndTick() == first, "should still be ringing after 42 ticks");
+            helper.succeed();
+        });
+    }
+
+    /** チャイムの種類を選べるようになる前の保存（オン／オフ）は、オンならチャイム1、オフならなしとして読む。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void oldChimeOnOffLoadsAsChimeOneOrNone(GameTestHelper helper) {
+        CompoundTag on = new CompoundTag();
+        on.putBoolean("Chime", true);
+        CompoundTag off = new CompoundTag();
+        off.putBoolean("Chime", false);
+        helper.assertTrue(ConfigTags.readAnnouncements(on).chime() == ChimeType.CHIME_1, "on is chime 1");
+        helper.assertTrue(ConfigTags.readAnnouncements(off).chime() == ChimeType.NONE, "off is none");
+        helper.assertTrue(ConfigTags.readAnnouncements(new CompoundTag()).chime() == ChimeType.NONE, "missing is the default");
+        AnnouncementConfig three = AnnouncementConfig.DEFAULT.withChime(ChimeType.CHIME_3);
+        helper.assertTrue(ConfigTags.readAnnouncements(ConfigTags.writeAnnouncements(three)).equals(three), "the type round-trips");
+        helper.succeed();
+    }
+
     /**
      * かごのいる階の乗場ボタンを、戸が開いている間に連打しても、ランタンの点滅は始め直さず、行先方向のアナウンスも1回だけ。
      * 戸が閉まりきったあとに押せば、また点滅を始め、アナウンスも流す。
@@ -257,7 +289,7 @@ public class ElevatorCarGameTests {
     @GameTest(template = TEMPLATE, timeoutTicks = 400)
     public static void mashingTheHallButtonDoesNotRestartTheLanternOrRepeatTheAnnouncement(GameTestHelper helper) {
         ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE).car();
-        car.setAnnouncements(new AnnouncementConfig(true, false, true));
+        car.setAnnouncements(new AnnouncementConfig(true, false, ChimeType.CHIME_1));
         car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT, false);
         long lantern = car.lanternStartTick();
         AtomicLong announced = new AtomicLong(Long.MIN_VALUE);
@@ -887,6 +919,29 @@ public class ElevatorCarGameTests {
         // 群から外すと、残りが1台なのでその群はなくなる
         ElevatorGroups.leave(top);
         helper.assertTrue(top.groupId().isEmpty() && bottom.groupId().isEmpty(), "the group should be gone");
+        helper.succeed();
+    }
+
+    /** 群管理：群に入れたかごは群の側のアナウンスの設定になり、群の1台を変えるとほかのかごも同じになる。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 40)
+    public static void aGroupSharesTheAnnouncementSettings(GameTestHelper helper) {
+        double x = helper.absolutePos(LOWER).getX() + 0.5;
+        ElevatorCarEntity selected = spawnGroupCar(helper, x - 4, 0, 0, 8, 12);
+        ElevatorCarEntity target = spawnGroupCar(helper, x + 4, 0, 0, 8, 12);
+        AnnouncementConfig group = new AnnouncementConfig(false, true, ChimeType.CHIME_2);
+        selected.setAnnouncements(group);
+        target.setAnnouncements(new AnnouncementConfig(true, false, ChimeType.NONE));
+        ElevatorGroups.join(selected, target);
+        helper.assertTrue(target.announcements().equals(group), "the joined car should take the group's settings");
+        AnnouncementConfig changed = group.withChime(ChimeType.CHIME_3).withArrival(true);
+        target.setAnnouncements(changed);
+        ElevatorGroups.shareAnnouncements(target);
+        helper.assertTrue(selected.announcements().equals(changed), "changing one car should change the whole group");
+        // 群から外したあとは、そろえない
+        ElevatorGroups.leave(target);
+        target.setAnnouncements(AnnouncementConfig.DEFAULT);
+        ElevatorGroups.shareAnnouncements(target);
+        helper.assertTrue(selected.announcements().equals(changed), "a car out of the group should not change the others");
         helper.succeed();
     }
 

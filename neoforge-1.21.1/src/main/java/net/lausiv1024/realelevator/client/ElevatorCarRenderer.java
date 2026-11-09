@@ -77,8 +77,7 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
                 case GLASS -> clearGlass.add(part.box());
             }
         }
-        BoxRenderer.renderInterior(pose, consumer, InteriorGeometry.parts(car.spec(), car.isThrough(), car.isObservation(), interior,
-                        car.fixtures().carIndicator() == FixtureConfig.CarIndicator.OVER_DOOR),
+        BoxRenderer.renderInterior(pose, consumer, InteriorGeometry.parts(car.spec(), car.isThrough(), car.isObservation(), interior),
                 car.facing().get2DDataValue(), light, MaterialSprites.side(interior.baseboard()),
                 interior.carpet().blockId() != null ? MaterialSprites.side(interior.carpet().blockId()) : wall);
         double tick = car.renderTick(partialTick);
@@ -125,8 +124,7 @@ public class ElevatorCarRenderer extends EntityRenderer<ElevatorCarEntity> {
             for (boolean right : ButtonLayout.panelJambs(spec, fixtures.panelSides())) {
                 BoxRenderer.renderParts(pose, consumer, panel.parts(spec, right, false), entranceTurns, light);
             }
-            for (FloorIndicator.Frame indicator : FloorIndicator.car(spec, car.floorCount(), fixtures, dotLabel, car.indicatorDirection(),
-                    car.hasLongLabels())) {
+            for (FloorIndicator.Frame indicator : FloorIndicator.car(spec, car.floorCount(), fixtures, dotLabel, car.indicatorDirection())) {
                 BoxRenderer.renderIndicator(pose, consumer, indicator, entranceTurns, light, rgb, fontTexts, label);
             }
         }

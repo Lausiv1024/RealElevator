@@ -33,7 +33,6 @@ import net.lausiv1024.realelevator.core.panel.WheelchairPanelLayout;
  * <ul>
  * <li>乗場・扉の上：出入口の上の中央に、横長（ふち1px、16×7px）。</li>
  * <li>乗場・操作盤の上部：操作盤の表示窓に、0.5px のドットで縦長（上に矢印、下に 3×5 ドットの階名）。</li>
- * <li>かご・扉の上：出入口の上のトランサム（高さ5px）に、横長（ふちなし）で埋め込む。</li>
  * <li>かご・操作盤の上：主操作盤の板の上部の表示窓（{@link CarPanelLayout#window}）に、0.5px のドットで縦長
  * （上に矢印、下に 5×7 ドットの階名）。両側の操作盤の場合は、設定により左側にも付ける。</li>
  * <li>車椅子用操作盤：板の上の黒い帯の表示窓に、0.5px のドットで横長（矢印、5×7 ドットの階名）。両側の側壁に付ける。</li>
@@ -46,8 +45,6 @@ public final class FloorIndicator {
     public static final int SHORT_LABEL_LENGTH = 2;
     /** ドットが表示面から浮く量。表示面と同じ面に描くとちらつくので、わずかに手前に出す。 */
     private static final double DOT_LIFT = 0.002;
-    /** トランサムに埋め込む表示面の厚み。トランサムの面とちらつかないよう、わずかに手前に出す。 */
-    private static final double EMBEDDED_DEPTH = 0.004;
     private static final int PX = CarModel.PIXELS_PER_BLOCK;
 
     /** 階名の欄の幅（2文字と、その間の1px）。 */
@@ -81,12 +78,6 @@ public final class FloorIndicator {
     /** 3文字の階名があるときの、1px のドットの表示器の、ふちを除いた幅。 */
     private static final int LONG_WIDTH = ARROW_SIZE + 2 + LONG_LABEL_WIDTH;
     private static final int HEIGHT = DotFont.HEIGHT;
-
-    /** 表示器を見る側。かごの中からは +Z 向きに見るので左が +X、乗場からは −Z 向きに見るので左が −X。 */
-    private enum Viewer {
-        INSIDE_CAR,
-        LANDING
-    }
 
     private FloorIndicator() {
     }
@@ -162,25 +153,10 @@ public final class FloorIndicator {
         return car(CarSpec.of(model), floorCount, config, label, direction);
     }
 
-    public static List<Frame> car(CarSpec model, int floorCount, FixtureConfig config, String label, TravelDirection direction) {
-        return car(model, floorCount, config, label, direction, false);
-    }
-
     /**
-     * かごの表示器。操作盤の上なら、操作盤ごとに（2つ目は設定による）。片開き（2S）では操作盤が1つなので1つ。
-     *
-     * @param longLabels 3文字の階名があるか（扉の上の表示器を広げる）
+     * かごの表示器。主操作盤の上部の表示窓に、操作盤ごとに（2つ目は設定による）。片開き（2S）では操作盤が1つなので1つ。
      */
-    public static List<Frame> car(CarSpec model, int floorCount, FixtureConfig config, String label, TravelDirection direction,
-                                  boolean longLabels) {
-        int face = px(CarGeometry.interior(model).maxZ());
-        if (config.carIndicator() == FixtureConfig.CarIndicator.OVER_DOOR) {
-            Box entrance = CarGeometry.entrance(model);
-            int width = longLabels ? LONG_WIDTH : WIDTH;
-            // かごの中から見て左（+X）の端
-            int left = (px(entrance.minX()) + px(entrance.maxX()) + width) / 2;
-            return List.of(build(Viewer.INSIDE_CAR, left, px(entrance.maxY()), 0, face, EMBEDDED_DEPTH, label, direction, longLabels));
-        }
+    public static List<Frame> car(CarSpec model, int floorCount, FixtureConfig config, String label, TravelDirection direction) {
         List<Boolean> jambs = ButtonLayout.panelJambs(model, config.panelSides());
         List<Frame> frames = new ArrayList<>(2);
         for (int i = 0; i < jambs.size(); i++) {
@@ -189,15 +165,6 @@ public final class FloorIndicator {
             }
         }
         return frames;
-    }
-
-    /** 主操作盤の、表示窓を付ける袖壁（かごの中から見て右側なら true）。並びは {@link #car} の表示器と同じ。 */
-    public static List<Boolean> carWindowJambs(CarSpec model, FixtureConfig config) {
-        if (config.carIndicator() == FixtureConfig.CarIndicator.OVER_DOOR) {
-            return List.of();
-        }
-        List<Boolean> jambs = ButtonLayout.panelJambs(model, config.panelSides());
-        return jambs.size() > 1 && !config.leftPanelIndicator() ? jambs.subList(0, 1) : jambs;
     }
 
     /** 車椅子用操作盤の表示器（右の側壁、左の側壁の順）。 */
@@ -304,7 +271,7 @@ public final class FloorIndicator {
     public static Frame hallOverDoor(CarSpec model, int bottom, int face, String label, TravelDirection direction, boolean longLabels) {
         Box entrance = CarGeometry.entrance(model);
         int left = (px(entrance.minX()) + px(entrance.maxX()) - overDoorWidthPx(longLabels)) / 2;
-        return build(Viewer.LANDING, left, bottom, 1, face, 1.0 / PX, label, direction, longLabels);
+        return build(left, bottom, 1, face, 1.0 / PX, label, direction, longLabels);
     }
 
     /** 乗場の扉の上の表示器の幅（ふちを含む）[px]。 */
@@ -325,32 +292,29 @@ public final class FloorIndicator {
     }
 
     /**
-     * 表示器を組み立てる。
+     * 乗場の表示器（1px のドット）を組み立てる。乗場からは −Z 向きに見るので、見る人から見た左は −X。
      *
      * @param left   見る人から見た左端の X [px]
      * @param bottom 下端の Y [px]
      * @param border ふちの幅 [px]
      * @param face   取り付け面の Z [px]。表示面はそこから見る人の側へ depth だけ出る
      */
-    private static Frame build(Viewer viewer, int left, int bottom, int border, int face, double depth,
+    private static Frame build(int left, int bottom, int border, int face, double depth,
                                String label, TravelDirection direction, boolean longLabels) {
         int width = (longLabels ? LONG_WIDTH : WIDTH) + border * 2;
         int height = HEIGHT + border * 2;
-        boolean fromInside = viewer == Viewer.INSIDE_CAR;
         double faceZ = face / (double) PX;
-        double minX = (fromInside ? left - width : left) / (double) PX;
-        Box background = fromInside
-                ? new Box(minX, bottom / (double) PX, faceZ - depth, minX + width / (double) PX, (bottom + height) / (double) PX, faceZ)
-                : new Box(minX, bottom / (double) PX, faceZ, minX + width / (double) PX, (bottom + height) / (double) PX, faceZ + depth);
-        double dotNear = fromInside ? background.minZ() - DOT_LIFT : background.maxZ() + DOT_LIFT;
-        double dotFar = fromInside ? background.minZ() : background.maxZ();
-        int contentLeft = fromInside ? left - border : left + border;
+        double minX = left / (double) PX;
+        Box background = new Box(minX, bottom / (double) PX, faceZ, minX + width / (double) PX, (bottom + height) / (double) PX, faceZ + depth);
+        double dotNear = background.maxZ() + DOT_LIFT;
+        double dotFar = background.maxZ();
+        int contentLeft = left + border;
         int contentTop = bottom + height - border;
 
         // 見る人から見た (列, 行) → ボックス。列は左から、行は上から
         // 1px のドットは px の格子からずらさない
         DotGrid grid = (column, row) -> {
-            int x0 = fromInside ? contentLeft - (int) column - 1 : contentLeft + (int) column;
+            int x0 = contentLeft + (int) column;
             int y0 = contentTop - (int) row - 1;
             return new Box(x0 / (double) PX, y0 / (double) PX, Math.min(dotNear, dotFar),
                     (x0 + 1) / (double) PX, (y0 + 1) / (double) PX, Math.max(dotNear, dotFar));
@@ -368,7 +332,7 @@ public final class FloorIndicator {
         Box last = grid.dot(ARROW_SIZE + 2 + labelWidth - 1, HEIGHT - 1);
         Box labelArea = new Box(Math.min(first.minX(), last.minX()), Math.min(first.minY(), last.minY()), Math.min(first.minZ(), last.minZ()),
                 Math.max(first.maxX(), last.maxX()), Math.max(first.maxY(), last.maxY()), Math.max(first.maxZ(), last.maxZ()));
-        return new Frame(background, dots, labelArea, fromInside ? Normal.NEG_Z : Normal.POS_Z);
+        return new Frame(background, dots, labelArea, Normal.POS_Z);
     }
 
     private interface DotGrid {
