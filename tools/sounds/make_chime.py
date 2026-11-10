@@ -14,7 +14,11 @@
 - 電子音：メロディICのような矩形波を減衰させ、小さいスピーカーから出たように低音と高音を削る。
   余韻は途中の音が CHIP_SECONDS、最後の音（和音なら和音のすべての音）が CHIP_LAST_SECONDS。
 
-鳴っている長さ（最後の音までの間隔＋最後の音の余韻）は、ChimeType#ringTicks と合わせる。
+どの音にも最後に、実際のエレベーターで鳴っているように聞こえる処理をかける（shaft）。
+- 残響：狭い縦穴で短く返る響き。左右の壁で返る初期反射と、短い残響（約0.8秒）と、床と天井のあいだを行き来する反射。
+- 丸さ：出だしの立ち上がりをなだらかにし（ATTACK_SECONDS）、2.5kHz あたりから上の高音を和らげる。
+
+鳴っている長さ（最後の音までの間隔＋最後の音の余韻。残響の尾は含めない）は、ChimeType#ringTicks と合わせる。
 
 使い方（numpy と soundfile が必要）:
     python make_chime.py <出力先のフォルダ>
@@ -59,17 +63,28 @@ BELL_PARTIALS = [
     (3.0, 0.12, 5.0),
     (4.16, 0.05, 7.0),
 ]
-BELL_ATTACK_SECONDS = 0.004
 BELL_SECONDS = 1.6
+# 出だしの立ち上がり [秒]。角を取って丸く聞こえるよう、少しなだらかにする（どちらの音色も同じ）
+ATTACK_SECONDS = 0.015
 
 # 電子音：余韻 [秒]（途中の音と最後の音）、余韻1.6秒のときの減衰の速さ [1/s]（余韻が長ければ、そのぶんゆっくり減衰させ、
-# 終わりに残る大きさをそろえる）、立ち上がり [秒]、スピーカー風に残す帯域 [Hz]
+# 終わりに残る大きさをそろえる）、スピーカー風に残す帯域 [Hz]
 CHIP_SECONDS = 2.2
 CHIP_LAST_SECONDS = 2.8
 CHIP_DECAY_AT_1_6 = 2.6
-CHIP_ATTACK_SECONDS = 0.003
 SPEAKER_LOW = 500.0
 SPEAKER_HIGH = 3500.0
+
+# 残響：長さ（−60dB になるまで）[秒]、元の音に足す大きさ、左右の壁で返る初期反射 (遅れ [秒], 大きさ)、
+# 残響を作るコムフィルターの遅れ [秒]、床と天井のあいだを行き来する反射の間隔 [秒]、反射ごとに高音を削る強さ
+REVERB_SECONDS = 0.8
+REVERB_WET = 0.35
+EARLY_REFLECTIONS = [(0.006, 0.55), (0.011, 0.45), (0.017, 0.35), (0.024, 0.28), (0.031, 0.2)]
+COMB_DELAYS = [0.0213, 0.0261, 0.0297, 0.0337]
+FLUTTER_DELAY = 0.019
+REVERB_DAMP = 0.35
+# 丸さ：最後にかける高音を和らげるフィルター [Hz]（2回かける）
+ROUND_CUTOFF = 2500.0
 
 
 def fade_out(tone: np.ndarray) -> np.ndarray:
@@ -83,8 +98,8 @@ def bell(fundamental: float, t: np.ndarray) -> np.ndarray:
     tone = np.zeros_like(t)
     for ratio, amplitude, decay in BELL_PARTIALS:
         tone += amplitude * np.sin(2 * np.pi * fundamental * ratio * t) * np.exp(-decay * t)
-    # 打った瞬間のプチッという音を避けるため、立ち上がりを滑らかにする
-    tone *= np.clip(t / BELL_ATTACK_SECONDS, 0, 1)
+    # 打った瞬間のプチッという音を避け、角を取るため、立ち上がりを滑らかにする
+    tone *= np.clip(t / ATTACK_SECONDS, 0, 1)
     return fade_out(tone)
 
 
@@ -101,7 +116,7 @@ def square(fundamental: float, t: np.ndarray) -> np.ndarray:
 def chip(fundamental: float, t: np.ndarray) -> np.ndarray:
     seconds = len(t) / SAMPLE_RATE
     decay = CHIP_DECAY_AT_1_6 * 1.6 / seconds
-    envelope = np.exp(-decay * t) * np.clip(t / CHIP_ATTACK_SECONDS, 0, 1)
+    envelope = np.exp(-decay * t) * np.clip(t / ATTACK_SECONDS, 0, 1)
     return square(fundamental, t) * fade_out(envelope)
 
 
@@ -143,6 +158,54 @@ def chime(interval: float, steps: tuple, timbre: str) -> np.ndarray:
     return out / np.max(np.abs(out)) * PEAK
 
 
+def comb(x: np.ndarray, delay: float, seconds: float) -> np.ndarray:
+    """減衰付きのフィードバック・コムフィルター。seconds 秒で −60dB。返すたびに高音を少し削る。"""
+    d = max(1, int(delay * SAMPLE_RATE))
+    g = 10 ** (-3 * delay / seconds)
+    y = np.zeros(len(x))
+    feedback = np.zeros(d)
+    # d サンプルずつまとめて計算する（d サンプル前の出力だけを使うので、ブロックの中は互いに独立）
+    for start in range(0, len(x), d):
+        end = min(start + d, len(x))
+        n = end - start
+        block = x[start:end] + g * feedback[:n]
+        y[start:end] = block
+        smoothed = block.copy()
+        smoothed[1:] = (1 - REVERB_DAMP) * block[1:] + REVERB_DAMP * block[:-1]
+        feedback = np.zeros(d)
+        feedback[:n] = smoothed
+    return y
+
+
+def allpass(x: np.ndarray, delay: float, g: float = 0.5) -> np.ndarray:
+    """オールパスフィルター（残響の反射を細かく散らす）。"""
+    d = max(1, int(delay * SAMPLE_RATE))
+    y = np.zeros(len(x))
+    delayed = np.concatenate([np.zeros(d), x])
+    for start in range(0, len(x), d):
+        end = min(start + d, len(x))
+        past = y[start - d:end - d] if start >= d else np.zeros(end - start)
+        y[start:end] = -g * x[start:end] + delayed[start:end] + g * past
+    return y
+
+
+def shaft(dry: np.ndarray) -> np.ndarray:
+    """狭い縦穴で短く返る残響を足し、高音を和らげて丸くする。残響の尾のぶん長くなる。"""
+    x = np.concatenate([dry, np.zeros(int((REVERB_SECONDS + 0.1) * SAMPLE_RATE))])
+    early = np.zeros(len(x))
+    for delay, gain in EARLY_REFLECTIONS:
+        d = int(delay * SAMPLE_RATE)
+        early[d:] += gain * x[:len(x) - d]
+    late = sum(comb(x, delay, REVERB_SECONDS) for delay in COMB_DELAYS) / len(COMB_DELAYS)
+    late += comb(x, FLUTTER_DELAY, REVERB_SECONDS * 0.8) * 0.6
+    late = allpass(allpass(late, 0.0051), 0.0017)
+    out = x + REVERB_WET * (0.6 * early + late)
+    fade_out(out)
+    out = out / np.max(np.abs(out)) * PEAK
+    out = lowpass(lowpass(out, ROUND_CUTOFF), ROUND_CUTOFF)
+    return out / np.max(np.abs(out)) * PEAK
+
+
 def main() -> None:
     out_dir = Path(sys.argv[1])
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -151,7 +214,7 @@ def main() -> None:
     for name in names:
         interval, steps, timbre = PATTERNS[name]
         path = out_dir / f"{name}.ogg"
-        sf.write(path, chime(interval, steps, timbre).astype(np.float32), SAMPLE_RATE, format="OGG", subtype="VORBIS")
+        sf.write(path, shaft(chime(interval, steps, timbre)).astype(np.float32), SAMPLE_RATE, format="OGG", subtype="VORBIS")
         print(path, path.stat().st_size, "bytes")
 
 
