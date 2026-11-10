@@ -31,7 +31,7 @@ public enum SpeedSpec {
         return limits;
     }
 
-    /** ネザースターで解放される高速仕様かどうか。 */
+    /** パワーモジュールで解放される高速仕様かどうか。 */
     public boolean isHighSpeed() {
         return this == HIGH || this == ULTRA_HIGH;
     }

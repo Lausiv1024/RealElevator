@@ -1,5 +1,6 @@
 package net.lausiv1024.realelevator.menu;
 
+import net.lausiv1024.realelevator.registry.ModItems;
 import net.lausiv1024.realelevator.block.InstallerBlockEntity;
 import net.lausiv1024.realelevator.registry.ModBlocks;
 import net.lausiv1024.realelevator.registry.ModMenus;
@@ -16,12 +17,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * 制御盤の設定画面のコンテナ。ネザースターのスロットと、プレイヤーの持ち物。
+ * 制御盤の設定画面のコンテナ。パワーモジュールのスロットと、プレイヤーの持ち物。
  *
  * <p>設定画面は「設定」と「動力」の表示を切り替え、スロットは「動力」の表示のときだけ出す（クライアントだけで切り替える）。
  */
 public class InstallerMenu extends AbstractContainerMenu {
-    /** ネザースターのスロットの位置（画面の枠の左上から）。 */
+    /** パワーモジュールのスロットの位置（画面の枠の左上から）。 */
     public static final int STAR_X = 80;
     public static final int STAR_Y = 30;
     /** 持ち物の位置。 */
@@ -83,7 +84,7 @@ public class InstallerMenu extends AbstractContainerMenu {
             if (!slot.mayPickup(player) || !moveItemStackTo(stack, INVENTORY_START, INVENTORY_END, true)) {
                 return ItemStack.EMPTY;
             }
-        } else if (stack.is(Items.NETHER_STAR)) {
+        } else if (stack.is(ModItems.POWER_MODULE.get())) {
             if (!moveItemStackTo(stack, STAR_SLOT, STAR_SLOT + 1, false)) {
                 return ItemStack.EMPTY;
             }
@@ -115,7 +116,7 @@ public class InstallerMenu extends AbstractContainerMenu {
         }
     }
 
-    /** ネザースターを1個だけはめるスロット。 */
+    /** パワーモジュールを1個だけはめるスロット。 */
     private class StarSlot extends HideableSlot {
         StarSlot(Container container, int x, int y) {
             super(container, 0, x, y);
@@ -123,7 +124,7 @@ public class InstallerMenu extends AbstractContainerMenu {
 
         @Override
         public boolean mayPlace(ItemStack stack) {
-            return stack.is(Items.NETHER_STAR);
+            return stack.is(ModItems.POWER_MODULE.get());
         }
 
         @Override

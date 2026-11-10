@@ -1,6 +1,7 @@
 """レシピと、レシピ本で解放する進捗の JSON を書き出す。
 
 - 道具：設置用ブロック、階床登録ツール、保守用レンチ、運転切替盤、仕様書（と仕様書の複製）
+- 高速仕様：圧縮レッドストーン（レッドストーンブロック9個。戻せる）と、パワーモジュール
 - 素材ブロック：作業台で1回8個。ステンレスの仕上げ（ヘアライン・鏡面・エッチング）は石切台で相互に変換
 - 進捗：材料を持つとレシピ本に出す（advancement/recipes/）
 
@@ -41,6 +42,18 @@ shaped('floor_marker', ["  R", " I ", "S  "], {"R": "redstone", "I": "iron_ingot
 shaped('maintenance_wrench', ["I I", " I ", " I "], {"I": "iron_ingot"}, category='equipment', book='tools')
 shaped('power_receiver', ["SSS", "ILI", " R "], {"S": "stone", "I": "iron_ingot", "L": "lever", "R": "redstone"},
        category='redstone', book='redstone', unlock='redstone')
+# 高速仕様の動力
+shaped('compressed_redstone', ["RRR", "RRR", "RRR"], {"R": "redstone_block"}, category='redstone', book='redstone',
+       unlock='redstone_block')
+recipes['redstone_block_from_compressed_redstone'] = ({
+    "type": "minecraft:crafting_shapeless",
+    "category": "redstone",
+    "ingredients": [item(f'{NS}:compressed_redstone')],
+    "result": {"id": "minecraft:redstone_block", "count": 9},
+}, 'redstone', f'{NS}:compressed_redstone')
+shaped('power_module', ["GBG", "QCQ", "GBG"],
+       {"G": "gold_ingot", "B": "blaze_rod", "Q": "quartz", "C": f"{NS}:compressed_redstone"},
+       category='redstone', book='redstone', unlock=f'{NS}:compressed_redstone')
 recipes['specification'] = ({
     "type": "minecraft:crafting_shapeless",
     "category": "misc",

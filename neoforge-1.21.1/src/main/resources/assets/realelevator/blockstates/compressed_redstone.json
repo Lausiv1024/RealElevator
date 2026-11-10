@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "realelevator:block/compressed_redstone"
+    }
+  }
+}

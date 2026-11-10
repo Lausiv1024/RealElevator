@@ -28,8 +28,8 @@ import net.minecraft.world.phys.BlockHitResult;
 /**
  * 設置用ブロック。最下階の乗場の壁に置く。正面（FACING）は置いたプレイヤーの方、つまり乗場側を向く。
  *
- * <p>右クリックで設定画面を開く（ネザースターのスロットがあるので、サーバーから開く）。階床登録ツールで右クリックすると、ツールをこの設置用ブロックにつなぐ。
- * 壊すと、はめていたネザースターを落とす。設置すると、このブロックは消える（解体すると戻る）。
+ * <p>右クリックで設定画面を開く（パワーモジュールのスロットがあるので、サーバーから開く）。階床登録ツールで右クリックすると、ツールをこの設置用ブロックにつなぐ。
+ * 壊すと、はめていたパワーモジュールを落とす。設置すると、このブロックは消える（解体すると戻る）。
  */
 public class InstallerBlock extends HorizontalDirectionalBlock implements EntityBlock {
     public static final MapCodec<InstallerBlock> CODEC = simpleCodec(InstallerBlock::new);

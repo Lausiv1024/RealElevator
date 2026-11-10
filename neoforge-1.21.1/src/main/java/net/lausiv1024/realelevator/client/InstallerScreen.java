@@ -43,7 +43,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  *
  * <ul>
  * <li>設定：左に機種・速度・ピット・配置・アナウンスの設定、右に停止階と階名、下にプレビューと確定を並べる（{@link SettingsForm}）。</li>
- * <li>動力：ネザースターのスロットと持ち物。ネザースターをはめると、高速仕様を選べるようになる。</li>
+ * <li>動力：パワーモジュールのスロットと持ち物。パワーモジュールをはめると、高速仕様を選べるようになる。</li>
  * </ul>
  *
  * 設定を変えるたびにサーバーへ送り、サーバーの設置用ブロックが反映して送り返す。
@@ -72,7 +72,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
     private SettingsForm form;
     /** 「動力」の表示か。 */
     private boolean showPower;
-    /** 前に見たときにネザースターがはまっていたか。変わったら、選べる速度が変わるので作り直す。 */
+    /** 前に見たときにパワーモジュールがはまっていたか。変わったら、選べる速度が変わるので作り直す。 */
     private boolean hadStar;
     private int obstructionCount;
     /** プロファイルを読み込んだ結果。次に設定を変えるまで、状態の欄に出す。 */
@@ -110,7 +110,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
             through = installer.plan().isThrough();
             observation = installer.plan().isObservation();
             preview = installer.isPreviewing();
-            hadStar = installer.hasNetherStar();
+            hadStar = installer.hasPowerModule();
             form = new SettingsForm(installer.settingsTag());
             form.enablePreview(new ElevatorPreview(this::settingsTag, this::previewAnchor));
             // プリセットの「展望」を選んだら展望仕様にする（設置する前だけ）
@@ -159,10 +159,10 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
                     door = v;
                     send();
                 }));
-        // 高速仕様は、ネザースターがはまっているときだけ出す
+        // 高速仕様は、パワーモジュールがはまっているときだけ出す
         List<SpeedSpec> speeds = new ArrayList<>();
         for (SpeedSpec spec : SpeedSpec.values()) {
-            if (!spec.isHighSpeed() || installer.hasNetherStar() || spec == speed.spec()) {
+            if (!spec.isHighSpeed() || installer.hasPowerModule() || spec == speed.spec()) {
                 speeds.add(spec);
             }
         }
@@ -251,9 +251,9 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
     protected void containerTick() {
         super.containerTick();
         InstallerBlockEntity installer = installer();
-        if (installer != null && installer.hasNetherStar() != hadStar) {
-            hadStar = installer.hasNetherStar();
-            // ネザースターを取り出すと、サーバーが高速仕様の設定を戻すので、それに合わせる
+        if (installer != null && installer.hasPowerModule() != hadStar) {
+            hadStar = installer.hasPowerModule();
+            // パワーモジュールを取り出すと、サーバーが高速仕様の設定を戻すので、それに合わせる
             speed = installer.speed();
             if (!showPower) {
                 rebuildWidgets();
@@ -340,7 +340,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
     }
 
     /**
-     * プロファイル profile を読み込む（停止階・階名・読み上げ名・出入口はそのまま）。高速仕様は、ネザースターがはまっていなければ
+     * プロファイル profile を読み込む（停止階・階名・読み上げ名・出入口はそのまま）。高速仕様は、パワーモジュールがはまっていなければ
      * 速度を変えずに、その旨を出す。
      */
     private void applyProfile(CompoundTag profile) {
@@ -351,7 +351,7 @@ public class InstallerScreen extends AbstractContainerScreen<InstallerMenu> {
         model = ConfigTags.parseEnum(CarModel.class, profile.getString("Model"), model);
         door = new CarSpec(model, ConfigTags.parseEnum(DoorType.class, profile.getString("Door"), door)).door();
         SpeedSpec requested = ConfigTags.parseEnum(SpeedSpec.class, profile.getString("Speed"), speed.spec());
-        boolean speedRefused = requested.isHighSpeed() && !installer.hasNetherStar();
+        boolean speedRefused = requested.isHighSpeed() && !installer.hasPowerModule();
         if (!speedRefused) {
             speed = ElevatorPlan.readSpeed(requested, profile);
         }

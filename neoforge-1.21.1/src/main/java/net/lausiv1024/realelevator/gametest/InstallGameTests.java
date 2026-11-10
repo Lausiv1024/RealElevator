@@ -176,12 +176,12 @@ public class InstallGameTests {
     @GameTest(template = TEMPLATE, timeoutTicks = 40)
     public static void dismantlingRemovesEverythingAndReturnsTheItems(GameTestHelper helper) {
         InstallerBlockEntity panel = placePanel(helper);
-        panel.starContainer().setItem(0, new ItemStack(Items.NETHER_STAR));
+        panel.starContainer().setItem(0, new ItemStack(ModItems.POWER_MODULE.get()));
         ElevatorPlan plan = panel.plan();
         panel.install();
         ElevatorCarEntity car = carAt(helper, plan.carOrigin());
         ControllerBlockEntity controller = controllerOf(helper, car);
-        helper.assertTrue(controller.star().is(Items.NETHER_STAR), "the star should move to the controller");
+        helper.assertTrue(controller.star().is(ModItems.POWER_MODULE.get()), "the star should move to the controller");
         BlockPos controllerPos = controller.getBlockPos();
         List<BlockPos> rails = plan.layout().rails().stream().map(rail -> plan.cellPos(rail.cell())).toList();
         Vec3 origin = plan.carOrigin();
@@ -200,7 +200,7 @@ public class InstallGameTests {
             helper.assertTrue(helper.getLevel().getBlockState(controllerPos).isAir()
                     && helper.getLevel().getBlockState(controllerPos.above()).isAir(), "the controller should be removed");
             helper.assertTrue(player.getInventory().contains(new ItemStack(ModItems.INSTALLER.get()))
-                    && player.getInventory().contains(new ItemStack(Items.NETHER_STAR)), "the installer and the star should be returned");
+                    && player.getInventory().contains(new ItemStack(ModItems.POWER_MODULE.get())), "the installer and the star should be returned");
         });
     }
 
@@ -387,10 +387,10 @@ public class InstallGameTests {
 
         Player player = helper.makeMockPlayer(GameType.SURVIVAL);
         InstallerMenu menu = new InstallerMenu(0, player.getInventory(), panel);
-        player.getInventory().add(new ItemStack(Items.NETHER_STAR));
-        // 持ち物のネザースターをシフトクリックではめる
+        player.getInventory().add(new ItemStack(ModItems.POWER_MODULE.get()));
+        // 持ち物のパワーモジュールをシフトクリックではめる
         menu.quickMoveStack(player, menu.slots.size() - 9);
-        helper.assertTrue(panel.hasNetherStar(), "shift-clicking should put the star in");
+        helper.assertTrue(panel.hasPowerModule(), "shift-clicking should put the star in");
         requestSpeed(panel, SpeedSpec.HIGH, 1.8, 2.5);
         helper.assertTrue(panel.speed().equals(new SpeedSetting(SpeedSpec.HIGH, 1.8, 2.5)), "speed: " + panel.speed());
 
@@ -401,10 +401,19 @@ public class InstallGameTests {
         helper.succeed();
     }
 
+    /** 高速仕様を解禁するのはパワーモジュールだけ。ネザースターははめられない。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 20)
+    public static void onlyThePowerModuleUnlocksHighSpeeds(GameTestHelper helper) {
+        InstallerBlockEntity panel = placePanel(helper);
+        helper.assertTrue(!panel.starContainer().canPlaceItem(0, new ItemStack(Items.NETHER_STAR)), "a nether star should not fit");
+        helper.assertTrue(panel.starContainer().canPlaceItem(0, new ItemStack(ModItems.POWER_MODULE.get())), "a power module should fit");
+        helper.succeed();
+    }
+
     @GameTest(template = TEMPLATE, timeoutTicks = 20)
     public static void takingTheStarOutBeforeInstallingFallsBackToANormalSpeed(GameTestHelper helper) {
         InstallerBlockEntity panel = placePanel(helper);
-        panel.starContainer().setItem(0, new ItemStack(Items.NETHER_STAR));
+        panel.starContainer().setItem(0, new ItemStack(ModItems.POWER_MODULE.get()));
         requestSpeed(panel, SpeedSpec.ULTRA_HIGH, 2.0, 3.0);
         helper.assertTrue(panel.speed().spec() == SpeedSpec.ULTRA_HIGH, "ultra high should be chosen");
         panel.starContainer().setItem(0, ItemStack.EMPTY);
@@ -415,9 +424,9 @@ public class InstallGameTests {
     @GameTest(template = TEMPLATE, timeoutTicks = 40)
     public static void breakingThePanelDropsTheStar(GameTestHelper helper) {
         InstallerBlockEntity panel = placePanel(helper);
-        panel.starContainer().setItem(0, new ItemStack(Items.NETHER_STAR));
+        panel.starContainer().setItem(0, new ItemStack(ModItems.POWER_MODULE.get()));
         helper.setBlock(PANEL, Blocks.AIR);
-        helper.succeedWhen(() -> helper.assertItemEntityPresent(Items.NETHER_STAR, PANEL, 2.0));
+        helper.succeedWhen(() -> helper.assertItemEntityPresent(ModItems.POWER_MODULE.get(), PANEL, 2.0));
     }
 
     @GameTest(template = TEMPLATE, timeoutTicks = 400)
@@ -793,7 +802,7 @@ public class InstallGameTests {
         helper.assertTrue(panel.model() == CarModel.P15 && panel.speed().spec() == SpeedSpec.NORMAL_HIGH
                 && panel.plan().interior().wall().equals("realelevator:woodgrain_dark"), "the profile should be applied");
         helper.assertTrue(panel.floorYs().length == 2 && panel.label(top).equals("R"), "the floors and labels should stay");
-        // 高速仕様は、ネザースターがなければ速度を変えない
+        // 高速仕様は、パワーモジュールがなければ速度を変えない
         CompoundTag fast = profile.copy();
         fast.putString("Speed", SpeedSpec.HIGH.name());
         panel.applyProfile(fast);

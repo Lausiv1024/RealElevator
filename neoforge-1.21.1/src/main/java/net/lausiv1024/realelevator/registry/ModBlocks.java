@@ -37,6 +37,11 @@ public final class ModBlocks {
             () -> new PowerReceiverBlock(BlockBehaviour.Properties.of()
                     .mapColor(MapColor.METAL).strength(3.0F, 6.0F).sound(SoundType.METAL).requiresCorrectToolForDrops()));
 
+    /** 圧縮レッドストーン。レッドストーンブロック9個を詰めたもの（パワーモジュールの材料）。信号は出さない。 */
+    public static final DeferredBlock<Block> COMPRESSED_REDSTONE = BLOCKS.registerSimpleBlock("compressed_redstone",
+            BlockBehaviour.Properties.of().mapColor(MapColor.FIRE).strength(5.0F, 6.0F).sound(SoundType.METAL)
+                    .requiresCorrectToolForDrops());
+
     // 内装の素材（オリジナル）。かごの壁・床などの素材として選べ、建築にも使える
     public static final DeferredBlock<Block> WOODGRAIN_LIGHT = material("woodgrain_light", MapColor.WOOD, SoundType.WOOD);
     public static final DeferredBlock<Block> WOODGRAIN_MEDIUM = material("woodgrain_medium", MapColor.WOOD, SoundType.WOOD);

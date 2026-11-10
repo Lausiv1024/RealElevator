@@ -6,6 +6,7 @@ import java.util.Locale;
 
 import javax.annotation.Nullable;
 
+import net.lausiv1024.realelevator.registry.ModItems;
 import net.lausiv1024.realelevator.core.announce.AnnouncementConfig;
 import net.lausiv1024.realelevator.core.car.CarModel;
 import net.lausiv1024.realelevator.core.car.Entrance;
@@ -59,9 +60,9 @@ import net.minecraft.world.phys.Vec3;
  * 設置用ブロック。停止階と設定を決めて、昇降路を設置する。
  *
  * <p>停止階は階床登録ツールで登録し、設置用ブロックの高さ（最下階）は常に含む。設置すると、設置用ブロックは消え、
- * 計画（{@link ElevatorPlan}）とネザースターは昇降路の頂部の制御盤（{@link ControllerBlockEntity}）に移る。
+ * 計画（{@link ElevatorPlan}）とパワーモジュールは昇降路の頂部の制御盤（{@link ControllerBlockEntity}）に移る。
  *
- * <p>高速仕様（高速・超高速）は、ネザースターを1個はめると選べるようになる。ネザースターは消費しない。
+ * <p>高速仕様（高速・超高速）は、パワーモジュールを1個はめると選べるようになる。パワーモジュールは消費しない。
  */
 public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
     /** 設定画面から操作できる距離。 */
@@ -69,7 +70,7 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
 
     private ElevatorPlan plan;
     private boolean preview;
-    /** ネザースターをはめるスロット。 */
+    /** パワーモジュールをはめるスロット。 */
     private final SimpleContainer star = new SimpleContainer(1) {
         @Override
         public int getMaxStackSize() {
@@ -78,7 +79,7 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
 
         @Override
         public boolean canPlaceItem(int slot, ItemStack stack) {
-            return stack.is(Items.NETHER_STAR);
+            return stack.is(ModItems.POWER_MODULE.get());
         }
     };
 
@@ -142,19 +143,19 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
         return ShaftLayout.check(layout().floors());
     }
 
-    /** ネザースターのスロット。 */
+    /** パワーモジュールのスロット。 */
     public Container starContainer() {
         return star;
     }
 
-    /** ネザースターがはまっているか（高速仕様を選べるか）。 */
-    public boolean hasNetherStar() {
-        return star.getItem(0).is(Items.NETHER_STAR);
+    /** パワーモジュールがはまっているか（高速仕様を選べるか）。 */
+    public boolean hasPowerModule() {
+        return star.getItem(0).is(ModItems.POWER_MODULE.get());
     }
 
-    /** ネザースターを取り出したら、高速仕様の設定は普通（高）に戻す。 */
+    /** パワーモジュールを取り出したら、高速仕様の設定は普通（高）に戻す。 */
     private void onStarChanged() {
-        if (!hasNetherStar() && plan.speed().spec().isHighSpeed()) {
+        if (!hasPowerModule() && plan.speed().spec().isHighSpeed()) {
             plan.setSpeed(SpeedSetting.standard(SpeedSpec.NORMAL_HIGH));
         }
         sync();
@@ -162,7 +163,7 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
 
     /** 設定画面で変えた設定を反映する。 */
     public void applySettings(CompoundTag tag) {
-        plan.applyInstallSettings(tag, hasNetherStar());
+        plan.applyInstallSettings(tag, hasPowerModule());
         plan.applyRenewal(tag);
         preview = tag.getBoolean("Preview");
         sync();
@@ -176,13 +177,13 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
     }
 
     /**
-     * 仕様書のプロファイル profile を反映する（停止階・階名・読み上げ名・出入口はそのまま）。高速仕様は、ネザースターがはまっていなければ
+     * 仕様書のプロファイル profile を反映する（停止階・階名・読み上げ名・出入口はそのまま）。高速仕様は、パワーモジュールがはまっていなければ
      * 速度を変えない。結果を伝える文を返す。
      */
     public Component applyProfile(CompoundTag profile) {
         SpeedSpec requested = ConfigTags.parseEnum(SpeedSpec.class, profile.getString("Speed"), plan.speed().spec());
         applySettings(ElevatorProfile.mergeInstall(settingsTag(), profile));
-        return Component.translatable(requested.isHighSpeed() && !hasNetherStar()
+        return Component.translatable(requested.isHighSpeed() && !hasPowerModule()
                 ? "message.realelevator.profile.applied_no_star" : "message.realelevator.profile.applied");
     }
 
@@ -314,7 +315,7 @@ public class InstallerBlockEntity extends BlockEntity implements MenuProvider {
             }
         }
 
-        // 頂部の制御盤を置き、計画とネザースターを移す
+        // 頂部の制御盤を置き、計画とパワーモジュールを移す
         // 制御盤の背面を、付ける壁に向ける（奥の壁なら乗場の向き、左の壁なら乗場から見て右、乗場の壁の裏なら昇降路の奥の向き）
         Direction controllerFacing = switch (layout.controllerMount()) {
             case BACK_WALL -> facing();

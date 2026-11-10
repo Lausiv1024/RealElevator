@@ -18,6 +18,12 @@ public final class ModItems {
 
     public static final DeferredItem<BlockItem> POWER_RECEIVER = ITEMS.registerSimpleBlockItem(ModBlocks.POWER_RECEIVER);
 
+    /** 圧縮レッドストーン（パワーモジュールの材料）。 */
+    public static final DeferredItem<BlockItem> COMPRESSED_REDSTONE = ITEMS.registerSimpleBlockItem(ModBlocks.COMPRESSED_REDSTONE);
+
+    /** パワーモジュール。設置用ブロック（設置後は頂部の制御盤）にはめると、高速仕様を選べるようになる。 */
+    public static final DeferredItem<Item> POWER_MODULE = ITEMS.registerSimpleItem("power_module", new Item.Properties().stacksTo(16));
+
     // 内装の素材
     public static final DeferredItem<BlockItem> WOODGRAIN_LIGHT = ITEMS.registerSimpleBlockItem(ModBlocks.WOODGRAIN_LIGHT);
     public static final DeferredItem<BlockItem> WOODGRAIN_MEDIUM = ITEMS.registerSimpleBlockItem(ModBlocks.WOODGRAIN_MEDIUM);

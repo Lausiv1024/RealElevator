@@ -216,13 +216,13 @@ public final class ElevatorPlan {
     }
 
     /**
-     * 設置する前だけ変えられる設定（機種・速度・ピット）を反映する。高速仕様は、ネザースターがはまっているときだけ選べる。
+     * 設置する前だけ変えられる設定（機種・速度・ピット）を反映する。高速仕様は、パワーモジュールがはまっているときだけ選べる。
      */
-    public void applyInstallSettings(CompoundTag tag, boolean hasNetherStar) {
+    public void applyInstallSettings(CompoundTag tag, boolean hasPowerModule) {
         model = ConfigTags.parseEnum(CarModel.class, tag.getString("Model"), model);
         door = new CarSpec(model, ConfigTags.parseEnum(DoorType.class, tag.getString("Door"), door)).door();
         SpeedSpec requested = ConfigTags.parseEnum(SpeedSpec.class, tag.getString("Speed"), speed.spec());
-        if (!requested.isHighSpeed() || hasNetherStar) {
+        if (!requested.isHighSpeed() || hasPowerModule) {
             speed = readSpeed(requested, tag);
         }
         pitMode = ConfigTags.parseEnum(PitMode.class, tag.getString("Pit"), pitMode);

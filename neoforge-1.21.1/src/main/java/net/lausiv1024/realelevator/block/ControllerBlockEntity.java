@@ -35,7 +35,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * 頂部の制御盤。設置したエレベーターの計画（{@link ElevatorPlan}）とネザースターを持ち、かごと紐付く。
+ * 頂部の制御盤。設置したエレベーターの計画（{@link ElevatorPlan}）とパワーモジュールを持ち、かごと紐付く。
  *
  * <p>リニューアル（配置・アナウンス・階名の変更）と解体は、乗場の操作盤を保守用レンチで右クリックして開くメニューから行う。
  */
@@ -59,7 +59,7 @@ public class ControllerBlockEntity extends BlockEntity {
         this.plan = new ElevatorPlan(pos, state.getValue(HorizontalDirectionalBlock.FACING));
     }
 
-    /** 設置したときに、設置用ブロックから計画とネザースターと、設置に使った材料を受け取る。 */
+    /** 設置したときに、設置用ブロックから計画とパワーモジュールと、設置に使った材料を受け取る。 */
     public void setup(ElevatorPlan plan, ItemStack star, UUID carUuid, InstallMaterials materials) {
         // 設置用ブロックとは別のものにしておく
         this.plan = ElevatorPlan.load(plan.save(), plan.origin(), plan.facing());
@@ -160,7 +160,7 @@ public class ControllerBlockEntity extends BlockEntity {
     }
 
     /**
-     * エレベーターを解体する。かご・乗場の扉・ガイドレール・頂部の制御盤を撤去し、設置用ブロックとネザースターを返す。
+     * エレベーターを解体する。かご・乗場の扉・ガイドレール・頂部の制御盤を撤去し、設置用ブロックとパワーモジュールを返す。
      *
      * @param player 返す相手。null なら、設置用ブロックを置いていた場所（最下階の乗場）に落とす
      */

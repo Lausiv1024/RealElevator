@@ -86,6 +86,9 @@ public class RealElevator {
             event.accept(ModItems.FLOOR_MARKER);
             event.accept(ModItems.MAINTENANCE_WRENCH);
             event.accept(ModItems.SPECIFICATION);
+        } else if (event.getTabKey() == CreativeModeTabs.INGREDIENTS) {
+            event.accept(ModItems.COMPRESSED_REDSTONE);
+            event.accept(ModItems.POWER_MODULE);
         }
     }
 }
