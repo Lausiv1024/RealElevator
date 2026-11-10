@@ -9,10 +9,11 @@
 - チャイム3（間隔0.25秒、電子音）：予報 [G5, A#5]（チャイム2と同じファイルを使う）、上り C5 → F5 → G5 → [A5, C6]、下り C6 → G5 → F5 → C5
 
 音色は2つ。
-- ベル風：ベルに似た倍音を持つ正弦波を重ねる。倍音が少なく、丸い。
+- ベル風：ベルに似た倍音を持つ正弦波を重ねる。倍音が少なく、丸い。余韻は1音ごとに BELL_SECONDS。
 - 電子音：メロディICのような矩形波を減衰させ、小さいスピーカーから出たように低音と高音を削る。
+  余韻は途中の音が CHIP_SECONDS、最後の音（和音なら和音のすべての音）が CHIP_LAST_SECONDS。
 
-鳴っている長さ（最後の音までの間隔＋余韻 STRIKE_SECONDS）は、ChimeType#ringTicks と合わせる。
+鳴っている長さ（最後の音までの間隔＋最後の音の余韻）は、ChimeType#ringTicks と合わせる。
 
 使い方（numpy と soundfile が必要）:
     python make_chime.py <出力先のフォルダ>
@@ -46,7 +47,6 @@ PATTERNS = {
     "chime_3_up": (0.25, ((C_5,), (F_5,), (G_5,), (A_5, C_6)), CHIP),
     "chime_3_down": (0.25, ((C_6,), (G_5,), (F_5,), (C_5,)), CHIP),
 }
-STRIKE_SECONDS = 1.6
 PEAK = 10 ** (-3 / 20)
 
 # ベル風：(基音に対する周波数比, 振幅, 減衰の速さ [1/s]) の並び
@@ -57,9 +57,13 @@ BELL_PARTIALS = [
     (4.16, 0.05, 7.0),
 ]
 BELL_ATTACK_SECONDS = 0.004
+BELL_SECONDS = 1.6
 
-# 電子音：矩形波の減衰の速さ [1/s]、立ち上がり [秒]、スピーカー風に残す帯域 [Hz]
-CHIP_DECAY = 2.6
+# 電子音：余韻 [秒]（途中の音と最後の音）、余韻1.6秒のときの減衰の速さ [1/s]（余韻が長ければ、そのぶんゆっくり減衰させ、
+# 終わりに残る大きさをそろえる）、立ち上がり [秒]、スピーカー風に残す帯域 [Hz]
+CHIP_SECONDS = 2.2
+CHIP_LAST_SECONDS = 2.8
+CHIP_DECAY_AT_1_6 = 2.6
 CHIP_ATTACK_SECONDS = 0.003
 SPEAKER_LOW = 500.0
 SPEAKER_HIGH = 3500.0
@@ -92,7 +96,9 @@ def square(fundamental: float, t: np.ndarray) -> np.ndarray:
 
 
 def chip(fundamental: float, t: np.ndarray) -> np.ndarray:
-    envelope = np.exp(-CHIP_DECAY * t) * np.clip(t / CHIP_ATTACK_SECONDS, 0, 1)
+    seconds = len(t) / SAMPLE_RATE
+    decay = CHIP_DECAY_AT_1_6 * 1.6 / seconds
+    envelope = np.exp(-decay * t) * np.clip(t / CHIP_ATTACK_SECONDS, 0, 1)
     return square(fundamental, t) * fade_out(envelope)
 
 
@@ -116,10 +122,17 @@ def speaker(x: np.ndarray) -> np.ndarray:
 def chime(interval: float, steps: tuple, timbre: str) -> np.ndarray:
     voice = bell if timbre == BELL else chip
     gap = int(interval * SAMPLE_RATE)
-    length = int(STRIKE_SECONDS * SAMPLE_RATE)
-    t = np.arange(length) / SAMPLE_RATE
-    out = np.zeros(gap * (len(steps) - 1) + length)
+    last = len(steps) - 1
+
+    def seconds(i: int) -> float:
+        if timbre == BELL:
+            return BELL_SECONDS
+        return CHIP_LAST_SECONDS if i == last else CHIP_SECONDS
+
+    out = np.zeros(gap * last + int(seconds(last) * SAMPLE_RATE))
     for i, chord in enumerate(steps):
+        length = int(seconds(i) * SAMPLE_RATE)
+        t = np.arange(length) / SAMPLE_RATE
         for fundamental in chord:
             out[i * gap:i * gap + length] += voice(fundamental, t)
     if timbre == CHIP:

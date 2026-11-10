@@ -14,8 +14,8 @@ public enum ChimeType {
     /** 鳴らさない。鳴らさなくても、ホールランタンは鳴らすはずだったタイミングで点滅を始める。 */
     NONE(0),
     CHIME_1(41),
-    CHIME_2(37),
-    CHIME_3(47);
+    CHIME_2(61),
+    CHIME_3(71);
 
     private final int ringTicks;
 
@@ -23,7 +23,10 @@ public enum ChimeType {
         this.ringTicks = ringTicks;
     }
 
-    /** 到着チャイムが鳴っている長さ [tick]（最後の音を鳴らすまでの間隔＋余韻1.6秒）。そのあいだは同じ階で重ねて鳴らさない。 */
+    /**
+     * 到着チャイムが鳴っている長さ [tick]（最後の音を鳴らすまでの間隔＋最後の音の余韻。余韻はチャイム1が1.6秒、チャイム2・3が2.8秒）。
+     * そのあいだは同じ階で重ねて鳴らさない。
+     */
     public int ringTicks() {
         return ringTicks;
     }

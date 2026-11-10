@@ -9,6 +9,8 @@ import java.util.List;
  * として、走る距離を最高速度で割った時間に、止まる回数ごとの時間（{@value #STOP_SECONDS}秒：戸の開閉と開放待機、加減速）と、
  * 走り出しの時間（{@value #START_SECONDS}秒）と、今開いている戸が閉まるまでの時間を足したもの。
  * 呼びと同じ向きに進んでいて、呼びの階がまだ先にあれば、その途中で止まる。
+ *
+ * <p>見積もりが同じかごが複数あれば（同じ階で待っているかごなど）、乗場のボタンを押した場所にいちばん近いかごに割り当てる。
  */
 public final class GroupDispatcher {
     /** 1回止まるのにかかる時間 [秒]（開くのに2.0秒、開放待機4秒、閉じるのに2.5秒、加減速の分）。 */
@@ -32,19 +34,37 @@ public final class GroupDispatcher {
     private GroupDispatcher() {
     }
 
+    /** 見積もりが同じとみなす差 [秒]。 */
+    private static final double SAME_TIME = 1e-6;
+
     /** 位置 floorY の、向き callDirection の乗場呼びを割り当てるかごの番号。応えられるかごがなければ −1。 */
     public static int choose(List<CarState> cars, double floorY, TravelDirection callDirection) {
+        return choose(cars, floorY, callDirection, null);
+    }
+
+    /**
+     * 位置 floorY の、向き callDirection の乗場呼びを割り当てるかごの番号。応えられるかごがなければ −1。
+     *
+     * @param distances かごごとの、乗場のボタンを押した場所からの距離（cars と同じ並び）。見積もりが同じかごのうち、
+     *                  いちばん近いかごを選ぶ。null なら並びの先のかご
+     */
+    public static int choose(List<CarState> cars, double floorY, TravelDirection callDirection, List<Double> distances) {
         int best = -1;
         double bestTime = Double.POSITIVE_INFINITY;
+        double bestDistance = Double.POSITIVE_INFINITY;
         for (int i = 0; i < cars.size(); i++) {
             CarState car = cars.get(i);
             if (!car.available()) {
                 continue;
             }
             double time = estimate(car, floorY, callDirection);
-            if (time < bestTime - 1e-9) {
+            double distance = distances != null ? distances.get(i) : 0;
+            boolean faster = time < bestTime - SAME_TIME;
+            boolean sameButCloser = Math.abs(time - bestTime) <= SAME_TIME && distance < bestDistance;
+            if (faster || sameButCloser) {
                 best = i;
                 bestTime = time;
+                bestDistance = distance;
             }
         }
         return best;

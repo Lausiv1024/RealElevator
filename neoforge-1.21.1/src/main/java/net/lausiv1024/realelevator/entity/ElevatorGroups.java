@@ -12,6 +12,7 @@ import net.lausiv1024.realelevator.core.control.CollectiveControl.PressResult;
 import net.lausiv1024.realelevator.core.control.GroupDispatcher;
 import net.lausiv1024.realelevator.core.control.TravelDirection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * 複数台の群管理。同じ群のかごで乗場呼びを分け合う。
@@ -25,6 +26,7 @@ import net.minecraft.network.chat.Component;
  * （即時予報）。到着すると今までどおり点滅に変わる。</li>
  * <li>アナウンスの設定（到着・戸閉のアナウンスとチャイムの種類）は群でそろえる。1台を変えると群のほかのかごも変わり
  * （{@link #shareAnnouncements}）、群に入れたかごは群の側の設定になる。</li>
+ * <li>見積もりが同じかごが複数あれば（同じ階で待っているかごなど）、押された乗場にいちばん近いかごに割り当てる。</li>
  * <li>乗場のボタンの応答灯は、群のどれかのかごにその階・その向きの呼びがあれば、群のすべての乗場で点く。</li>
  * <li>車椅子用のボタンの呼びは、車椅子用操作盤のあるかごだけに割り当てる（応えられるかごがなければ登録しない）。</li>
  * </ul>
@@ -79,7 +81,17 @@ public final class ElevatorGroups {
             }
         }
         List<GroupDispatcher.CarState> states = members.stream().map(member -> member.groupState(y)).toList();
-        int chosen = GroupDispatcher.choose(states, y, direction);
+        // 見積もりが同じなら、押された乗場にいちばん近いかごにする
+        Vec3 pressed = origin.landingPoint(floor, side);
+        List<Double> distances = members.stream().map(member -> {
+            int index = member.floorIndexAt(y);
+            if (index < 0) {
+                return Double.POSITIVE_INFINITY;
+            }
+            Vec3 landing = member.landingPoint(index, sideFor(member, origin, side, index));
+            return Math.hypot(landing.x - pressed.x, landing.z - pressed.z);
+        }).toList();
+        int chosen = GroupDispatcher.choose(states, y, direction, distances);
         if (chosen < 0) {
             return PressResult.INVALID;
         }

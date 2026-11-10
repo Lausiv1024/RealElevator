@@ -1384,6 +1384,13 @@ public class ElevatorCarEntity extends Entity implements ButtonHost {
         level().playSound(null, position.x, position.y, position.z, sound, SoundSource.BLOCKS, 1.0F, 1.0F);
     }
 
+    /** 停止階 floor の、出入口 side の乗場の面の、出入口の幅の中央（ワールド座標。高さは床面）。 */
+    public Vec3 landingPoint(int floor, Entrance side) {
+        double face = DoorGeometry.landingFace(spec());
+        Box point = new Box(0, 0, face, 0, 0, face).rotateQuarterTurns(facing().get2DDataValue() + side.quarterTurns());
+        return new Vec3(getX() + point.minX(), floors[floor], getZ() + point.minZ());
+    }
+
     /** 停止階 floor のホールランタンの中心（ワールド座標）。 */
     private Vec3 lanternCenter(int floor) {
         AABB bounds = null;

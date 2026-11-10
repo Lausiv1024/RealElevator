@@ -252,17 +252,17 @@ public class ElevatorCarGameTests {
         });
     }
 
-    /** チャイム3は4つ目の音までの間隔と余韻の長さ（2.35秒）だけ、重ねて鳴らさない。 */
+    /** チャイム3は4つ目の音までの間隔と最後の音の余韻の長さ（3.55秒）だけ、重ねて鳴らさない。 */
     @GameTest(template = TEMPLATE, timeoutTicks = 100)
     public static void chimeThreeRingsLongerBeforeItCanRingAgain(GameTestHelper helper) {
         ElevatorCarEntity car = spawn(helper, 0, SpeedSpec.NORMAL_LOW, 0, RISE).car();
         car.setAnnouncements(new AnnouncementConfig(false, false, ChimeType.CHIME_3));
         car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT, false);
         long first = car.chimeEndTick();
-        helper.assertTrue(first == helper.getLevel().getGameTime() + ChimeType.CHIME_3.ringTicks(), "chime 3 rings for 2.35 s");
-        helper.runAfterDelay(42, () -> {
+        helper.assertTrue(first == helper.getLevel().getGameTime() + ChimeType.CHIME_3.ringTicks(), "chime 3 rings for 3.55 s");
+        helper.runAfterDelay(66, () -> {
             car.pressHallCall(0, TravelDirection.UP, Entrance.FRONT, false);
-            helper.assertTrue(car.chimeEndTick() == first, "should still be ringing after 42 ticks");
+            helper.assertTrue(car.chimeEndTick() == first, "should still be ringing after 66 ticks");
             helper.succeed();
         });
     }
@@ -967,6 +967,22 @@ public class ElevatorCarGameTests {
         // 12 には車椅子対応のかごが止まらないので、車椅子用のボタンの呼びは登録しない
         helper.assertTrue(ElevatorGroups.pressHallCall(plain, 2, TravelDirection.DOWN, Entrance.FRONT, true) == PressResult.INVALID
                 && !plain.isHallCallLit(2, TravelDirection.DOWN), "no wheelchair car can answer, so the call is not registered");
+        helper.succeed();
+    }
+
+    /** 群管理：同じ階で待っているかごどうしなら、乗場のボタンを押した乗場に近いかごに割り当てる。 */
+    @GameTest(template = TEMPLATE, timeoutTicks = 40)
+    public static void aGroupCallAmongEqualCarsGoesToTheNearestLanding(GameTestHelper helper) {
+        double x = helper.absolutePos(LOWER).getX() + 0.5;
+        ElevatorCarEntity left = spawnGroupCar(helper, x - 4, 0, 0, 8, 12);
+        ElevatorCarEntity right = spawnGroupCar(helper, x + 4, 0, 0, 8, 12);
+        ElevatorGroups.join(left, right);
+        ElevatorGroups.pressHallCall(right, 1, TravelDirection.UP, Entrance.FRONT, false);
+        helper.assertTrue(right.isHallCallLit(1, TravelDirection.UP) && !left.isHallCallLit(1, TravelDirection.UP),
+                "pressed at the right landing, the right car should answer");
+        ElevatorGroups.pressHallCall(left, 2, TravelDirection.DOWN, Entrance.FRONT, false);
+        helper.assertTrue(left.isHallCallLit(2, TravelDirection.DOWN) && !right.isHallCallLit(2, TravelDirection.DOWN),
+                "pressed at the left landing, the left car should answer");
         helper.succeed();
     }
 

@@ -23,6 +23,19 @@ class GroupDispatcherTest {
         assertEquals(0, GroupDispatcher.choose(cars, 4, TravelDirection.DOWN));
     }
 
+    /** 見積もりが同じかご（同じ階で待っているかご）なら、乗場のボタンを押した場所にいちばん近いかごにする。 */
+    @Test
+    void amongEqualCarsTheOneNearestToThePressedButtonAnswers() {
+        List<CarState> cars = List.of(idle(0), idle(0), idle(0));
+        assertEquals(2, GroupDispatcher.choose(cars, 12, TravelDirection.DOWN, List.of(6.0, 3.0, 0.0)));
+        assertEquals(1, GroupDispatcher.choose(cars, 12, TravelDirection.DOWN, List.of(6.0, 0.0, 3.0)));
+        // 距離を渡さなければ、並びの先のかご
+        assertEquals(0, GroupDispatcher.choose(cars, 12, TravelDirection.DOWN));
+        // 早く着くかごがあれば、遠くてもそちら
+        List<CarState> uneven = List.of(idle(0), idle(8));
+        assertEquals(1, GroupDispatcher.choose(uneven, 12, TravelDirection.DOWN, List.of(0.0, 9.0)));
+    }
+
     @Test
     void aCarGoingTheSameWayPicksUpOnTheWay() {
         // 上りで 10 にいるかごは、20 の上りの呼びに途中で止まれる。0 で止まっているかごより早い
