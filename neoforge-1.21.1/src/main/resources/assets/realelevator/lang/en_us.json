@@ -83,6 +83,7 @@
   "gui.realelevator.chime.chime_1": "Chime 1",
   "gui.realelevator.chime.chime_2": "Chime 2",
   "gui.realelevator.chime.chime_3": "Chime 3",
+  "gui.realelevator.chime.chime_4": "Chime 4",
   "gui.realelevator.panel.landing_open": "Landing open",
   "gui.realelevator.hall_lantern.none": "None",
   "gui.realelevator.panel.no_over_door": "Floors are less than 5 blocks apart, so hall fixtures cannot go above the door (the floor above would hide them)",

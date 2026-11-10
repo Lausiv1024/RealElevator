@@ -427,5 +427,23 @@
     "sounds": [
       "realelevator:chime_2_forecast"
     ]
+  },
+  "chime_4_up": {
+    "subtitle": "subtitles.realelevator.chime",
+    "sounds": [
+      "realelevator:chime_4_up"
+    ]
+  },
+  "chime_4_down": {
+    "subtitle": "subtitles.realelevator.chime",
+    "sounds": [
+      "realelevator:chime_4_up"
+    ]
+  },
+  "chime_4_forecast": {
+    "subtitle": "subtitles.realelevator.chime",
+    "sounds": [
+      "realelevator:chime_2_forecast"
+    ]
   }
 }

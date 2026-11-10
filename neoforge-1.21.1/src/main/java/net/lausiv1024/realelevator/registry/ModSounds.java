@@ -23,6 +23,9 @@ public final class ModSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_3_UP = register("chime_3_up");
     public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_3_DOWN = register("chime_3_down");
     public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_3_FORECAST = register("chime_3_forecast");
+    public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_4_UP = register("chime_4_up");
+    public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_4_DOWN = register("chime_4_down");
+    public static final DeferredHolder<SoundEvent, SoundEvent> CHIME_4_FORECAST = register("chime_4_forecast");
     /** ナッジング（強制戸閉）のブザー（0.5秒の1回分）。音は tools/sounds/make_buzzer.py で合成したもの。 */
     public static final DeferredHolder<SoundEvent, SoundEvent> NUDGE_BUZZER = register("nudge_buzzer");
 
@@ -37,6 +40,7 @@ public final class ModSounds {
         return (switch (type) {
             case CHIME_2 -> CHIME_2_UP;
             case CHIME_3 -> CHIME_3_UP;
+            case CHIME_4 -> CHIME_4_UP;
             default -> CHIME_UP;
         }).get();
     }
@@ -46,6 +50,7 @@ public final class ModSounds {
         return (switch (type) {
             case CHIME_2 -> CHIME_2_DOWN;
             case CHIME_3 -> CHIME_3_DOWN;
+            case CHIME_4 -> CHIME_4_DOWN;
             default -> CHIME_DOWN;
         }).get();
     }
@@ -55,6 +60,7 @@ public final class ModSounds {
         return (switch (type) {
             case CHIME_2 -> CHIME_2_FORECAST;
             case CHIME_3 -> CHIME_3_FORECAST;
+            case CHIME_4 -> CHIME_4_FORECAST;
             default -> CHIME_FORECAST;
         }).get();
     }
